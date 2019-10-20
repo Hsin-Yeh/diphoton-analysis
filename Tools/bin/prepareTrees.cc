@@ -166,10 +166,10 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     Int_t interactingParton1PdgId, interactingParton2PdgId, pdf_id1, pdf_id2, npv_true;
     Bool_t beamHaloIDLoose, beamHaloIDTight, beamHaloIDTight2015;
     //Diphoton branch
-    Double_t Minv,qt,deltaPhi,deltaEta,deltaR,cosThetaStar,cosThetaStar_old,chiDiphoton;
+    Double_t mgg,qt,deltaPhi,deltaEta,deltaR,cosThetaStar,cosThetaStar_old,chiDiphoton;
     Bool_t isEBEB,isEBEE,isEEEB,isEEEE;
     //GenDiphoton branch
-    Double_t GenMinv,Genqt,GendeltaPhi,GendeltaEta,GendeltaR,GencosThetaStar,GencosThetaStar_old,GenchiDiphoton;
+    Double_t mggGen,Genqt,GendeltaPhi,GendeltaEta,GendeltaR,GencosThetaStar,GencosThetaStar_old,GenchiDiphoton;
     Bool_t GenisEBEB,GenisEBEE,GenisEEEB,GenisEEEE;
     //One more branch for the category
     // BB: 0 , BE:1
@@ -207,7 +207,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     HighMassDiphotonTree->Branch("beamHaloIDTight",&beamHaloIDTight,"beamHaloIDTight/I");
     HighMassDiphotonTree->Branch("beamHaloIDTight2015",&beamHaloIDTight2015,"beamHaloIDTight2015/I");
     //Diphoton branches
-    HighMassDiphotonTree->Branch("Minv",&Minv,"Minv/D");
+    HighMassDiphotonTree->Branch("mgg",&mgg,"mgg/D");
     HighMassDiphotonTree->Branch("qt",&qt,"qt/D");
     HighMassDiphotonTree->Branch("deltaPhi",&deltaPhi,"deltaPhi/D");
     HighMassDiphotonTree->Branch("deltaEta",&deltaEta,"deltaEta/D");
@@ -220,7 +220,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     HighMassDiphotonTree->Branch("isEEEB",&isEEEB,"isEEEB/O");
     HighMassDiphotonTree->Branch("isEEEE",&isEEEE,"isEEEE/O");
     //GenDiphoton branches
-    HighMassDiphotonTree->Branch("GenMinv",&GenMinv,"GenMinv/D");
+    HighMassDiphotonTree->Branch("mggGen",&mggGen,"mggGen/D");
     HighMassDiphotonTree->Branch("Genqt",&Genqt,"Genqt/D");
     HighMassDiphotonTree->Branch("GendeltaPhi",&GendeltaPhi,"GendeltaPhi/D");
     HighMassDiphotonTree->Branch("GendeltaEta",&GendeltaEta,"GendeltaEta/D");
@@ -268,7 +268,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
       beamHaloIDTight		= finaltree->GetBranch("Event")->GetLeaf("beamHaloIDTight")->GetValue(0);
       beamHaloIDTight2015       = finaltree->GetBranch("Event")->GetLeaf("beamHaloIDTight2015")->GetValue(0);
       //Diphoton branch
-      Minv	        	= finaltree->GetBranch("Diphoton")->GetLeaf("Minv")->GetValue(0);
+      mgg	        	= finaltree->GetBranch("Diphoton")->GetLeaf("Minv")->GetValue(0);
       qt		        = finaltree->GetBranch("Diphoton")->GetLeaf("qt")->GetValue(0);
       deltaPhi	                = finaltree->GetBranch("Diphoton")->GetLeaf("deltaPhi")->GetValue(0);
       deltaEta	                = finaltree->GetBranch("Diphoton")->GetLeaf("deltaEta")->GetValue(0);
@@ -281,7 +281,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
       isEEEB		        = finaltree->GetBranch("Diphoton")->GetLeaf("isEEEB")->GetValue(0);
       isEEEE                    = finaltree->GetBranch("Diphoton")->GetLeaf("isEEEE")->GetValue(0);
       //GenDiphoton branch
-      GenMinv	        	= finaltree->GetBranch("GenDiphoton")->GetLeaf("Minv")->GetValue(0);
+      mggGen	        	= finaltree->GetBranch("GenDiphoton")->GetLeaf("Minv")->GetValue(0);
       Genqt		        = finaltree->GetBranch("GenDiphoton")->GetLeaf("qt")->GetValue(0);
       GendeltaPhi	        = finaltree->GetBranch("GenDiphoton")->GetLeaf("deltaPhi")->GetValue(0);
       GendeltaEta	        = finaltree->GetBranch("GenDiphoton")->GetLeaf("deltaEta")->GetValue(0);

@@ -27,6 +27,7 @@ std::map<std::string, double> luminosity { {"2015", 2.62}, {"2016", 35.9}, {"201
 std::map<std::string, double> luminosityErrorFrac { {"2015", 0.023}, {"2016", 0.026}, {"2017", 0.023}, {"2018", 0.025}, {"2018_newjson", 0.025}, {"2018ABC_prompt", 0.025}, {"2018ABC_rereco", 0.025}};
 
 std::map<std::string, TChain*> chains;
+std::map<std::string, TChain*> treesforfit;
 std::map<std::string, int> lineStyles;
 std::map<std::string, int> lineColors;
 std::map<std::string, int> fillStyles;
@@ -36,6 +37,7 @@ std::map<std::string, std::string> prettyName;
 
 TString filestring(TString sample);
 void init(bool includeUnskimmmed, bool includeSignal); // initializes samples; can skip long initialization of unskimmed samples
+void initForFit(const std::string & inputdir); //initializes reduced samples for parametric signal fit
 void initADD(const TString & baseDirectory); // initializes ADD samples; performed by a loop rather than being listed explicitly
 void initRSG(const TString & baseDirectory); // initializes RSG samples; performed by a loop rather than being listed explicitly
 void initHeavyHiggs(const TString & baseDirectory); // initializes Heavy Higgs samples; performed by a loop rather than being listed explicitly
@@ -1114,6 +1116,61 @@ void initHeavyHiggs(const TString & baseDirectory)
   // chains["GluGluSpin0ToGammaGamma_W_5p6_M_2250_TuneCP2_13TeV_pythia8_2018"]->Add(baseDirectory + "/store/user/cawest/diphoton/7003ea2/GluGluSpin0ToGammaGamma_W_5p6_M_2250_TuneCP2_13TeV_pythia8/crab_GluGluSpin0ToGammaGamma_W_5p6_M_2250_TuneCP2_13TeV_pythia8__Autumn18-v1__MINIAODSIM/191016_155415/0000/*.root");
 
 }
+
+std::vector<std::string> getSampleListForFit()
+{
+  std::vector<std::string> list;
+
+  for( auto itr : treesforfit) {
+    list.push_back(itr.first);
+  }
+
+  return list;
+}
+
+void initForFit(const std::string & inputdir)
+{
+  TString treeType("HighMassDiphoton");
+
+  std::vector<std::string> years = {"2017", "2018"};
+  std::vector<std::string> kMpl_values = {"001", "01", "02"};
+  std::map<std::string, std::vector<int> > M_bins;
+  M_bins["001"] = {750, 1000, 1250, 1500, 1750,
+		   2000, 2250, 2500, 2750, 3000,
+		   3250, 3500, 4000, 5000};
+  M_bins["01"] = {750, 1000, 1250, 1500, 1750,
+		  2000, 2250, 2500, 3000, 3500,
+		  4000, 4250, 4500, 4750, 5000, 5250,
+		  5500, 5750, 6000, 6500, 7000,
+		  8000};
+  M_bins["02"] = {750, 1000, 1250, 1500, 1750,
+		  2000, 2250, 2500, 3000, 3500,
+		  4000, 4500, 4750, 5000, 5250,
+		  5500, 5750, 6000, 6500, 7000,
+		  8000};
+
+  for(const auto year : years) {
+    for(const auto kMpl_value : kMpl_values) {
+      for(const auto M_bin : M_bins[kMpl_value]) {
+	std::string pointName = "RSGravitonToGammaGamma_kMpl";
+	pointName += kMpl_value;
+	pointName += "_M_";
+	pointName += std::to_string(M_bin);
+	pointName += "_TuneCP2_13TeV_pythia8_";
+	pointName += year;
+	std::cout << pointName << std::endl;
+	treesforfit[pointName] = new TChain(treeType);
+	// treesforfit[pointName]->Add(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/input/trees/%s.root","".c_str(),pointName.c_str() ));
+	treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
+	lineColors[pointName] = kBlack;
+	fillStyles[pointName] = 1001;
+	lineStyles[pointName] = kSolid;
+      }
+    }
+  }
+
+}
+
 
 
 #endif
