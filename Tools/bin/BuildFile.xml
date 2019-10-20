@@ -1,5 +1,13 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use name="DataFormats/PatCandidates"/>
+<use name="DataFormats/EgammaCandidates"/>
 <use name="root"/>
+<use name="roofit"/>
 <use name="rootinteractive"/>
+<use name="DataFormats/FWLite"/>
+<use name="CommonTools/UtilAlgos"/>
 <environment>
   <bin file="basicplots.cc" name="basicplots.exe"/>
   <bin file="datadriven.cc" name="datadriven.exe"/>
@@ -12,6 +20,7 @@
   <bin file="signal.cc" name="signal.exe"/>
   <bin file="efficiency.cc" name="efficiency.exe"/>
   <bin file="makeHistograms.cc" name="makeHistograms.exe"/>
+  <bin file="makeParametricFits.cc" name="makeParametricFits.exe"/>
   <bin file="makeDatacards.cc" name="makeDatacards.exe"/>
   <bin file="getFakeRates.cc" name="getFakeRates.exe"/>
   <bin file="getFakePrediction.cc" name="getFakePrediction.exe"/>
@@ -20,5 +29,6 @@
   <bin file="plotKFactor.cc" name="plotKFactor.exe"/>
   <bin file="plot_eta_phi.cc" name="plot_eta_phi.exe"/>
   <bin file="skim.cc" name="skim.exe"/>
+  <bin file="prepareTrees.cc" name="prepareTrees.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>
