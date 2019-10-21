@@ -1,6 +1,5 @@
 #include "diphoton-analysis/Tools/interface/sampleList.hh"
 #include "diphoton-analysis/Tools/interface/utilities.hh"
-#include "diphoton-analysis/DiphotonAnalysis/analysis/RooDCBShape.h"
 
 //RooFit
 #include "RooWorkspace.h"

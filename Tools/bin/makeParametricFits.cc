@@ -1,6 +1,5 @@
 #include "diphoton-analysis/Tools/interface/sampleList.hh"
 #include "diphoton-analysis/Tools/interface/utilities.hh"
-#include "diphoton-analysis/DiphotonAnalysis/analysis/RooDCBShape.h"
 
 //RooFit
 #include "RooWorkspace.h"
@@ -43,7 +42,7 @@ int main(int argc, char *argv[])
   std::string year, inputdir;
 
   if(argc!=3) {
-    std::cout << "Syntax: makeParametricFits.exe [2016/2017/2018]" << std::endl;
+    std::cout << "Syntax: makeParametricFits.exe [2016/2017/2018] [input]" << std::endl;
       return -1;
   }
   else {
@@ -101,7 +100,31 @@ void AddSigData(RooWorkspace* w, Float_t mass, std::string coupling, const std::
   //Cut on the reduced mass
   TString CutReducedMass = TString::Format("(mgg-mggGen)>-600.&&(mgg-mggGen)<600."); 
   
-  RooDataSet* sigWeightedK = new RooDataSet("sigWeightedK","datasetK", treesforfit[getBase(isample)], *rooVars, CutSignalRegion, "weight" );
+  // RooDataSet* sigWeightedK = new RooDataSet("sigWeightedK","datasetK", treesforfit[getBase(isample)], *rooVars, CutSignalRegion, "weight" );
+  RooDataSet* sigWeightedK = new RooDataSet("sigWeightedK","datasetK", treesforfit[getBase(isample)], *rooVars, CutSignalRegion, "" );
+
+  RooDataSet* signalK[ncat];
+  RooDataSet* signalAllK;
+  
+  for (int c=0; c<ncat; ++c) {
+    if (c==0) signalK[c] = (RooDataSet*) sigWeightedK->reduce(*w->var("mgg"),CutReducedMass+TString::Format("&& eventClass==0"));
+    if (c==1) signalK[c] = (RooDataSet*) sigWeightedK->reduce(*w->var("mgg"),CutReducedMass+TString::Format("&& eventClass==1"));
+       
+    TString myCut;
+    w->import(*signalK[c],RooFit::Rename(TString::Format("SigWeightK_cat%d",c)));
+    std::cout << "cat " << c << ", signalK[c]: " << std::endl;
+    signalK[c]->Print("V");
+    std::cout << "---- for category " << c << ", nX for signal[c]:  " << signalK[c]->sumEntries() << std::endl; 
+  }
+    
+    // Create full weighted signal data set without categorization
+    signalAllK = (RooDataSet*) sigWeightedK->reduce(RooArgList(*w->var("mgg")),CutReducedMass);
+    w->import(*signalAllK, RooFit::Rename("SigWeightK"));
+    std::cout << "now signalAllK" << std::endl;
+    signalAllK->Print("V");
+    std::cout << "---- nX for signalAll:  " << signalAllK->sumEntries() << std::endl; 
+    std::cout << "==================================================================" << std::endl;
+
 
 }
 
@@ -113,7 +136,13 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   TFile *fout = new TFile(Form("%s/ws_ResponseAndGen_M%s_k%s_%s.root", ws_dir.c_str(), M_bins.c_str(), coupling.c_str(),year.c_str()), "recreate");
   RooWorkspace* workspace = new RooWorkspace( "HighMassDiphoton", "HighMassDiphoton" );
   
+  std::cout << "Adding signal data for mass " << M_bins << " and coupling " << coupling <<std::endl;
+
   AddSigData(workspace, stof(M_bins), coupling, isample);
+
+  TCanvas* canv = new TCanvas("canv","c",1);
+  canv->cd();
+  RooPlot* p = workspace->var("mgg")->frame(RooFit::Range(230., 10000.), RooFit::Bins( 2385));
 
   // TString fileBaseName("HighMassGG");    
   // TString fileBkgName("HighMassGG.inputbkg");

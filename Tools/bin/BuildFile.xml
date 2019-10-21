@@ -3,11 +3,18 @@
 <use name="FWCore/ParameterSet"/>
 <use name="DataFormats/PatCandidates"/>
 <use name="DataFormats/EgammaCandidates"/>
+<use name="rootcore"/>
 <use name="root"/>
 <use name="roofit"/>
+<use name="roostats"/>
+<use name="roofitcore"/>
+<use name="roottmva"/>
+<use name="rootmath"/>
+<use name="rootrflx"/>
 <use name="rootinteractive"/>
 <use name="DataFormats/FWLite"/>
 <use name="CommonTools/UtilAlgos"/>
+<use name="diphoton-analysis/RooUtils"/>
 <environment>
   <bin file="basicplots.cc" name="basicplots.exe"/>
   <bin file="datadriven.cc" name="datadriven.exe"/>
@@ -30,5 +37,6 @@
   <bin file="plot_eta_phi.cc" name="plot_eta_phi.exe"/>
   <bin file="skim.cc" name="skim.exe"/>
   <bin file="prepareTrees.cc" name="prepareTrees.exe"/>
+  <bin file="prepareWorkspaces.cc" name="prepareWorkspaces.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>

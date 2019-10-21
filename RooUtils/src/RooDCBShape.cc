@@ -8,7 +8,7 @@
 
 #include "Riostream.h" 
 
-#include "RooDCBShape.h" 
+#include "diphoton-analysis/RooUtils/interface/RooDCBShape.h" 
 #include "RooAbsReal.h" 
 #include "RooAbsCategory.h" 
 #include "RooMath.h" 
