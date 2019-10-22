@@ -358,7 +358,7 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
   TPaveText* label_cms = get_labelcms(0, "2016", true);
   TPaveText* label_sqrt = get_labelsqrt(0);
   
-  for(int c = 0; c<ncat+1; c++){
+  for(int c = 2; c<ncat+1; c++){
     
     TLatex *lat  = new TLatex(0.6,0.9,TString::Format("cat: %d", c));  
     lat->SetTextSize(0.038);
