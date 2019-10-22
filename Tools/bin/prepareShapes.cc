@@ -38,7 +38,7 @@ Int_t MAXmass= 10000;
 void runAllFits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir);
 void runfits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &isample);
 void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, bool doPlot);
-void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &yeart);
+void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling);
 RooDataHist* throwAsimov( double nexp, RooAbsPdf *pdf, RooRealVar *x, RooDataHist *asimov );
 std::string getBase(const std::string & sampleName);
 std::string get_str_between_two_str(const std::string &s, const std::string &start_delim, const std::string &stop_delim);
@@ -266,7 +266,7 @@ void runfits(const std::string &year, const std::string &ws_indir, const std::st
   sigModelShapeFcnFit(ws, stof(M_bins), coupling, year, doPlot);
   //========================================================================
   std::cout << "Throw an asimov dataset from the DCB" <<std::endl;
-  asimovDatasetFcnFit(ws, stof(M_bins), coupling, year);
+  asimovDatasetFcnFit(ws, stof(M_bins), coupling);
 
   //========================================================================
   //Save the resulting workspace
@@ -280,7 +280,7 @@ void runfits(const std::string &year, const std::string &ws_indir, const std::st
 }
 
 //-----------------------------------------------------------------------------------
-void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &yeart) {
+void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling) {
   int ncat = NCAT;
   RooDataHist* signal;
   // RooVoigtian* voigt[NCAT+1];
