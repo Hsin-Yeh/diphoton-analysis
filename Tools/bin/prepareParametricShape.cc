@@ -46,7 +46,7 @@ static const Int_t NCAT = 2; //BB and BE for the moment
 
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
-double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot);
+double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot, std::string name);
 void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &couplingIn);
 std::string getBase(const std::string & sampleName);
 std::string get_str_between_two_str(const std::string &s, const std::string &start_delim, const std::string &stop_delim);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
   std::string year, inputdir, thecoupling;
 
   if(argc!=4) {
-    std::cout << "Syntax: prepareShapes.exe [2016/2017/2018] [input] [kMplxxx]" << std::endl;
+    std::cout << "Syntax: prepareParametricShape.exe [2016/2017/2018] [input] [kMplxxx]" << std::endl;
       return -1;
   }
   else {
@@ -82,13 +82,13 @@ int main(int argc, char *argv[])
 //-----------------------------------------------------------------------------------
 //Definitions
 //-----------------------------------------------------------------------------------
-double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot){
-  TCanvas* ccc = new TCanvas("ccc", "",1);
+double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot, std::string name){
+  TCanvas* ccc = new TCanvas(Form("ccc_%s", name.c_str()), Form("ccc_%s", name.c_str()));
   ccc->cd();
   int nBins = 1000;
   double mean = MH;
   double  sigma  = mean*0.2;
-  TH1F*  hist = (TH1F*) pdf.createHistogram("sigHist",roobs, RooFit::Binning(nBins,mean-4.*sigma,mean+4.*sigma) );
+  TH1F*  hist = (TH1F*) pdf.createHistogram(Form("sigHist_%s",name.c_str()),roobs, RooFit::Binning(nBins,mean-4.*sigma,mean+4.*sigma) );
   double  halfMaxVal = 0.5*hist->GetMaximum();
   int  maxBin = hist->GetMaximumBin();
         
@@ -149,7 +149,7 @@ double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot){
     xR->SetLineColor(kRed);
     xL->Draw("same");  
     xR->Draw("same");
-    ccc->SaveAs("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/test2.png");
+    ccc->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/test_%s.png",name.c_str()));
   }
 
   return xWidth;
@@ -164,8 +164,19 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
 
   //========================================================================
   std::cout << "Calculate the final parametric shape" <<std::endl;
+  std::cout << "Input dir " << ws_indir << std::endl;
+  std::cout << "Output dir " << ws_outdir << std::endl;
   std::string coupling = "";
   std::string M_bins = "";
+
+  double upperxmax = 0.; 
+  if ( couplingIn == "kMpl001" ){upperxmax = 6000 ;}
+  else if ( couplingIn == "kMpl01" ){upperxmax = 9000 ;}
+  else if ( couplingIn == "kMpl02" ){upperxmax = 9000 ;}
+  else {
+    std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
+    exit(1);
+  }
 
   RooDCBShape final_shape[5];
 
@@ -180,14 +191,9 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
 
     theTree tmpin;
-    //We will process one year each time
-    if ( isample.find(year) == std::string::npos ) continue; 
-    std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
 
     coupling = get_str_between_two_str(getBase(isample), "kMpl", "_M_");
     M_bins = get_str_between_two_str(getBase(isample), "_M_", "_TuneCP2_13TeV_");
-    std::cout << "Input dir " << ws_indir << std::endl;
-    std::cout << "Output dir " << ws_outdir << std::endl;
 
     tmpin.kMpl = coupling;
     tmpin.M_bins = M_bins;
@@ -212,12 +218,12 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
   double nR[theInput.size()];
   double nRErr[theInput.size()];
   double masses[theInput.size()];
-  double massesErr[theInput.size()] = {0., 0., 0., 0,0., 0., 0., 0,0.,  0.,  0.};
+  double massesErr[theInput.size()];
 
   TString svar = "responseaddpdf";
   TString spdf = "responseaddpdf";
   
-  RooRealVar* MH = new RooRealVar("MH", "MH", 300, 10000);
+  RooRealVar* MH = new RooRealVar("MH", "MH", 300, upperxmax);
   MH->setConstant();
   RooWorkspace* ws_out = new RooWorkspace(Form("%s/ws_inputs", ws_outdir.c_str()));
   RooDCBShape* sigshape[NCAT+1];
@@ -240,57 +246,42 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     std::map< std::string , RooArgSet* > model_params;
     double fhwm[theInput.size()];
 
-    TLegend* legmc = new TLegend(0.58, 0.54, 0.85, 0.9, "", "bNDC");
+    TLegend* legmc = new TLegend(0.58, 0.34, 0.85, 0.9, "", "bNDC");
     legmc->SetTextFont(42);
     legmc->SetBorderSize(0);
     legmc->SetFillStyle(0);
 
     TCanvas* cc1 = new TCanvas(Form("cc1_cat%d", c), Form("cc1_cat%d", c));
-    TGraph* gr = new TGraph(theInput.size(),masses,fhwm);
-    TGraphErrors* gm = new TGraphErrors(theInput.size(), masses, m, massesErr, mErr);
-    TGraphErrors* gs = new TGraphErrors(theInput.size(), masses, s, massesErr, sErr);
-    TGraphErrors* gaL = new TGraphErrors(theInput.size(), masses, aL, massesErr, aLErr);
-    TGraphErrors* gaR = new TGraphErrors(theInput.size(), masses, aR, massesErr, aRErr);
-    TGraphErrors* gnR = new TGraphErrors(theInput.size(), masses, nR, massesErr, nRErr);
-    TGraphErrors* gnL = new TGraphErrors(theInput.size(), masses, nL, massesErr, nLErr);
 
-   for(unsigned int iM =0; iM < theInput.size(); iM++){
+    for(unsigned int iM =0; iM < theInput.size(); iM++){
 
       theTree tmpin = theInput[iM];
-
-      TCanvas* cf = new TCanvas(Form("cf_M%s_cat%d",tmpin.M_bins.c_str(), c), "");
-      cf->cd();
+      masses[iM] = std::stod(tmpin.M_bins); 
+      massesErr[iM] = 0.;
 
       res[tmpin.name] = (RooDCBShape*) tmpin.ws->pdf(TString::Format("dcbshape_cat%d",c));
       //compute FWHM
-      fhwm[iM] = computePdfFHWM(*res[tmpin.name],*tmpin.ws->var("var"), std::stoi(tmpin.M_bins), plot);
+      fhwm[iM] = computePdfFHWM(*res[tmpin.name],*tmpin.ws->var("var"), std::stoi(tmpin.M_bins), plot, Form("%d_%d",iM,c));
       std::cout << "FWHM " << fhwm[iM] <<" for mass " << tmpin.M_bins << std::endl;
 
-      ffhmw[c] = new TF1(TString::Format("ffhmw_cat%d",c), "pol1", 500,10000);
-      gr->Fit(TString::Format("ffhmw_cat%d",c), "R");
-      gr->GetXaxis()->SetTitle("m_X[GeV]");
-      gr->GetYaxis()->SetTitle("FHWM [GeV]");
-      gr->Draw("AP");   
-      cf->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/FHWM_M%s_k%s_cat%d.png",tmpin.kMpl.c_str(),tmpin.name.c_str(), c));
-
       cc1->cd();
-      h[tmpin.name] = new TH1F(Form("h%s",tmpin.name.c_str()),"",460, 300,10000);
+      h[tmpin.name] = new TH1F(Form("h%d_%d",iM,c), Form("h%d_%d",iM,c),460, 300,upperxmax);
 
       h[tmpin.name]->SetLineColor(iM+1);
       h[tmpin.name]->SetMarkerColor(iM+1);
 
-      legmc->AddEntry( h[tmpin.name] , Form("M_{X} = %s GeV", tmpin.name.c_str() ),"pl" );
+      legmc->AddEntry( h[tmpin.name] , Form("M_{X} = %d GeV", std::stoi(tmpin.M_bins) ),"pl" );
 
       if(c<2){  resdata[tmpin.name] = (RooDataHist*)tmpin.ws->data(TString::Format("signal_asimov_cat%d",c));}
       if(c==2){ resdata[tmpin.name] = (RooDataHist*)tmpin.ws->data("signal_asimov"); }
 
-      pres[tmpin.name] = tmpin.ws->var("var")->frame(Range(300,10000),Title("mass asimov"),Bins(420));
+      pres[tmpin.name] = tmpin.ws->var("var")->frame(Range(300,upperxmax),Title("mass asimov"),Bins(420));
       resdata[tmpin.name]->plotOn(pres[tmpin.name],MarkerColor(iM+1),LineColor(iM+1));
       res[tmpin.name]->plotOn(pres[tmpin.name],LineColor(iM+1));
 
       pres[tmpin.name]->GetXaxis()->SetTitle("#Delta m [GeV]");
       pres[tmpin.name]->GetYaxis()->SetTitle("a.u.");
-      // pres[tmpin.name]->GetYaxis()->SetRangeUser(0.001,10000);
+      // pres[tmpin.name]->GetYaxis()->SetRangeUser(0.001,upperxmax);
 
       if (iM == 0){
 	pres[tmpin.name]->Draw();
@@ -299,14 +290,7 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
       }
 
       legmc->Draw("same");
-
-      cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/asimovAllMasses_k%s_cat%d.png",tmpin.kMpl.c_str(), c));
-
-      cc1->SetLogy();
-      cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/asimovAllMasses_k%s_cat%d_log.png",tmpin.kMpl.c_str(), c));
-
-      cc1->SetLogy(0);
-    
+   
       //save parameters 
       model_params[tmpin.name] = res[tmpin.name]->getParameters(*tmpin.ws->var("var")) ;
       model_params[tmpin.name]->Print("v") ;
@@ -338,45 +322,69 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
    } //end of loop over signal samples of the same coupling
    
    
-   fm[c] = new TF1(TString::Format("fm_cat%d",c), "pol2", 500,10000);
+   cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/asimovAllMasses_%s_cat%d.png",couplingIn.c_str(), c));
+   cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/asimovAllMasses_%s_cat%d.root",couplingIn.c_str(), c));
+
+   // cc1->SetLogy();
+   // cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/asimovAllMasses_%s_cat%d_log.png",couplingIn.c_str(), c));
+
+   // cc1->SetLogy(0);
+ 
+   TGraph* gr = new TGraph(theInput.size(),masses,fhwm);
+   TGraphErrors* gm = new TGraphErrors(theInput.size(), masses, m, massesErr, mErr);
+   TGraphErrors* gs = new TGraphErrors(theInput.size(), masses, s, massesErr, sErr);
+   TGraphErrors* gaL = new TGraphErrors(theInput.size(), masses, aL, massesErr, aLErr);
+   TGraphErrors* gaR = new TGraphErrors(theInput.size(), masses, aR, massesErr, aRErr);
+   TGraphErrors* gnR = new TGraphErrors(theInput.size(), masses, nR, massesErr, nRErr);
+   TGraphErrors* gnL = new TGraphErrors(theInput.size(), masses, nL, massesErr, nLErr);
+
+   ffhmw[c] = new TF1(TString::Format("ffhmw_cat%d",c), "pol1", 500,upperxmax);
+   gr->Fit(TString::Format("ffhmw_cat%d",c), "R");
+   gr->GetXaxis()->SetTitle("m_X[GeV]");
+   gr->GetYaxis()->SetTitle("FHWM [GeV]");
+   gr->Draw("AP");   
+   cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/FHWM_%s_cat%d.png",couplingIn.c_str(), c));
+
+
+   fm[c] = new TF1(TString::Format("fm_cat%d",c), "pol2", 500,upperxmax);
    gm->Fit(TString::Format("fm_cat%d",c), "R");
    gm->GetYaxis()->SetTitle("#Delta m= m - m_{H} [GeV]");
    gm->GetXaxis()->SetTitle("m_{X}[GeV]");
    gm->Draw("APE");
    fm[c]->Draw("same");
-   cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/meanVsMass_k%s_cat%d.png",couplingIn.c_str(), c));
+   cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/meanVsMass_%s_cat%d.png",couplingIn.c_str(), c));
 
    
     gs->GetYaxis()->SetTitle("#sigma [GeV]");
     gs->GetXaxis()->SetTitle("m_{X}[GeV]");
-    fs[c] = new TF1(TString::Format("fs_cat%d",c), "pol2", 500,10000);
+    fs[c] = new TF1(TString::Format("fs_cat%d",c), "pol2", 500,upperxmax);
     gs->Fit(TString::Format("fs_cat%d",c), "R");
     gs->Draw("APE");
     fs[c]->Draw("same");
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/sigmaVsMass_k%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/sigmaVsMass_%s_cat%d.png",couplingIn.c_str(), c));
     
 
     gaL->GetYaxis()->SetTitle("#alpha_{L} [GeV]");
     gaL->GetXaxis()->SetTitle("m_{X}[GeV]");
-    faL[c] = new TF1(TString::Format("faL_cat%d",c), "pol2", 500,10000);
+    faL[c] = new TF1(TString::Format("faL_cat%d",c), "pol2", 500,upperxmax);
     gaL->Fit(TString::Format("faL_cat%d",c), "R");
     gaL->Draw("APE");
     faL[c]->Draw("same");
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/aLVsMass_k%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/aLVsMass_%s_cat%d.png",couplingIn.c_str(), c));
 
   
     gaR->GetYaxis()->SetTitle("#alpha_{R} [GeV]");
     gaR->GetXaxis()->SetTitle("m_{#gamma#gamma} [GeV]");
-    faR[c] = new TF1(TString::Format("faR_cat%d",c), "pol2", 500,10000);
+    faR[c] = new TF1(TString::Format("faR_cat%d",c), "pol2", 500,upperxmax);
     gaR->Fit(TString::Format("faR_cat%d",c), "R");
     gaR->Draw("APE");
     faR[c]->Draw("same");
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/aRVsMass_k%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/aRVsMass_%s_cat%d.png",couplingIn.c_str(), c));
     
  
     gnR->GetYaxis()->SetTitle("n_{R} [GeV]");
     gnR->GetXaxis()->SetTitle("m_{X}[GeV]");
-    fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", 500,10000);
+    fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", 500,upperxmax);
     gnR->Fit(TString::Format("fnR_cat%d",c), "R");
     gnR->Draw("APE");
     fnR[c]->Draw("same");   
@@ -384,16 +392,16 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
 
     gnL->GetYaxis()->SetTitle("n_{L} [GeV]");
     gnL->GetXaxis()->SetTitle("m_{X} [GeV]");
-    fnL[c] = new TF1(TString::Format("fnL_cat%d",c), "pol2", 500,10000);
+    fnL[c] = new TF1(TString::Format("fnL_cat%d",c), "pol2", 500,upperxmax);
     gnL->Fit(TString::Format("fnL_cat%d",c), "R");
     gnL->Draw("APE");
     fnL[c]->Draw("same");
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/nLVsMass_k%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/nLVsMass_%s_cat%d.png",couplingIn.c_str(), c));
    
     //build parametric model
     //TF1: p0+p1*x+p2*x*x
     
-    RooRealVar* MH = new RooRealVar("MH", "MH", 300, 10000);
+    RooRealVar* MH = new RooRealVar("MH", "MH", 300, upperxmax);
     MH->setConstant();
     RooRealVar* p0m = new RooRealVar(TString::Format("p0m_cat%d",c), TString::Format("p0m_cat%d",c),fm[c]->GetParameter(0));
     RooRealVar* p1m = new RooRealVar(TString::Format("p1m_cat%d",c), TString::Format("p1m_cat%d",c),fm[c]->GetParameter(1));
@@ -469,7 +477,7 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     RooFormulaVar* DeltaSmearEBEB = new RooFormulaVar("DeltaSmearEBEB", "2*@0*@1*@2*@2",  RooArgList(*s0_EBEB,*deltaSmear,*MH));
     RooFormulaVar* DeltaSmearEBEE = new RooFormulaVar("DeltaSmearEBEE", "2*@0*@1*@2*@2",  RooArgList(*s0_EBEE,*deltaSmear,*MH));
     RooFormulaVar* DeltaSmearAll = new RooFormulaVar("DeltaSmearAll", "2*@0*@1*@2*@2",  RooArgList(*s0_All,*deltaSmear,*MH));
-    RooPlot* plot = (RooPlot*)mgg->frame(Range(300, 10000));
+    RooPlot* plot = (RooPlot*)mgg->frame(Range(300, upperxmax));
     RooDCBShape* fin_shape[theInput.size()];
     RooFormulaVar* mean; 
     RooFormulaVar* sigma0;
@@ -531,13 +539,13 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     plot->GetXaxis()->SetTitle("m_{#gamma#gamma} [GeV]");
     plot->Draw();
     legmc->Draw("same");
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/final_shapes_k%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/final_shapes_%s_cat%d.png",couplingIn.c_str(), c));
     cc1->SetLogy(); 
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/final_shapes_k%s_cat%d_log.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/final_shapes_%s_cat%d_log.png",couplingIn.c_str(), c));
 
-    if(c==0)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_EBEB",couplingIn.c_str()), Form("SignalShape_kMpl%s_EBEB",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
-    if(c==1)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_EBEE",couplingIn.c_str()), Form("SignalShape_kMpl%s_EBEE",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
-    if(c==2)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_All",couplingIn.c_str()), Form("SignalShape_kMpl%s_All",couplingIn.c_str()) ,*mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
+    if(c==0)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_EBEB",couplingIn.c_str()), Form("SignalShape_%s_EBEB",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
+    if(c==1)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_EBEE",couplingIn.c_str()), Form("SignalShape_%s_EBEE",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
+    if(c==2)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_All",couplingIn.c_str()), Form("SignalShape_%s_All",couplingIn.c_str()) ,*mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
     ws_out->import(*sigshape[c]);
     
   } //end of loop over categories
