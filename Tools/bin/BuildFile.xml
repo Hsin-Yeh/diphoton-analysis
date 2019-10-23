@@ -39,5 +39,6 @@
   <bin file="prepareTrees.cc" name="prepareTrees.exe"/>
   <bin file="prepareWorkspaces.cc" name="prepareWorkspaces.exe"/>
   <bin file="prepareShapes.cc" name="prepareShapes.exe"/>
+  <bin file="prepareParametricShape.cc" name="prepareParametricShape.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>
