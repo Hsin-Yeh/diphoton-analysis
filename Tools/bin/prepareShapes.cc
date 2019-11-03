@@ -152,7 +152,7 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     // min=mass*0.8;
     // max=mass*1.2;
     if(massMin<300)massMin=300;
-    if(massMax>6000)massMax=6000;
+    if(massMax>9000)massMax=9000;
     
     RooBinning binning(160, massMin, massMax, "binning");
     TH1F* dummy = new TH1F("dummy", "dummy", 160, massMin, massMax);
@@ -168,15 +168,13 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     std::cout<<"--------------------------------------------------- "<<datahist_asimov->sumEntries()<<std::endl;
     w->import(*datahist_asimov);
 
-    bool doPlot=false;
-     
     if(doPlot){
       //plotting...
-      if(c==0||c==1)signalK = (RooDataSet*)w->data(TString::Format("SigWeightK_cat%d",c));
-      if(c==2)signalK = (RooDataSet*)w->data("SigWeightK_cat0");
-      std::cout<<"flag1"<<std::endl;
+      if(c==0||c==1)signalK = (RooDataSet*)w->data(TString::Format("SigWeight_cat%d",c));
+      if(c==2)signalK = (RooDataSet*)w->data("SigWeight");
+ 
       w->Print("v");
-      std::cout<<"flag2"<<std::endl;
+ 
       RooPlot* plotgg = (w->var("mgg"))->frame(Range(massMin,massMax),Title("mass generated"),Bins(160));
       signalK->Print("v");
       signalK->plotOn(plotgg);
@@ -358,7 +356,7 @@ void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling) {
       massMax=1.6*mass;
     }
     if(massMin<300)massMin=300;
-    if(massMax>6000)massMax=6000;
+    if(massMax>9000)massMax=9000;
     RooPlot* plotg = (w->var("var"))->frame(Range(massMin,massMax),Title("mass"),Bins(60));
     signal->plotOn(plotg);
     
@@ -432,7 +430,7 @@ void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling) {
 //-----------------------------------------------------------------------------------
 RooDataHist* throwAsimov( double nexp, RooAbsPdf *pdf, RooRealVar *x, RooDataHist *asimov )
 {
-  RooBinning binning(360, 300, 6000, "binning");
+  RooBinning binning(360, 300, 9000, "binning");
     RooArgSet mset( *x );
     if( asimov != 0 ) {
         asimov->reset();

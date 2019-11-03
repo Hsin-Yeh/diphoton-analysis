@@ -1,4 +1,5 @@
 <lcgdict>
+<class name="RooPowLogPdf"/>
 <class name="RooSlicePdf"/>
 <class name="RooStarMomentMorph"/>
 <class name="RooDCBShape"/>

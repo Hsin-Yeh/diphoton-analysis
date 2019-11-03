@@ -76,7 +76,10 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     std::string sampleCut = cuts[region];
     if ( isample.find(year) == std::string::npos ) continue; 
     //Run only on RS samples for now. 
-    if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
+    // if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
+    //Let's prepare data. Run only on 2017 for now
+    if( isample.find("data_2017") == std::string::npos ) continue;
+    
     // apply weights for all samples except data
     bool is2015or2016 = isample.find("2015") != std::string::npos || isample.find("2016") != std::string::npos;
     if( isample.find("ADD") != std::string::npos
@@ -115,8 +118,8 @@ void prepare(const std::string &region, const std::string &year, const std::stri
 
     std::cout << "Creating tree for sample " << isample << " with cut\n" << sampleCut << std::endl;
     std::string baseName(getSampleBase(isample, year));
-    // std::cout << "---> "  << getBase(isample) << " " << baseName.c_str() << " " << sampleCut.c_str() << std::endl;
-    // std::cout << "Chain " << chains[getBase(isample)]->	GetNtrees() << std::endl;
+    std::cout << "---> "  << getBase(isample) << " " << baseName.c_str() << " " << sampleCut.c_str() << std::endl;
+    std::cout << "Chain " << chains[getBase(isample)]->	GetNtrees() << std::endl;
 
     //========================================================================
     //Skim

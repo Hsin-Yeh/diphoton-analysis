@@ -40,5 +40,7 @@
   <bin file="prepareWorkspaces.cc" name="prepareWorkspaces.exe"/>
   <bin file="prepareShapes.cc" name="prepareShapes.exe"/>
   <bin file="prepareParametricShape.cc" name="prepareParametricShape.exe"/>
+  <bin file="signalNorm.cc" name="signalNorm.exe"/>
+  <bin file="bkgFit.cc" name="bkgFit.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>

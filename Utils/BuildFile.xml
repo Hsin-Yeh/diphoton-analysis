@@ -5,7 +5,6 @@
 <use   name="rootmath"/>
 <use   name="rootrflx"/>
 <use   name="boost"/>
-<use   name="diphoton-analysis/Utils"/>
 <Flags CXXFLAGS="-ggdb"/>
 <export>
   <lib   name="1"/>
