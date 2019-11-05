@@ -1133,6 +1133,8 @@ void initForFit(const std::string & inputdir)
   TString treeType("HighMassDiphoton");
 
   std::vector<std::string> years = {"2017", "2018"};
+
+  //RS
   std::vector<std::string> kMpl_values = {"001", "01", "02"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["001"] = {750, 1000, 1250, 1500, 1750,
@@ -1168,6 +1170,11 @@ void initForFit(const std::string & inputdir)
       }
     }
   }
+
+  //Data 2017
+  treesforfit["data_2017"] = new TChain(treeType);
+  treesforfit["data_2017"]->Add(Form("%s/%s.root",inputdir.c_str(), "data_2017" ));
+    
 
 }
 

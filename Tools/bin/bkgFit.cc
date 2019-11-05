@@ -196,28 +196,13 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   //bands
   bool dobands = true;
   std::vector<RooFitResult*> fitresults_dijet = BkgModelFitDiJetFunc(w, blind, dobands, year, ws_dir); 
-  //std::vector<RooFitResult*> fitresults_pow = BkgModelFitPowFunc(w, blind, year, ws_dir); 
-  //std::vector<RooFitResult*> fitresults_ExpPAR = BkgModelFitExpPARFunc(w); 
 
-
-  // TCanvas* canv1 = new TCanvas(Form("Canvas1_%s",isample.c_str()),Form("Canvas_%s",isample.c_str()));
-  // canv1->cd();
-  // RooPlot* p = w->var("mgg")->frame(RooFit::Range(230., 10000.), RooFit::Bins( 2385));
-
-  // //========================================================================
-  // std::cout << "Fit the response function" <<std::endl;
-  // sigModelResponseFcnFit(w, stof(M_bins), coupling, year);
-  // //========================================================================
-  // std::cout << "Fit the gen function" <<std::endl;
-  // sigModelGenFcnFit(w, stof(M_bins), coupling, year);
-  //========================================================================
   //Save the resulting workspace
-  // w->Print("V");
+  //w->Print("V");
   fout->cd();
   w->Write();
   fout->Write();
   fout->Close();
-
 
 }
 
