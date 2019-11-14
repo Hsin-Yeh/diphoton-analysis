@@ -130,7 +130,9 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
     dataToFit[c]->Print("v");
     std::cout << "---- nX:  " << dataToFit[c]->sumEntries() << std::endl;
 
-    w->import(*dataToFit[c],Rename(TString::Format("Data_cat%d",c)));
+    if (c==0){ w->import(*dataToFit[c],Rename("Data_EBEB") ); }
+    if (c==1){ w->import(*dataToFit[c],Rename("Data_EBEE") ); }
+
   }
 
   std::cout << "data, no split" << std::endl;
@@ -224,11 +226,15 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
       minMassFit = MINmassBE;
       maxMassFit = MAXmass;    
     }
-
-    
-    data[c] = (RooDataSet*) w->data(TString::Format("Data_cat%d",c));
-    
-    RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_DiJet_cat%d",c), "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
+  
+    RooAbsPdf* PhotonsMassBkgTmp0;
+    if (c==0){ 
+      data[c] = (RooDataSet*) w->data("Data_EBEB");
+      PhotonsMassBkgTmp0 = new RooGenericPdf("PhotonsMassBkg_DiJet_EBEB", "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
+    } else if (c==1){ 
+      data[c] = (RooDataSet*) w->data("Data_EBEE");
+      PhotonsMassBkgTmp0 = new RooGenericPdf("PhotonsMassBkg_DiJet_EBEE", "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
+    }
   
     //RooPowLogPdf *PhotonsMassBkgTmp0 = new RooPowLogPdf(TString::Format("PhotonsMassBkg_DiJet_cat%d",c), TString::Format("PhotonsMassBkg_DiJet_cat%d",c),  *mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) ;
 

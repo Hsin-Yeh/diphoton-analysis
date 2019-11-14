@@ -225,7 +225,8 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
   
   RooRealVar* MH = new RooRealVar("MH", "MH", 300, upperxmax);
   MH->setConstant();
-  RooWorkspace* ws_out = new RooWorkspace(Form("%s/ws_inputs", ws_outdir.c_str()));
+  //RooWorkspace* ws_out = new RooWorkspace( Form("%s/model_signal", ws_outdir.c_str()) );
+  RooWorkspace* ws_out = new RooWorkspace( "model_signal" );
   RooDCBShape* sigshape[NCAT+1];
   TF1* fm[NCAT+1];
   TF1* fs[NCAT+1];
@@ -528,7 +529,7 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
       std::cout<<nL->getVal(*MH)<<std::endl;
       std::cout<<nR->getVal(*MH)<<std::endl;
    
-      fin_shape[M] =  new RooDCBShape(Form("SignalShape_kMpl%s_cat%d_M%f",couplingIn.c_str(), c, masses[M]),TString::Format("final_shape_k%s_cat%d_M%f",couplingIn.c_str(),c, masses[M] ) ,*mgg, *mean, *sigma,  *aL, *aR,  *nL, *nR) ;
+      fin_shape[M] =  new RooDCBShape(Form("SignalShape_%s_cat%d_M%f",couplingIn.c_str(), c, masses[M]),TString::Format("final_shape_%s_cat%d_M%f",couplingIn.c_str(),c, masses[M] ) ,*mgg, *mean, *sigma,  *aL, *aR,  *nL, *nR) ;
 
       fin_shape[M]->plotOn(plot, LineColor(M+1));
      
@@ -543,9 +544,9 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     cc1->SetLogy(); 
     cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/final_shapes_%s_cat%d_log.png",couplingIn.c_str(), c));
 
-    if(c==0)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_EBEB",couplingIn.c_str()), Form("SignalShape_%s_EBEB",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
-    if(c==1)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_EBEE",couplingIn.c_str()), Form("SignalShape_%s_EBEE",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
-    if(c==2)    sigshape[c] =  new RooDCBShape(Form("SignalShape_kMpl%s_All",couplingIn.c_str()), Form("SignalShape_%s_All",couplingIn.c_str()) ,*mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
+    if(c==0)    sigshape[c] =  new RooDCBShape(Form("SignalShape_%s_EBEB",couplingIn.c_str()), Form("SignalShape_%s_EBEB",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
+    if(c==1)    sigshape[c] =  new RooDCBShape(Form("SignalShape_%s_EBEE",couplingIn.c_str()), Form("SignalShape_%s_EBEE",couplingIn.c_str()), *mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
+    if(c==2)    sigshape[c] =  new RooDCBShape(Form("SignalShape_%s_All",couplingIn.c_str()), Form("SignalShape_%s_All",couplingIn.c_str()) ,*mgg, *mean, *sigma,  *aL, *aR,  *nL,*nR) ;
     ws_out->import(*sigshape[c]);
     
   } //end of loop over categories
@@ -560,7 +561,7 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
    ws_out->import(*FHWM_EBEB);
    ws_out->import(*FHWM_EBEE);
   
-   TFile* fout= new TFile(Form("%s/SignalParametericShapes_ws_kMpl%s.root", ws_outdir.c_str(), couplingIn.c_str() ) , "RECREATE");
+   TFile* fout= new TFile(Form("%s/SignalParametricShapes_ws_%s.root", ws_outdir.c_str(), couplingIn.c_str() ) , "RECREATE");
    fout->cd();
    fm[0]->Write();       fm[1]->Write(); 
    fs[0]->Write(); 	 fs[1]->Write(); 
@@ -570,6 +571,8 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
    fnR[0]->Write();	 fnR[1]->Write();
    ffhmw[0]->Write();	 ffhmw[1]->Write();
 
+   ws_out->Print();
+   
    ws_out->Write();
    fout->Write();
    fout->Close();
