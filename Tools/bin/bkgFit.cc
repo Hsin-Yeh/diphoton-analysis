@@ -212,6 +212,7 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
 
   Int_t ncat = NCAT;
   RooDataSet* data[NCAT];
+  RooRealVar* nBackground[NCAT]; 
   std::vector<RooFitResult*> fitresult;
 
   RooRealVar* mgg = w->var("mgg");  
@@ -231,15 +232,18 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
     if (c==0){ 
       data[c] = (RooDataSet*) w->data("Data_EBEB");
       PhotonsMassBkgTmp0 = new RooGenericPdf("PhotonsMassBkg_DiJet_EBEB", "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
+      nBackground[c] = new RooRealVar("PhotonsMassBkg_DiJet_EBEB_norm", "nbkg",data[c]->sumEntries(),0,3*data[c]->sumEntries());
     } else if (c==1){ 
       data[c] = (RooDataSet*) w->data("Data_EBEE");
       PhotonsMassBkgTmp0 = new RooGenericPdf("PhotonsMassBkg_DiJet_EBEE", "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
+      nBackground[c] = new RooRealVar("PhotonsMassBkg_DiJet_EBEE_norm", "nbkg",data[c]->sumEntries(),0,3*data[c]->sumEntries());
     }
   
     //RooPowLogPdf *PhotonsMassBkgTmp0 = new RooPowLogPdf(TString::Format("PhotonsMassBkg_DiJet_cat%d",c), TString::Format("PhotonsMassBkg_DiJet_cat%d",c),  *mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) ;
 
     fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(2),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
     w->import(*PhotonsMassBkgTmp0);
+    w->import(*nBackground[c]);
 
     std::cout << TString::Format("******************************** Background Fit results DIJET cat %d***********************************", c) << std::endl;
     fitresult[c]->Print("V");
