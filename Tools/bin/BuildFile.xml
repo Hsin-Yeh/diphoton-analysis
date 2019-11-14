@@ -42,5 +42,7 @@
   <bin file="prepareParametricShape.cc" name="prepareParametricShape.exe"/>
   <bin file="signalNorm.cc" name="signalNorm.exe"/>
   <bin file="bkgFit.cc" name="bkgFit.exe"/>
+  <bin file="testShapes.cc" name="testShapes.exe"/>
+  <bin file="testSystematics.cc" name="testSystematics.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>
