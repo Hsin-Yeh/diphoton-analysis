@@ -3,5 +3,6 @@
 <class name="RooSlicePdf"/>
 <class name="RooStarMomentMorph"/>
 <class name="RooDCBShape"/>
+<class name="RooSpline1D"/>
 
 </lcgdict>
