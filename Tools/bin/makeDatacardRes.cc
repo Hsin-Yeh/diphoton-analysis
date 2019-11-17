@@ -94,7 +94,7 @@ void makeDatacard(const std::string& signalPoint, const std::string& region, con
     output << "bin          " << region << << "     " << region << std::endl;
     output << "process                 sig      bkg" << std::endl;
     output << "process                   0        1" << std::endl;
-    output << "rate                     -1       -1 " << std::endl;
+    output << "rate                     1.0       1.0 " << std::endl;
 
     output << "\n-------------------" << std::endl;
     
