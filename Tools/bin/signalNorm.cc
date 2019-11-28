@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <algorithm>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -34,13 +35,14 @@
 //-----------------------------------------------------------------------------------
 struct eff_reco {
 
+  std::string samplename;
   std::string kMpl;
   std::string M_bins;
   //Values for sel are: no_selection, isGood
   std::string sel; 
   //Values for cat are both, BB, BE. 
   std::string cat;
-  //Efficiency of acceptance of efficiency times acceptance
+  //Efficiency or acceptance or efficiency times acceptance
   //depending on the the sel value
   double efforacc; 
   
@@ -70,6 +72,16 @@ struct xsec{
   
 };
 
+//-----------------------------------------------------------------------------------
+struct pdfs{
+  
+  std::string name;
+  std::string coup;
+  std::string cat;
+  RooDCBShape * pdf;
+  
+};
+
 using namespace RooFit;
 
 //-----------------------------------------------------------------------------------
@@ -77,6 +89,7 @@ using namespace RooFit;
 std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string &year);
 void plotefficiency(TCanvas* cc, std::map<std::string, std::vector<eff_reco> > coup_eff_reco, bool doave);
 TGraphErrors* graph(std::string coup, std::map<std::string, std::vector<eff_reco> > quant);
+void plotexAs(std::map<std::string, RooProduct *> exAs, RooRealVar* MH, RooRealVar* kmpl, std::vector<std::string> cats, std::vector<std::string> coups);
 std::vector<theGraphs> plot(TCanvas* cc, std::string coup, std::map<std::string, std::vector<eff_reco> > quantBB, std::map<std::string, std::vector<eff_reco> > quantBE , std::map<std::string, std::vector<eff_reco> > quantTotal, bool doave, std::string label);
 std::map<std::string, std::vector<eff_reco> > reduce(std::map<std::string, std::vector<eff_reco> > coup_eff_reco, std::string cut);
 void plotallcoups(TCanvas* ccallcoup, std::vector<theGraphs> graphsofeff001, std::vector<theGraphs> graphsofeff01, std::vector<theGraphs> graphsofeff02);
@@ -84,22 +97,25 @@ TH1F * createHisto(TChain * newtree1, const std::string &histo_name, int nBins, 
 std::string getSampleBase(const std::string & sampleName, const std::string & year);
 std::string getBase(const std::string & sampleName);
 std::string get_str_between_two_str(const std::string &s, const std::string &start_delim, const std::string &stop_delim);
-void writeToJson(std::map< std::string , std::vector<double> > valuestowrite, std::string outputfile);
+// void writeToJson(std::map< std::string , std::vector<double> > valuestowrite, std::string outputfile);
+void writeToJson( std::map<std::string, std::vector<eff_reco> > valuestowrite, std::string outputfile);
+std::map<std::string, std::vector<eff_reco> > readJson(std::string inputfile);
 std::map<std::string, std::vector<xsec> > loadXsections(const std::string &year, bool basedonCoup);
 TGraphErrors* getXsecGraph( std::vector<xsec> xsections, bool basedonCoup);
 RooSpline1D* graphToSpline(std::string name, TGraphErrors *graph, RooRealVar* MH, double xmin, double upperxmax);
 void plotsplines(TCanvas* cc,  RooSpline1D * xsSplines, RooRealVar* MH, double xmin, double upperxmax, std::string label);
 std::vector<eff_reco> ave_eff(std::map<std::string, std::vector<eff_reco> > effreco);
 TGraphErrors* avegraph(std::vector<eff_reco> quant);
+TGraphErrors * getgraph(std::vector<double> xvalues, std::vector<double> yvalues, std::vector<double> xvaluesErr, std::vector<double> yvaluesErr);
 
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
 
-  std::string region, year, inputdir, outputdir;
+  std::string region, year, inputdir, outputdir, Json;
 
-  if(argc!=2) {
-    std::cout << "Syntax: signalNorm.exe [2016/2017/2018] " << std::endl;
+  if(argc!=3) {
+    std::cout << "Syntax: signalNorm.exe [2016/2017/2018] [Json] " << std::endl;
     return -1;
   }
   else {
@@ -108,6 +124,10 @@ int main(int argc, char *argv[])
       std::cout << "Only '2016', 2017' and '2018' are allowed years. " << std::endl;
       return -1;
     }
+    Json = argv[2];
+    if (Json !="createJson" and Json!="readJson"){
+      std::cout << "Only createJson and readJson are allowed " << std::endl;
+    }
   }
 
   //========================================================================
@@ -115,22 +135,87 @@ int main(int argc, char *argv[])
   init(false, true);
 
   //========================================================================
-  //This is where we will save the workspace with the norm pdf
-  TFile* fout= new TFile("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/norm_ws.root", "RECREATE");
-  RooWorkspace* ws_out = new RooWorkspace( "model_signal_norm" );
+  //There are 3 files, one for each coupling, containing the signal model. 
+  std::map<std::string , TFile*> fin;
+  std::map<std::string , RooWorkspace*> wsin;
 
+  //This is where we will save the output workspace 
+  std::string signame = "grav";
+  std::map<std::string , TFile*> fout;
+  std::map<std::string , RooWorkspace*> ws_out;
+
+  //Couplings for the moment
+  std::vector<std::string> coups; coups.clear();
+  coups.push_back("001");
+  coups.push_back("01");
+  coups.push_back("02");
+
+  //Categories
+  std::vector<std::string> cats; cats.clear(); 
+  cats.push_back("EBEB");
+  cats.push_back("EBEE");
+  cats.push_back("All");
+
+  for (auto cp : coups){
+    //Input
+    fin[cp] = TFile::Open( Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/workspaces/SignalParametricShapes_ws_kMpl%s.root", cp.c_str()) );
+    wsin[cp] = (RooWorkspace*) fin[cp]->Get("ws_inputs");
+    //Output
+    fout[cp] = new TFile(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/datacards/%s_%s.root",signame.c_str(),cp.c_str()), "RECREATE");
+    ws_out[cp] = new RooWorkspace("wtemplates","wtemplates");
+  }
+  
+  //Here we take note of the pdfs we are going to read
+  std::vector<pdfs> thepdfs;  
+
+  pdfs tmppdf;   
+  for (auto cp : coups){
+    for (auto cat : cats){
+
+      tmppdf.name = Form("SignalShape_kMpl%s_%s", cp.c_str(), cat.c_str() );
+      tmppdf.cat = cat;
+      tmppdf.coup = cp;
+
+      thepdfs.push_back(tmppdf);
+
+    }
+  }
+
+  //Parameters in the input workspace. 
+  std::map<std::string , std::vector<std::string> > params; //[cat][params]
+  std::map<std::string , std::string> reparam_by_cat;
+  for (auto cat : cats){
+    params[cat].push_back( Form("thetaSmear%s",cat.c_str() ) ); 
+    params[cat].push_back( "deltaSmear" ); 
+    reparam_by_cat[ Form("thetaSmear%s",cat.c_str() ) ] = Form("thetaSmear%s_13TeV",cat.c_str() );
+    reparam_by_cat[ "deltaSmear" ] = Form("deltaSmear%s",cat.c_str() );
+  }
 
   //========================================================================
   //========================================================================
-  //FIRST PART : HERE WE WILL BUILD Eff(mX) x accept(mX,kpl)
+  //FIRST PART: Create or read json file with efficiency (e), acceptance (A)
+  //            and efficiency times acceptance (exA).             
   //========================================================================
   //========================================================================
 
-  //Check also slides 12 and 13 here: 
-  //https://indico.cern.ch/event/458780/contributions/1971886/attachments/1179583/1707075/Chiara_diphotOct30.pdf
+  //========================================================================
+  std::map<std::string, std::vector<eff_reco> > effreco;
+  //========================================================================
+  //Will save the values in a json file for faster running. 
+  if (Json == "createJson"){
+    effreco = computefficiency(year);
+    writeToJson(effreco, Form("Tools/json/acceptance_%s.json", year.c_str()));
+    return 0; 
+  } else if (Json == "readJson"){
+    effreco = readJson(Form("Tools/json/acceptance_%s.json", year.c_str()));
+  }
 
   //========================================================================
-  std::map<std::string, std::vector<eff_reco> > effreco = computefficiency(year);
+  //========================================================================
+  //SECOND PART: Plot e, A, average e and save the graphs for later.            
+  //========================================================================
+  //========================================================================
+
   //acceptance per coupling and mass point
   std::map<std::string, std::vector<eff_reco> > accBB = reduce(effreco, "ABB");
   std::map<std::string, std::vector<eff_reco> > accBE = reduce(effreco, "ABE");
@@ -187,19 +272,13 @@ int main(int argc, char *argv[])
   std::map<std::string , TGraphErrors* > ave_graphs;
   ave_graphs["EBEB"] = avegraph(effBB_ave);
   ave_graphs["EBEE"] = avegraph(effBE_ave);
-  ave_graphs["Total"] = avegraph(effTotal_ave);
+  ave_graphs["All"] = avegraph(effTotal_ave);
 
-  //Categories
-  std::vector<std::string> cats; cats.clear(); 
-  cats.push_back("EBEB");
-  cats.push_back("EBEE");
-  cats.push_back("Total");
-
-  //Couplings for the moment
-  std::vector<std::string> coups; coups.clear();
-  coups.push_back("001");
-  coups.push_back("01");
-  coups.push_back("02");
+  //========================================================================
+  //========================================================================
+  //THIRD PART: Build the Eff(mX) RooPolyVar object 
+  //========================================================================
+  //========================================================================
 
   //Ready to create the RooPolyVar for the different categories
   std::map<std::string, RooPolyVar *> effMX; //[cat][ RooPolyVar *]
@@ -239,34 +318,45 @@ int main(int argc, char *argv[])
 
     //make the polynomial for roofit 
     if (ave_graphs[ct]->GetN() > 1){ 
-      eff_coef = new RooArgList( RooFit::RooConst(ff[mname]->GetParameter(0)) , RooFit::RooConst(ff[mname]->GetParameter(1)) , RooFit::RooConst(ff[mname]->GetParameter(2)) );
+      // eff_coef = new RooArgList( RooFit::RooConst(ff[mname]->GetParameter(0)) , RooFit::RooConst(ff[mname]->GetParameter(1)) , RooFit::RooConst(ff[mname]->GetParameter(2)) );
+      //Since we go with pol0
+      eff_coef = new RooArgList( RooFit::RooConst(ff[mname]->GetParameter(0)) );
     } else {       
       eff_coef = new RooArgList( RooFit::RooConst(ff[mname]->GetParameter(0)) );
     }
      
-    effMX[ct] = new RooPolyVar( Form("eff_%s",ct.c_str()), Form("eff_%s",ct.c_str()), *kmpl, *eff_coef, 0);
+    effMX[ct] = new RooPolyVar( Form("eff_%s",ct.c_str()), Form("eff_%s",ct.c_str()), *MH, *eff_coef, 0);
 
     can[mname]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/EFF_MX_%s.png",mname.c_str()));
 
   }
     
   //========================================================================
-  //Build the acceptance RooPolyVar
+  //========================================================================
+  //FOURTH PART: Build the accept(mX,kpl) RooPolyVar object 
+  //========================================================================
+  //========================================================================
+  //========================================================================
+
   //Do the fit per coupling and then do the fit per parameter of that. 
   std::map<std::string , TCanvas*> cans;
   //In the following parameter we will save the p0,p1,p2 graphs for each 
   //category, so it is [cat][0] is p0 and so on. 
   std::map<std::string , std::vector<TGraphErrors*> > acc_p; 
   std::map<std::string , std::vector<TF1*> > fit_acc_p; 
-  for (auto cat : cats){
-    acc_p[cat].push_back(new TGraphErrors()); //for p0
-    acc_p[cat].push_back(new TGraphErrors()); //for p1
-    acc_p[cat].push_back(new TGraphErrors()); //for p2
-
-  }
 
   std::string plabel;
+  std::map<std::string , std::vector<double> > p0vals, p1vals, p2vals, p0valsErr, p1valsErr, p2valsErr, xvals, xvalsErr;
   
+  //remap names to match the ones in the signal pdf
+  std::map<std::string , std::string > remapnames; 
+  remapnames["001"] = "kMpl001";
+  remapnames["01"] = "kMpl01";
+  remapnames["02"] = "kMpl02";
+  remapnames["BB"] = "EBEB";
+  remapnames["BE"] = "EBEE";
+  remapnames["Total"] = "All";
+
   for(auto grs : graphsofacc) {
     for(auto gr : grs.second) {
 
@@ -279,21 +369,35 @@ int main(int argc, char *argv[])
   	std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
   	exit(1);
       }
- 
-      acc_p[gr.cat][0]->SetPoint(acc_p[gr.cat][0]->GetN(), curcoup, gr.funp0 );
-      acc_p[gr.cat][1]->SetPoint(acc_p[gr.cat][1]->GetN(), curcoup, gr.funp1 );
-      acc_p[gr.cat][2]->SetPoint(acc_p[gr.cat][2]->GetN(), curcoup, gr.funp2 );
+      
+      std::cout << "Cat " << gr.cat << " Coup " << gr.coup << " curcoup " << curcoup << " funp0 " << gr.funp0 << " funp1 " << gr.funp1 << " funp2 " << gr.funp2 << std::endl;
 
-      acc_p[gr.cat][0]->GetYaxis()->SetTitle("p0");
-      acc_p[gr.cat][1]->GetYaxis()->SetTitle("p1");
-      acc_p[gr.cat][2]->GetYaxis()->SetTitle("p2");
-
-      acc_p[gr.cat][0]->GetXaxis()->SetTitle("kMpl");
-      acc_p[gr.cat][1]->GetXaxis()->SetTitle("kMpl");
-      acc_p[gr.cat][2]->GetXaxis()->SetTitle("kMpl");
+      p0vals[remapnames[gr.cat]].push_back( gr.funp0 );
+      p1vals[remapnames[gr.cat]].push_back( gr.funp1 );
+      p2vals[remapnames[gr.cat]].push_back( gr.funp2 );
+      xvals[remapnames[gr.cat]].push_back( curcoup );
+      p0valsErr[remapnames[gr.cat]].push_back( 0. );
+      p1valsErr[remapnames[gr.cat]].push_back( 0. );
+      p2valsErr[remapnames[gr.cat]].push_back( 0. );
+      xvalsErr[remapnames[gr.cat]].push_back( 0. );
 
     }
   }
+
+  for (auto cat : cats){
+    
+    // A std::vector is at its heart an array. To get the array just get the address of the first element.
+    acc_p[cat].push_back( new TGraphErrors( p0vals[cat].size(), &xvals[cat][0], &p0vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
+    acc_p[cat].push_back( new TGraphErrors( p1vals[cat].size(), &xvals[cat][0], &p1vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
+    acc_p[cat].push_back( new TGraphErrors( p2vals[cat].size(), &xvals[cat][0], &p2vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
+
+  }
+  
+  //This is for the vs coupling description of p0,p1,p2. 
+  std::map<std::string, std::vector<RooPolyVar *> > acckMpl; //[cat][ RooPolyVar *]
+  std::map<std::string, std::vector<RooArgList *> > coeff_coeffs; 
+  //And this is the list that will take the above kMpl dependence
+  std::map<std::string, RooArgList *> acc_coeffs;
 
   for (auto cat : cats){
 
@@ -304,37 +408,157 @@ int main(int argc, char *argv[])
     //p0
     cans[Form("%s_p0",cat.c_str())] = new TCanvas(Form("%s_p0",cat.c_str()), Form("%s_p0",cat.c_str()) );
     cans[Form("%s_p0",cat.c_str())]->cd();
-    fit_acc_p[cat][0] = new TF1(Form("fit_acc_%s_p0",cat.c_str()), "pol2", xmin, upperxmax );
+    fit_acc_p[cat].push_back( new TF1(Form("fit_acc_%s_p0",cat.c_str()), "pol2", xmin, upperxmax ) );
     acc_p[cat.c_str()][0]->Fit(Form("fit_acc_%s_p0",cat.c_str()), "R");
-    acc_p[cat.c_str()][0]->Draw("PSE");
+    acc_p[cat.c_str()][0]->GetYaxis()->SetTitle("p0");
+    acc_p[cat.c_str()][0]->GetXaxis()->SetTitle("kMpl");
+    if (cat == "EBEB") {acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.20, 0.29);}
+    else if (cat == "EBEE"){acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.230, 0.244);}
+    else if (cat == "All") {acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.46, 0.52);}
+    acc_p[cat.c_str()][0]->Draw("APE");
     fit_acc_p[cat][0]->Draw("same");
     cans[Form("%s_p0",cat.c_str())]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/acc_%s_p0.png",cat.c_str()));
+
+    coeff_coeffs[cat].push_back( new RooArgList( RooFit::RooConst(fit_acc_p[cat][0]->GetParameter(0)) , RooFit::RooConst(fit_acc_p[cat][0]->GetParameter(1)) , RooFit::RooConst(fit_acc_p[cat][0]->GetParameter(2)) ) );
+
+    acckMpl[cat].push_back( new RooPolyVar( Form("acc_%s_0",cat.c_str()), Form("acc_%s_0",cat.c_str()), *kmpl, *coeff_coeffs[cat][0], 0) );
 
     //p1
     cans[Form("%s_p1",cat.c_str())] = new TCanvas(Form("%s_p1",cat.c_str()), Form("%s_p1",cat.c_str()) );
     cans[Form("%s_p1",cat.c_str())]->cd();
-    fit_acc_p[cat][1] = new TF1(Form("fit_acc_%s_p1",cat.c_str()), "pol2", xmin, upperxmax );
+    fit_acc_p[cat].push_back( new TF1(Form("fit_acc_%s_p1",cat.c_str()), "pol2", xmin, upperxmax ) );
     acc_p[cat.c_str()][1]->Fit(Form("fit_acc_%s_p1",cat.c_str()), "R");
-    acc_p[cat.c_str()][1]->Draw("PSE");
+    acc_p[cat.c_str()][1]->GetYaxis()->SetTitle("p1");
+    acc_p[cat.c_str()][1]->GetXaxis()->SetTitle("kMpl");
+    if (cat == "EBEB") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(0.11 * pow(10., -3.), 0.17 * pow(10., -3.) );}
+    else if (cat == "EBEE") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(-67. * pow(10., -6.), -58. * pow(10., -6.) );} 
+    else if (cat == "All") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(60. * pow(10., -6.), 99. * pow(10., -6.) );}
+    acc_p[cat.c_str()][1]->Draw("APE");
     fit_acc_p[cat][1]->Draw("same");
     cans[Form("%s_p1",cat.c_str())]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/acc_%s_p1.png",cat.c_str()));
+
+    coeff_coeffs[cat].push_back( new RooArgList( RooFit::RooConst(fit_acc_p[cat][1]->GetParameter(0)) , RooFit::RooConst(fit_acc_p[cat][1]->GetParameter(1)) , RooFit::RooConst(fit_acc_p[cat][1]->GetParameter(2)) ) );
+
+    acckMpl[cat].push_back( new RooPolyVar( Form("acc_%s_1",cat.c_str()), Form("acc_%s_1",cat.c_str()), *kmpl, *coeff_coeffs[cat][1], 0) );
 
     //p2
     cans[Form("%s_p2",cat.c_str())] = new TCanvas(Form("%s_p2",cat.c_str()), Form("%s_p2",cat.c_str()) );
     cans[Form("%s_p2",cat.c_str())]->cd();
-    fit_acc_p[cat][2] = new TF1(Form("fit_acc_%s_p2",cat.c_str()), "pol2", xmin, upperxmax );
+    fit_acc_p[cat].push_back( new TF1(Form("fit_acc_%s_p2",cat.c_str()), "pol2", xmin, upperxmax ) );
     acc_p[cat.c_str()][2]->Fit(Form("fit_acc_%s_p2",cat.c_str()), "R");
-    acc_p[cat.c_str()][2]->Draw("PSE");
+    acc_p[cat.c_str()][2]->GetYaxis()->SetTitle("p2");
+    acc_p[cat.c_str()][2]->GetXaxis()->SetTitle("kMpl");
+    if (cat == "EBEB") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(-15. * pow(10., -9.), -7. * pow(10., -9.) );}
+    else if (cat == "EBEE") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(3.8 * pow(10., -9.), 5. * pow(10., -9.) );}
+    else if (cat == "All") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(1. * pow(10., -10.), -8. * pow(10., -9.) );}
+    
+    acc_p[cat.c_str()][2]->Draw("APE");
     fit_acc_p[cat][2]->Draw("same");
     cans[Form("%s_p2",cat.c_str())]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/acc_%s_p2.png",cat.c_str()));
+
+    coeff_coeffs[cat].push_back( new RooArgList( RooFit::RooConst(fit_acc_p[cat][2]->GetParameter(0)) , RooFit::RooConst(fit_acc_p[cat][2]->GetParameter(1)) , RooFit::RooConst(fit_acc_p[cat][2]->GetParameter(2)) ) );
+
+    acckMpl[cat].push_back( new RooPolyVar( Form("acc_%s_2",cat.c_str()), Form("acc_%s_2",cat.c_str()), *kmpl, *coeff_coeffs[cat][2], 0) );
+
+    acc_coeffs[cat] =  new RooArgList( *acckMpl[cat][0], *acckMpl[cat][1], *acckMpl[cat][2]);
+
+
   }
 
+  //========================================================================
+  //========================================================================
+  //FIFTH PART : HERE WE WILL BUILD Eff(mX) x accept(mX,kpl)
+  //========================================================================
+  //========================================================================
 
+  //Check also slides 12 and 13 here: 
+  //https://indico.cern.ch/event/458780/contributions/1971886/attachments/1179583/1707075/Chiara_diphotOct30.pdf
 
+  //Ready to create the exA RooPolyVar
+  std::map<std::string, RooPolyVar *> acceptanceMHandkMpl; //[cat][ RooPolyVar *]
+  std::map<std::string, RooProduct *> exAs; 
 
+  for (auto cat : cats){
 
+    acceptanceMHandkMpl[cat] = new RooPolyVar( Form("acc_%s",cat.c_str()), Form("acc_%s", cat.c_str()), *MH, *acc_coeffs[cat],0);
+    
+    exAs[cat] = new RooProduct( Form("eff_acc_%s", cat.c_str()), Form("eff_acc_%s", cat.c_str()) , RooArgList(*effMX[cat],*acceptanceMHandkMpl[cat]) );
 
+  }
   
+  plotexAs(exAs, MH, kmpl, cats, coups);
+
+  //========================================================================
+  //========================================================================
+  //SIXTH PART : Read the parametric signal model. 
+  //========================================================================
+  //========================================================================
+  std::map<std::string, RooRealVar* > reparamVars;
+  RooRealVar* obsIn;
+  RooCustomizer* custom;
+
+  for (auto curpdf : pdfs){
+    
+    fin[curpdf.coup]->cd();
+
+    signame = signame + "_" + curpdf.coup; 
+    kmpl->setVal(curpdf.coup);
+
+    for (auto par : params[curpdf.cat]){
+      RooRealVar* dst = wsin[curpdf.coup]->var(par); //reparam_by_cat
+      dst->setConstant(True);
+      reparamVars[ reparam_by_cat[par] ] = dst;
+      ws_out[curpdf.coup]->import(*dst, RooFit::RecycleConflictNodes());
+    }
+
+    curpdf.pdf = wsin[curpdf.coup]->pdf(curpdf.name);
+    obsIn =  wsin[curpdf.coup]->var("mgg");
+    //Clone the current pdf
+    custom = new RooCustomizer(curpdf.pdf,"")
+
+  }
+ 
+
+
+  //========================================================================
+  //========================================================================
+  //----- PART : The pdf norm function
+  //========================================================================
+  //========================================================================
+
+  //Remember that in the creation of the json file with e and A values we have 
+  //used the weightAll cut to normalize the signal samples to 1/fb luminosity. 
+  //So, here we will multiply with luminosity to get to the correct norm pdf. 
+  //No need for the spline aka Hgg creation below. 
+
+  //We will follow the convention Pasqualle et al used in the past.  
+  // for (auto cat : cats){
+
+  //   exAs[cat] = new RooProduct( Form("eff_acc_%s", cat.c_str()), Form("eff_acc_%s", cat.c_str()) , RooArgList(*effMX[cat],*acceptanceMHandkMpl[cat]) );
+
+  //   //Now we have the tools to create the norm pdf. We should give it the correct name also. 
+  //   std::string normpdfname = Form("model_signal_%s_%s_norm", signame.c_str(), cat.c_str() );
+
+
+  // }
+
+  //     std::string normpdfname = Form("SignalShape_%s_%s_norm",remapnames[gr.coup].c_str(), remapnames[gr.cat].c_str()); 
+  //     RooAbsReal *finalNorm = new RooFormulaVar( normpdfname.c_str(), normpdfname.c_str(), "@0*@1*@2",RooArgList(*xsSplines[gr.coup.c_str()], *exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())], RooFit::RooConst(luminosity[year]) ) );
+
+  //     pdf_norm[normpdfname] = finalNorm;
+
+  //     // make some debug checks
+  //     for (int m =500; m<9000; m=m+500){
+  // 	MH->setVal(m); 
+  // 	std::cout << "[INFO] MH " << m <<  " - ea "  <<  (exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->getVal()) 
+  // 		  << " intL= " << luminosity[year]
+  // 		  << " xs " << xsSplines[gr.coup.c_str()]->getVal() 
+  // 		  << "norm " << (exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->getVal())*xsSplines[gr.coup.c_str()]->getVal() 
+  // 		  << "predicted events " <<  (exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->getVal())*xsSplines[gr.coup.c_str()]->getVal()*luminosity[year] <<  std::endl;
+  //     }	
+
+ // norm = ROOT.RooProduct("model_signal_%s_%s_norm" % (signame,cat), "model_signal_%s_%s_norm" % (signame,cat), 
+ //                                       ROOT.RooArgList(RooFit.RooConst(xsection),exAs[cat],xsec_ratio) )
 
   std::map<std::string, std::vector<xsec> > xsections = loadXsections(year, true);
   std::map<std::string, std::vector<xsec> > xsectionsKMpl = loadXsections(year, false);
@@ -414,21 +638,10 @@ int main(int argc, char *argv[])
     
   }
 
-
-
-
   //Graphs of exA to splines
   std::map<std::string , RooSpline1D *> exASplines;
   std::map<std::string , RooAbsReal *> pdf_norm; 
 
-  //remap names to match the ones in the signal pdf
-  std::map<std::string , std::string > remapnames; 
-  remapnames["001"] = "kMpl001";
-  remapnames["01"] = "kMpl01";
-  remapnames["02"] = "kMpl02";
-  remapnames["BB"] = "EBEB";
-  remapnames["BE"] = "EBEE";
-  remapnames["Total"] = "All";
 
   // for(auto grs : graphsofexA) {
   //   for(auto gr : grs.second) {
@@ -488,19 +701,6 @@ int main(int argc, char *argv[])
   // TCanvas* ccave = new TCanvas("ccave", "ccave");
   // plotefficiency(ccave, effreco, true);
   // ccave->SaveAs("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/effVsMass_average.png");
-
-  //========================================================================
-  //Acceptance values
-  std::vector<double> acc_val;
-  acc_val.push_back(-1.057554393); 
-  acc_val.push_back(-2.047333072); 
-  acc_val.push_back(3.7439397255); 
-
-  std::map< std::string, std::vector<double> > mapnamestoacc;
-  mapnamestoacc["acc_EBEB_p2"] = acc_val;
-  mapnamestoacc["acc_EBEB_p0"] = acc_val;
-
-  writeToJson(mapnamestoacc, "Tools/json/acceptance.json");
 
 }
 
@@ -567,6 +767,8 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
     eff_reco tmpeffreco;
 
     std::string baseName(getSampleBase(isample, year));
+
+    tmpeffreco.samplename = baseName;
 
     //========================================================================
     //Initial Distribution
@@ -807,6 +1009,94 @@ TGraphErrors* getXsecGraph( std::vector<xsec> xsections, bool basedonCoup)
 
   return graph;
 
+}
+//-----------------------------------------------------------------------------------
+void plotexAs( std::map<std::string, RooProduct *> exAs, RooRealVar* MH, RooRealVar* kmpl, std::vector<std::string> cats, std::vector<std::string> coups){
+    
+  //We need one graph per coupling per category
+  std::map<std::string, TGraph* > graph;
+  std::map<std::string, TCanvas* > cs;
+
+  double upperxmax = 0.;
+  double xmin = 0.;
+  std::string plabel;
+
+  std::map<std::string, TLegend* > legmc;
+
+  for(auto cp : coups) {
+    //A counter for the canvas draw
+    int count = 0; 
+    cs[cp] = new TCanvas(Form("can_%s",cp.c_str()), Form("can_%s",cp.c_str())); 
+    legmc[cp] = new TLegend(0.58, 0.34, 0.85, 0.9, "", "bNDC");
+    legmc[cp]->SetTextFont(42);
+    legmc[cp]->SetBorderSize(0);
+    legmc[cp]->SetFillStyle(0);
+
+    double curcoup = 0.;
+
+    if ( cp == "001" ){
+      upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}"; curcoup = 1.4 * pow(10.,-4);
+      legmc[cp]->SetHeader("#frac{#Gamma}{m} = 1.4 #times 10^{-4}","C");
+    } else if ( cp == "01" ){
+      upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}"; curcoup = 1.4 * pow(10.,-2);
+      legmc[cp]->SetHeader("#frac{#Gamma}{m} = 1.4 #times 10^{-2}","C");
+    } else if ( cp == "02" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}"; curcoup = 5.6 * pow(10.,-2);
+      legmc[cp]->SetHeader("#frac{#Gamma}{m} = 5.6 #times 10^{-2}","C");
+    } else {
+      std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
+      exit(1);
+    }
+      
+    kmpl->setVal(curcoup);
+      
+    for (auto cat : cats){
+      cs[cp]->cd();
+
+      ++count;
+	 
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] = new TGraph();
+      int point=0;
+      
+      for (double m =xmin; m<upperxmax; m=m+5.){
+	MH->setVal(m);
+	// std::cout << exAs[cat]->getVal() << std::endl;
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetPoint(point,m,exAs[cat]->getVal());
+	point++;
+      }
+
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->GetYaxis()->SetRangeUser(0., 1.0);
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->GetYaxis()->SetTitle("#varepsilon #otimes A");
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->GetXaxis()->SetTitle("m_{X} [GeV]");
+      if (cp == "001") {graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerStyle(kFullDiamond);}
+      else if (cp == "01") {graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerStyle(kFullTriangleUp);}
+      else if (cp == "02") {graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerStyle(kFullCircle);}
+
+      if ( cat == "EBEB"){ 
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerColor(2);
+	legmc[cp]->AddEntry( graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] , "EBEB J=2" ,"p" );
+      } else if ( cat == "EBEE"){ 
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerColor(4);
+	legmc[cp]->AddEntry( graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] , "EBEE J=2" ,"p" );
+      } else if ( cat == "All"){ 
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerColor(8);
+	legmc[cp]->AddEntry( graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] , "Total J=2" ,"p" );
+      }
+
+      if (count==1){
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->Draw("AP");
+      } else {
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->Draw("PS");
+      }
+      if (count==3){
+	legmc[cp]->Draw("same");
+      }
+
+    }// end of loop over cats
+      
+    cs[cp]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/exAs_RooProduct_kMpl_%s.png", cp.c_str()));
+   
+  }//end of loops over couplings
+     
 }
 //-----------------------------------------------------------------------------------
 void plotsplines( TCanvas* cs, RooSpline1D * Spline, RooRealVar* MH, double xmin, double upperxmax, std::string label){
@@ -1322,7 +1612,7 @@ std::string getBase(const std::string & sampleName)
   return sampleName;
 }
 
-void writeToJson(std::map< std::string , std::vector<double> > valuestowrite, std::string outputfile)
+void writeToJson(std::map<std::string, std::vector<eff_reco> > valuestowrite, std::string outputfile)
 {
   // Short alias for this namespace
   namespace pt = boost::property_tree;
@@ -1330,21 +1620,68 @@ void writeToJson(std::map< std::string , std::vector<double> > valuestowrite, st
   // Create a root
   pt::ptree root;
 
-  for (auto &valmap : valuestowrite){
-    pt::ptree values_node;
-    for (auto &val : valmap.second){
-      // Create an unnamed node containing the value
-      pt::ptree val_node;
-      val_node.put("", val);
+  std::string sel_node; 
 
-      // Add this node to the list.
-      values_node.push_back(std::make_pair("", val_node));
+  for (auto &valmap : valuestowrite){
+    // pt::ptree values_node;
+    std::string samname; 
+    for (auto &val : valmap.second){
+      samname = val.samplename; 
+      sel_node = val.sel;
+      
+      root.put(Form("%s.%s.kMpl",samname.c_str(), sel_node.c_str() ), valmap.first);
+      root.put(Form("%s.%s.M_bins",samname.c_str(), sel_node.c_str() ), val.M_bins);
+      root.put(Form("%s.%s.sel",samname.c_str(), sel_node.c_str() ), val.sel);
+      root.put(Form("%s.%s.cat",samname.c_str(), sel_node.c_str() ), val.cat);
+      root.put(Form("%s.%s.efforacc",samname.c_str(), sel_node.c_str() ), std::to_string(val.efforacc));
+
     }
-    root.add_child(valmap.first, values_node);
   }
   pt::write_json(std::cout, root);
   pt::write_json(outputfile, root);
 
+
+}
+
+std::map<std::string, std::vector<eff_reco> > readJson(std::string inputfile){
+
+  // Short alias for this namespace
+  namespace pt = boost::property_tree;
+  using boost::property_tree::ptree;
+ 
+  // Create a root
+  pt::ptree root;
+
+  // Load the json file in this ptree
+  pt::read_json(inputfile, root);
+
+  std::map<std::string, std::vector<eff_reco> > theeffreco;
+
+  std::string samname; 
+  std::string sel_node; 
+
+  for (ptree::const_iterator it = root.begin(); it != root.end(); ++it) {
+    eff_reco tmpeffreco;
+
+    samname = it->first;
+
+    for (ptree::const_iterator jt = it->second.begin(); jt != it->second.end(); ++jt) {
+
+      sel_node = jt->first;
+
+      tmpeffreco.kMpl   = root.get<std::string>( Form("%s.%s.kMpl",samname.c_str(), sel_node.c_str() ) ) ; 
+      tmpeffreco.M_bins = root.get<std::string>( Form("%s.%s.M_bins",samname.c_str(), sel_node.c_str() ) ) ; 
+      tmpeffreco.sel    = root.get<std::string>( Form("%s.%s.sel",samname.c_str(), sel_node.c_str() ) ) ; 
+      tmpeffreco.cat    = root.get<std::string>( Form("%s.%s.cat",samname.c_str(), sel_node.c_str() ) ) ; 
+      tmpeffreco.efforacc = std::stod( root.get<std::string>( Form("%s.%s.efforacc",samname.c_str(), sel_node.c_str()) ) ); 
+    
+      theeffreco[ tmpeffreco.kMpl ].push_back( tmpeffreco ); 
+
+      std::cout << tmpeffreco.kMpl << " " << tmpeffreco.M_bins << " " << tmpeffreco.sel << " "  << tmpeffreco.cat <<  " "  << tmpeffreco.efforacc << std::endl;
+    }
+  }
+  
+  return theeffreco;
 
 }
 
@@ -1391,3 +1728,11 @@ std::map<std::string , std::vector<xsec> > loadXsections(const std::string & yea
     return thexsections;
     
 }
+
+TGraphErrors * getgraph(std::vector<double> xvalues, std::vector<double> yvalues, std::vector<double> xvaluesErr, std::vector<double> yvaluesErr){
+    
+  TGraphErrors * thegraph = new TGraphErrors( yvalues.size(), &xvalues[0], &yvalues[0], &xvaluesErr[0], &yvaluesErr[0] ); 
+  return thegraph;
+}
+
+  

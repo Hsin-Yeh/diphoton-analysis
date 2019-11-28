@@ -226,7 +226,8 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
   RooRealVar* MH = new RooRealVar("MH", "MH", 300, upperxmax);
   MH->setConstant();
   //RooWorkspace* ws_out = new RooWorkspace( Form("%s/model_signal", ws_outdir.c_str()) );
-  RooWorkspace* ws_out = new RooWorkspace( "model_signal" );
+  // RooWorkspace* ws_out = new RooWorkspace( "model_signal" );
+  RooWorkspace* ws_out = new RooWorkspace( "ws_inputs" );
   RooDCBShape* sigshape[NCAT+1];
   TF1* fm[NCAT+1];
   TF1* fs[NCAT+1];
