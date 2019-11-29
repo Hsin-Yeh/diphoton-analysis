@@ -9,6 +9,7 @@
 
 #include "diphoton-analysis/Tools/interface/sampleList.hh"
 #include "diphoton-analysis/Tools/interface/utilities.hh"
+#include "diphoton-analysis/RooUtils/interface/RooDCBShape.h"
 #include "FWCore/Utilities/interface/Exception.h"
 #include "diphoton-analysis/CommonClasses/interface/CrossSections.h"
 #include "diphoton-analysis/RooUtils/interface/RooSpline1D.h"
@@ -31,6 +32,7 @@
 #include "RooConstVar.h"
 #include "RooFormulaVar.h"
 #include "RooPolyVar.h"
+#include "RooCustomizer.h"
 
 //-----------------------------------------------------------------------------------
 struct eff_reco {
@@ -78,7 +80,7 @@ struct pdfs{
   std::string name;
   std::string coup;
   std::string cat;
-  RooDCBShape * pdf;
+  RooAbsPdf * pdf;
   
 };
 
@@ -135,12 +137,18 @@ int main(int argc, char *argv[])
   init(false, true);
 
   //========================================================================
+  //========================================================================
+  //ZERO PART : We give whatever input/output variables needed here.  
+  //========================================================================
+  //========================================================================
+  //========================================================================
+
   //There are 3 files, one for each coupling, containing the signal model. 
   std::map<std::string , TFile*> fin;
   std::map<std::string , RooWorkspace*> wsin;
 
   //This is where we will save the output workspace 
-  std::string signame = "grav";
+  std::string insigname = "grav";
   std::map<std::string , TFile*> fout;
   std::map<std::string , RooWorkspace*> ws_out;
 
@@ -161,7 +169,7 @@ int main(int argc, char *argv[])
     fin[cp] = TFile::Open( Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/workspaces/SignalParametricShapes_ws_kMpl%s.root", cp.c_str()) );
     wsin[cp] = (RooWorkspace*) fin[cp]->Get("ws_inputs");
     //Output
-    fout[cp] = new TFile(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/datacards/%s_%s.root",signame.c_str(),cp.c_str()), "RECREATE");
+    fout[cp] = new TFile(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/datacards/%s_%s.root",insigname.c_str(),cp.c_str()), "RECREATE");
     ws_out[cp] = new RooWorkspace("wtemplates","wtemplates");
   }
   
@@ -190,6 +198,15 @@ int main(int argc, char *argv[])
     reparam_by_cat[ Form("thetaSmear%s",cat.c_str() ) ] = Form("thetaSmear%s_13TeV",cat.c_str() );
     reparam_by_cat[ "deltaSmear" ] = Form("deltaSmear%s",cat.c_str() );
   }
+
+  //Observables
+  std::map<std::string , RooRealVar * > obsCat;
+  obsCat["EBEE"] =  new RooRealVar("mggEBEE","mggEBEE", 2335, 330., 5000.);
+  obsCat["EBEB"] =  new RooRealVar("mggEBEB","mggEBEB", 2385, 230., 5000.);
+  obsCat["All"]  =  new RooRealVar("mggAll","mggAll", 2385, 230., 5000.);
+
+  //This is the uncertainty used on the scale <<<==== CHECK THIS
+  double unc = 0.01;
 
   //========================================================================
   //========================================================================
@@ -486,161 +503,189 @@ int main(int argc, char *argv[])
 
   }
   
+  //Let's see if what we build makes sense
   plotexAs(exAs, MH, kmpl, cats, coups);
 
   //========================================================================
   //========================================================================
-  //SIXTH PART : Read the parametric signal model. 
+  //SIXTH PART : Read the parametric signal model with its variables and 
+  //             write the output workspace with norm, pdf, nuisances and 
+  //             renamed variables.  
   //========================================================================
   //========================================================================
   std::map<std::string, RooRealVar* > reparamVars;
   RooRealVar* obsIn;
   RooCustomizer* custom;
+  // std::map<std::string, RooFormulaVar* > fwhm_rooformula; //[cat][formula]
 
-  for (auto curpdf : pdfs){
+  for (auto curpdf : thepdfs){
+
+    std::cout << " Cat and Coup " << curpdf.cat << " " << curpdf.coup << std::endl;
     
     fin[curpdf.coup]->cd();
 
-    signame = signame + "_" + curpdf.coup; 
-    kmpl->setVal(curpdf.coup);
+    std::string signame = insigname + "_" + curpdf.coup; 
+    kmpl->setVal(std::stod(curpdf.coup));
 
+    //----------------------------------------------------------------------
+    //Read variables and rename them 
     for (auto par : params[curpdf.cat]){
-      RooRealVar* dst = wsin[curpdf.coup]->var(par); //reparam_by_cat
-      dst->setConstant(True);
-      reparamVars[ reparam_by_cat[par] ] = dst;
+      RooRealVar* dst = new RooRealVar(reparam_by_cat[par].c_str(), reparam_by_cat[par].c_str(), 0.);
+      dst->setConstant(true);
+      reparamVars[par] = dst;
       ws_out[curpdf.coup]->import(*dst, RooFit::RecycleConflictNodes());
     }
 
-    curpdf.pdf = wsin[curpdf.coup]->pdf(curpdf.name);
+    curpdf.pdf = wsin[curpdf.coup]->pdf(curpdf.name.c_str());
     obsIn =  wsin[curpdf.coup]->var("mgg");
     //Clone the current pdf
-    custom = new RooCustomizer(curpdf.pdf,"")
+    custom = new RooCustomizer(*curpdf.pdf,"");
+    custom->replaceArg(*obsIn,*obsCat[curpdf.cat]);
+
+    for (auto par: reparamVars){
+      RooRealVar* srcVar = wsin[curpdf.coup]->var(par.first.c_str());
+      par.second->setVal( srcVar->getVal() );
+      //par.first is the existing in workspace, while the reparam name is the par.second 
+      custom->replaceArg( *srcVar  , *par.second );
+    }
+    curpdf.pdf = (RooAbsPdf*) custom->build(true);
+
+    //----------------------------------------------------------------------
+    //Saving fhwm parametrization
+    // RooAbsArg * fhwm_formula = wsin[curpdf.coup]->arg( Form("FHWM_%s",curpdf.cat.c_str()) );
+    // RooRealVar* pp0 = dynamic_cast<RooRealVar*>( wsin[curpdf.coup]->arg( Form("p0_%s",curpdf.cat.c_str()) )  );
+    // RooRealVar* pp1 = dynamic_cast<RooRealVar*>( wsin[curpdf.coup]->arg( Form("p1_%s",curpdf.cat.c_str()) )  );
+    // double p0 = pp0->getVal();
+    // double p1 = pp1->getVal();
+
+    // //fhwm parametrized vs MH
+    // fwhm_rooformula[curpdf.cat] = new RooFormulaVar(Form("fwhm_rooformula_%s",curpdf.cat.c_str()), Form("fwhm_rooformula_%s",curpdf.cat.c_str()), Form("%f + %f*@0", p0, p1), RooArgList(*MH) );
+
+    // fwhm_rooformula[curpdf.cat]->Print();
+
+    //----------------------------------------------------------------------
+    //Energy scale
+
+    //THIS PART NEEDS WORK
+
+    //----------------------------------------------------------------------
+    //Signal normalization and naming is here
+
+    //Remember that in the creation of the json file with e and A values we have 
+    //used the weightAll cut to normalize the signal samples to 1/fb luminosity. 
+    //So, here we will multiply with luminosity to get to the correct norm pdf. 
+    //No need for the spline aka Hgg creation below. 
+
+    curpdf.pdf->SetName( Form("model_signal_%s_%s",signame.c_str(), curpdf.cat.c_str()) );
+    RooProduct *norm = new RooProduct(Form("model_signal_%s_%s_norm", signame.c_str(), curpdf.cat.c_str()), Form("model_signal_%s_%s_norm", signame.c_str(), curpdf.cat.c_str()), RooArgList( *exAs[curpdf.cat], RooFit::RooConst(luminosity[year]) ) );
+
+    ws_out[curpdf.coup]->import(*norm, RooFit::RecycleConflictNodes());
+    ws_out[curpdf.coup]->import(*curpdf.pdf, RooFit::RecycleConflictNodes());
 
   }
+
+  for (auto cp : coups){
  
+    fout[cp]->cd();
+
+    ws_out[cp]->Write();
+    ws_out[cp]->Print();
+   
+    fout[cp]->Write();
+    fout[cp]->Close();
+    
+  }
 
 
   //========================================================================
   //========================================================================
-  //----- PART : The pdf norm function
+  //BACKUP PART : This part contains commented code with some effort to 
+  //              build splines for cross sections and a more Hgg style norm 
+  //              pdf but it doesn't include the kMpl so I comment it out. 
   //========================================================================
   //========================================================================
 
-  //Remember that in the creation of the json file with e and A values we have 
-  //used the weightAll cut to normalize the signal samples to 1/fb luminosity. 
-  //So, here we will multiply with luminosity to get to the correct norm pdf. 
-  //No need for the spline aka Hgg creation below. 
+  // std::map<std::string, std::vector<xsec> > xsections = loadXsections(year, true);
+  // std::map<std::string, std::vector<xsec> > xsectionsKMpl = loadXsections(year, false);
+  // std::map<std::string, TGraphErrors*> grxs;
+  // std::map<std::string, RooSpline1D *> xsSplines;
+  // // std::map<std::string, RooSpline1D *> xsSplineskMpl;
+  // std::map<std::string, RooPolyVar *> xskMpl;
+  // std::map<std::string, TGraphErrors*> kMplgrs; //[MH]
+  // std::map<std::string, TF1 *> fm; 
+   
+  // for(auto cp : coups) {
 
-  //We will follow the convention Pasqualle et al used in the past.  
-  // for (auto cat : cats){
+  //   can[cp] = new TCanvas(Form("can_coup_%s", cp.c_str()),Form("can_coup_%s", cp.c_str()));
 
-  //   exAs[cat] = new RooProduct( Form("eff_acc_%s", cat.c_str()), Form("eff_acc_%s", cat.c_str()) , RooArgList(*effMX[cat],*acceptanceMHandkMpl[cat]) );
+  //   if ( cp == "001" ){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}";}
+  //   else if ( cp == "01" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}";}
+  //   else if ( cp == "02" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}";}
+  //   else {
+  //     std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
+  //     exit(1);
+  //   }
+    
+  //   grxs[cp] = getXsecGraph(xsections[cp], true);
+  //   RooSpline1D *xsSpline = graphToSpline(Form("fxs_%s",cp.c_str()), grxs[cp], MH , xmin, upperxmax);
+  //   xsSplines[cp] = xsSpline;
 
-  //   //Now we have the tools to create the norm pdf. We should give it the correct name also. 
-  //   std::string normpdfname = Form("model_signal_%s_%s_norm", signame.c_str(), cat.c_str() );
-
+  //   //For debugging to see what this spline looks like
+  //   plotsplines(can[cp], xsSplines[cp],  MH ,xmin, upperxmax, plabel);
+  //   can[cp]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/xsSplines_%s.png",cp.c_str()));
 
   // }
 
-  //     std::string normpdfname = Form("SignalShape_%s_%s_norm",remapnames[gr.coup].c_str(), remapnames[gr.cat].c_str()); 
-  //     RooAbsReal *finalNorm = new RooFormulaVar( normpdfname.c_str(), normpdfname.c_str(), "@0*@1*@2",RooArgList(*xsSplines[gr.coup.c_str()], *exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())], RooFit::RooConst(luminosity[year]) ) );
-
-  //     pdf_norm[normpdfname] = finalNorm;
-
-  //     // make some debug checks
-  //     for (int m =500; m<9000; m=m+500){
-  // 	MH->setVal(m); 
-  // 	std::cout << "[INFO] MH " << m <<  " - ea "  <<  (exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->getVal()) 
-  // 		  << " intL= " << luminosity[year]
-  // 		  << " xs " << xsSplines[gr.coup.c_str()]->getVal() 
-  // 		  << "norm " << (exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->getVal())*xsSplines[gr.coup.c_str()]->getVal() 
-  // 		  << "predicted events " <<  (exASplines[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->getVal())*xsSplines[gr.coup.c_str()]->getVal()*luminosity[year] <<  std::endl;
-  //     }	
-
- // norm = ROOT.RooProduct("model_signal_%s_%s_norm" % (signame,cat), "model_signal_%s_%s_norm" % (signame,cat), 
- //                                       ROOT.RooArgList(RooFit.RooConst(xsection),exAs[cat],xsec_ratio) )
-
-  std::map<std::string, std::vector<xsec> > xsections = loadXsections(year, true);
-  std::map<std::string, std::vector<xsec> > xsectionsKMpl = loadXsections(year, false);
-  std::map<std::string, TGraphErrors*> grxs;
-  std::map<std::string, RooSpline1D *> xsSplines;
-  // std::map<std::string, RooSpline1D *> xsSplineskMpl;
-  std::map<std::string, RooPolyVar *> xskMpl;
-  std::map<std::string, TGraphErrors*> kMplgrs; //[MH]
-  std::map<std::string, TF1 *> fm; 
-   
-  for(auto cp : coups) {
-
-    can[cp] = new TCanvas(Form("can_coup_%s", cp.c_str()),Form("can_coup_%s", cp.c_str()));
-
-    if ( cp == "001" ){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}";}
-    else if ( cp == "01" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}";}
-    else if ( cp == "02" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}";}
-    else {
-      std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
-      exit(1);
-    }
+  // RooArgList *xs_coef;
+  // for(auto mb : xsectionsKMpl){
     
-    grxs[cp] = getXsecGraph(xsections[cp], true);
-    RooSpline1D *xsSpline = graphToSpline(Form("fxs_%s",cp.c_str()), grxs[cp], MH , xmin, upperxmax);
-    xsSplines[cp] = xsSpline;
+  //   std::string mname = mb.first;
+  //   //This is hardcoded 
+  //   xmin = 1.39 * pow(10.,-4);
+  //   upperxmax = 5.61 * pow(10.,-2);
 
-    //For debugging to see what this spline looks like
-    plotsplines(can[cp], xsSplines[cp],  MH ,xmin, upperxmax, plabel);
-    can[cp]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/xsSplines_%s.png",cp.c_str()));
+  //   can[mname] = new TCanvas( Form("can%s",mname.c_str()), Form("can%s",mname.c_str()) );
+  //   can[mname]->cd();
 
-  }
+  //   kMplgrs[mname] = getXsecGraph(xsectionsKMpl[mname], false);
+  //   // RooSpline1D *xsSplineKMpl = graphToSpline(Form("fxs_%s",mname.c_str()), kMplgrs[mname], kmpl , xmin, upperxmax);
+  //   // xsSplineskMpl[mname] = xsSplineKMpl;
+  //   // std::cout << kMplgrs[mname]->GetN() << std::endl;
 
-  RooArgList *xs_coef;
-  for(auto mb : xsectionsKMpl){
-    
-    std::string mname = mb.first;
-    //This is hardcoded 
-    xmin = 1.39 * pow(10.,-4);
-    upperxmax = 5.61 * pow(10.,-2);
+  //   if (kMplgrs[mname]->GetN() > 1){ 
+  //     fm[mname] = new TF1(TString::Format("fm_%s",mname.c_str()), "pol2", xmin, upperxmax);
+  //   } else { 
+  //     fm[mname] = new TF1(TString::Format("fm_%s",mname.c_str()), "pol0", xmin, upperxmax);
+  //   }
 
-    can[mname] = new TCanvas( Form("can%s",mname.c_str()), Form("can%s",mname.c_str()) );
-    can[mname]->cd();
+  //   kMplgrs[mname]->Fit(TString::Format("fm_%s",mname.c_str()), "R");
+  //   kMplgrs[mname]->Draw("APE");
+  //   fm[mname]->Draw("same");
 
-    kMplgrs[mname] = getXsecGraph(xsectionsKMpl[mname], false);
-    // RooSpline1D *xsSplineKMpl = graphToSpline(Form("fxs_%s",mname.c_str()), kMplgrs[mname], kmpl , xmin, upperxmax);
-    // xsSplineskMpl[mname] = xsSplineKMpl;
-    // std::cout << kMplgrs[mname]->GetN() << std::endl;
+  //   TPaveText *pt2 = new TPaveText(.6,.65,.9,0.8,"NDC");
+  //   pt2->AddText(Form("%s GeV XS Polynomial",mname.c_str()));
+  //   pt2->Draw();
 
-    if (kMplgrs[mname]->GetN() > 1){ 
-      fm[mname] = new TF1(TString::Format("fm_%s",mname.c_str()), "pol2", xmin, upperxmax);
-    } else { 
-      fm[mname] = new TF1(TString::Format("fm_%s",mname.c_str()), "pol0", xmin, upperxmax);
-    }
-
-    kMplgrs[mname]->Fit(TString::Format("fm_%s",mname.c_str()), "R");
-    kMplgrs[mname]->Draw("APE");
-    fm[mname]->Draw("same");
-
-    TPaveText *pt2 = new TPaveText(.6,.65,.9,0.8,"NDC");
-    pt2->AddText(Form("%s GeV XS Polynomial",mname.c_str()));
-    pt2->Draw();
-
-    //make the polynomial for roofit
-    if (kMplgrs[mname]->GetN() > 1){ 
-      xs_coef = new RooArgList( RooFit::RooConst(fm[mname]->GetParameter(0)) , RooFit::RooConst(fm[mname]->GetParameter(1)) , RooFit::RooConst(fm[mname]->GetParameter(2)) );
-    } else {       
-      xs_coef = new RooArgList( RooFit::RooConst(fm[mname]->GetParameter(0)) );
-    }
+  //   //make the polynomial for roofit
+  //   if (kMplgrs[mname]->GetN() > 1){ 
+  //     xs_coef = new RooArgList( RooFit::RooConst(fm[mname]->GetParameter(0)) , RooFit::RooConst(fm[mname]->GetParameter(1)) , RooFit::RooConst(fm[mname]->GetParameter(2)) );
+  //   } else {       
+  //     xs_coef = new RooArgList( RooFit::RooConst(fm[mname]->GetParameter(0)) );
+  //   }
      
-    xskMpl[mname] = new RooPolyVar( Form("xs_%s",mname.c_str()), Form("xs_%s",mname.c_str()), *kmpl, *xs_coef, 0);
+  //   xskMpl[mname] = new RooPolyVar( Form("xs_%s",mname.c_str()), Form("xs_%s",mname.c_str()), *kmpl, *xs_coef, 0);
     
 
-    //For debugging to see what this spline looks like
-    // plotsplines(can[mname], xsSplineskMpl[mname],  kmpl ,xmin, upperxmax, Form("%s XS Spline",mname.c_str()) );
+  //   //For debugging to see what this spline looks like
+  //   // plotsplines(can[mname], xsSplineskMpl[mname],  kmpl ,xmin, upperxmax, Form("%s XS Spline",mname.c_str()) );
 
-    can[mname]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/xs_%s.png",mname.c_str()));
+  //   can[mname]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/xs_%s.png",mname.c_str()));
     
-  }
+  // }
 
-  //Graphs of exA to splines
-  std::map<std::string , RooSpline1D *> exASplines;
-  std::map<std::string , RooAbsReal *> pdf_norm; 
+  // //Graphs of exA to splines
+  // std::map<std::string , RooSpline1D *> exASplines;
+  // std::map<std::string , RooAbsReal *> pdf_norm; 
 
 
   // for(auto grs : graphsofexA) {
