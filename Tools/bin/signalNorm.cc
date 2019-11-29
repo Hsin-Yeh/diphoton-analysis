@@ -525,7 +525,19 @@ int main(int argc, char *argv[])
     fin[curpdf.coup]->cd();
 
     std::string signame = insigname + "_" + curpdf.coup; 
-    kmpl->setVal(std::stod(curpdf.coup));
+
+    double curcoup = 0.;
+
+    if ( curpdf.coup == "001" ){curcoup = 1.4 * pow(10.,-4);}
+    else if ( curpdf.coup == "01" ){curcoup = 1.4 * pow(10.,-2);}
+    else if ( curpdf.coup == "02" ){curcoup = 5.6 * pow(10.,-2);}
+    else {
+      std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
+      exit(1);
+    }
+ 
+
+    kmpl->setVal(curcoup);
 
     //----------------------------------------------------------------------
     //Read variables and rename them 
@@ -582,6 +594,15 @@ int main(int argc, char *argv[])
     ws_out[curpdf.coup]->import(*norm, RooFit::RecycleConflictNodes());
     ws_out[curpdf.coup]->import(*curpdf.pdf, RooFit::RecycleConflictNodes());
 
+    // make some debug checks
+    for (int m =500; m<5000; m=m+500) {
+      MH->setVal(m); 
+      std::cout << "---------------------------------------------------------" << std::endl;
+      std::cout << "[INFO] MH " << m <<  " kmpl " << curcoup << " - exA "  <<  (exAs[curpdf.cat]->getVal()) 
+		<< " intL = " << luminosity[year]
+		<< " predicted events " <<  exAs[curpdf.cat]->getVal() * luminosity[year] <<  std::endl;
+    }
+
   }
 
   for (auto cp : coups){
@@ -589,7 +610,7 @@ int main(int argc, char *argv[])
     fout[cp]->cd();
 
     ws_out[cp]->Write();
-    ws_out[cp]->Print();
+    // ws_out[cp]->Print();
    
     fout[cp]->Write();
     fout[cp]->Close();
