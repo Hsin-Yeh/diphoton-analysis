@@ -17,7 +17,7 @@
 
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
-void prepare(const std::string &region, const std::string &year, const std::string &outputdir);
+void prepare(const std::string &region, const std::string &year, const std::string &outputdir, const std::string &coup);
 std::string getSampleBase(const std::string & sampleName, const std::string & year);
 std::string getBase(const std::string & sampleName);
 std::string get_str_between_two_str(const std::string &s, const std::string &start_delim, const std::string &stop_delim);
@@ -26,10 +26,11 @@ std::string get_str_between_two_str(const std::string &s, const std::string &sta
 int main(int argc, char *argv[])
 {
 
-  std::string region, year, outputdir;
+  std::string region, year, outputdir, coup;
+  // std::string first, last; 
 
-  if(argc!=4) {
-    std::cout << "Syntax: prepareTrees.exe [BB/BE] [2016/2017/2018] [OutputDir]" << std::endl;
+  if(argc!=5) {
+    std::cout << "Syntax: prepareTrees.exe [BB/BE] [2016/2017/2018] [OutputDir] [coup] [first] [last]" << std::endl;
     return -1;
   }
   else {
@@ -44,25 +45,30 @@ int main(int argc, char *argv[])
       return -1;
     }
     outputdir = argv[3];
+    coup = argv[4];
+    // first = argv[5];
+    // last  = argv[6];
+    
   }
 
+  // setfirstlast(std::stod(first), std::stod(last));
   // include signal samples but not unskimmed data samples
   init(false, true);
 
   //========================================================================
-  prepare(region, year, outputdir);
+  prepare(region, year, outputdir, coup);
 
 }
 
 //-----------------------------------------------------------------------------------
 //Definitions
 //-----------------------------------------------------------------------------------
-void prepare(const std::string &region, const std::string &year, const std::string &outputdir)
+void prepare(const std::string &region, const std::string &year, const std::string &outputdir, const std::string &coup)
 {
   
   std::map<std::string, std::string> cuts;
-  cuts["BB"] = "isGood*(Diphoton.Minv > 230 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && Photon1.isEB && Photon2.isEB)";
-  cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))";
+  cuts["BB"] = "isGood*(Diphoton.Minv > 230 && Photon1.pt>125 && Photon2.pt>125 && Photon1.isEB && Photon2.isEB)";
+  cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))";
 
   std::vector<std::string> samples = getSampleList();
 
@@ -77,6 +83,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     if ( isample.find(year) == std::string::npos ) continue; 
     //Run only on RS samples for now. 
     // if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
+    // if( isample.find("RSGravitonToGammaGamma_"+ coup) == std::string::npos ) continue;
     //Let's prepare data. Run only on 2017 for now
     if( isample.find("data_2017") == std::string::npos ) continue;
     
@@ -99,9 +106,9 @@ void prepare(const std::string &region, const std::string &year, const std::stri
 	sampleCut += "*(Diphoton.Minv > 600)";
       }
     }
-    else {
-      sampleCut += "*(Diphoton.Minv < 1000)";
-    }
+    // else {
+    //   sampleCut += "*(Diphoton.Minv < 1000)";
+    // }
     // apply k-factor to Sherpa GG sample
     if( isample.find("gg_R2F2_") != std::string::npos) {
       if( is2015or2016 ) sampleCut += "*" + kfactorString(region, "R2F2_125GeV_CT10");
@@ -132,15 +139,17 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     chains[getBase(isample)]->SetBranchStatus("isGood",1);
     chains[getBase(isample)]->SetBranchStatus("Photon1",1);
     chains[getBase(isample)]->SetBranchStatus("Photon2",1);
-
-    TTree *newtree1 = chains[getBase(isample)]->CloneTree(0);
-    newtree1->CopyEntries(chains[getBase(isample)]);
+    chains[getBase(isample)]->SetBranchStatus("TriggerBit",1);
+    
+    // TTree *newtree1 = chains[getBase(isample)]->CloneTree(0);
+    // newtree1->CopyEntries(chains[getBase(isample)]);
     // newtree1->Print();
     
     //========================================================================
     //Selection
     //========================================================================
-    TTree *newtree2 = newtree1->CopyTree(cuts[region].c_str());
+    TTree *newtree2 = chains[getBase(isample)]->CopyTree(sampleCut.c_str());
+    // TTree *newtree2 = newtree1->CopyTree(sampleCut.c_str());
     // newtree2->Print();
 
     newtree2->SetBranchStatus("*",0);

@@ -31,20 +31,29 @@ using namespace RooStats;
 
 //-----------------------------------------------------------------------------------
 static const Int_t NCAT = 2; //BB and BE for the moment 
-Int_t MINmass= 310;
-Int_t MINmassBE = 340;
-Int_t MAXmass= 1000;
+// float MINmass, MAXmass, MINmassBE;
+// std::map<std::string, float> MINmass, MAXmass;
+float MINmass = 320.;
+float MINmassBE = 360.;
+float MAXmass = 9000.;
+
+//std::map<std::string, float> test;
+// MINmass["EBEB"] = 230.;
+// MINmass["EBEE"] = 330.;
+// MAXmass["EBEB"] = 9000.;
+// MAXmass["EBEE"] = 9000.;
 Int_t nBinsMass=120;
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
 RooRealVar* buildRooVar(std::string name, std::string title, int nBins, double xMin, double xMax, std::string unit);
-void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &year, const std::string &ws_dir);
-void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir);
-std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir);
-std::vector<RooFitResult*> BkgModelFitPowFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir);
+void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &year, const std::string &ws_dir, bool blind, std::vector<std::string> cats);
+RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooAbsPdf* polymgg, RooWorkspace* w, std::vector<std::string> cats);
+void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir);
+std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats);
+std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats);
 std::vector<RooFitResult*> BkgModelFitExpPARFunc(RooWorkspace* w);
-void runAllFits(const std::string &year, const std::string &ws_dir);
-void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample);
+void runAllFits(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats);
+void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample, std::vector<std::string> cats);
 std::string getBase(const std::string & sampleName);
 void SetConstantParams(const RooArgSet* params) ;
 TPaveText* get_labelsqrt( int legendquadrant );
@@ -71,16 +80,24 @@ int main(int argc, char *argv[])
   //========================================================================
   //read the reduced input root trees
   initForFit(inputdir);
+
+  //Categories
+  std::vector<std::string> cats; 
+  cats.clear(); 
+  cats.push_back("EBEB");
+  cats.push_back("EBEE");
+
+
   //========================================================================
   //Run the fits
-  runAllFits(year,"output/bkg");
+  runAllFits(year,"output/bkg",cats);
 
 }
 
 //-----------------------------------------------------------------------------------
 //Definitions
 //-----------------------------------------------------------------------------------
-void runAllFits(const std::string &year, const std::string &ws_dir){
+void runAllFits(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats){
 
   std::vector<std::string> samples = getSampleListForFit();
 
@@ -90,12 +107,12 @@ void runAllFits(const std::string &year, const std::string &ws_dir){
     //We will only process data since bkg shape is data-driven
     if ( isample.find("data") == std::string::npos ) continue; 
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
-    runfits(year, ws_dir, isample);
+    runfits(year, ws_dir, isample, cats);
   }
 
 }
 //-----------------------------------------------------------------------------------
-void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &year, const std::string &ws_dir) {
+void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &year, const std::string &ws_dir, bool blind, std::vector<std::string> cats) {
 
   Int_t ncat = NCAT;//BB and BE for the moment
 
@@ -147,12 +164,16 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
   TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Only Data",0,0,500,500);
   TLegend *legdata = new TLegend(0.3790323,0.7775424,0.6290323,0.9279661,"brNDC");
 
+  //We change here the max value since we want all data but for the plotting we will 
+  //be blinded. We should use all data although for the fits. 
+  if (blind){maxMassFit=1000.;}
+
   for (int c=0; c<ncat; ++c) {
     plotPhotonsMassBkgOnlyData[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
     dataToFit[c]->plotOn(plotPhotonsMassBkgOnlyData[c], MarkerColor(c+2), LineColor(c+2) );  
     if (c==0){plotPhotonsMassBkgOnlyData[c]->Draw();}
     else if (c==1){plotPhotonsMassBkgOnlyData[c]->Draw("same");}
-    legdata->AddEntry(plotPhotonsMassBkgOnlyData[c]->getObject(0),Form("Data_cat%d",c),"LPE");
+    legdata->AddEntry(plotPhotonsMassBkgOnlyData[c]->getObject(0),Form("Data_%s",cats[c].c_str()),"LPE");
 
   }  
   legdata->SetTextSize(0.035);
@@ -172,7 +193,7 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
 }
 
 //-----------------------------------------------------------------------------------
-void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample){
+void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample, std::vector<std::string> cats){
 
   std::cout << ws_dir << std::endl;
 
@@ -188,16 +209,66 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   w->var("mgg")->setMax(MAXmass);
   w->Print("V");
 
-  //========================================================================
-  std::cout << "Adding bkg data" <<std::endl;
-  AddBkgData(w, isample, year, ws_dir);
-  //========================================================================
-  
   //blind or not
   bool blind = true;
+
+  //========================================================================
+  std::cout << "Adding bkg data" <<std::endl;
+  AddBkgData(w, isample, year, ws_dir, blind, cats);
+  //========================================================================
+  
   //bands
-  bool dobands = true;
-  std::vector<RooFitResult*> fitresults_dijet = BkgModelFitDiJetFunc(w, blind, dobands, year, ws_dir); 
+  bool dobands = false;
+  //dijet
+  std::vector<RooFitResult*> fitresults_dijet = BkgModelFitDiJetFunc(w, blind, dobands, year, ws_dir, cats); 
+  //pow
+  int order = 1; 
+  std::map< int, std::vector<double> > curminnll; //[order][cats]
+  //the prevminll we have to know
+  std::vector<double> prevminnll; //[order][cats]
+  std::map< int, std::vector<double> > dnll; //[order][cats]
+
+  //Models
+  std::vector<std::string> models;
+  models.push_back("pow");
+  models.push_back("expow");
+  models.push_back("invpow");
+  models.push_back("invpowlin");
+  models.push_back("moddijet");
+  
+  std::vector<RooFitResult*> fitresults = BkgModelFitFunc(w, models[0], blind, dobands, year, ws_dir, order, cats); 
+
+  // for (int i=0; i<=order; ++i){
+
+  //   if (i==0){
+  //     prevminnll.push_back( 0. ) ;//BB
+  //     prevminnll.push_back( 0. ) ;//BE
+  //   } else{
+  //     prevminnll[0] = curminnll[i-1][0];
+  //     prevminnll[1] = curminnll[i-1][1];
+  //   }
+  //   std::vector<RooFitResult*> fitresults = BkgModelFitFunc(w, models[0], blind, dobands, year, ws_dir, i, cats); 
+  //   curminnll[i].push_back( fitresults[0]->minNll() );
+  //   curminnll[i].push_back( fitresults[1]->minNll() );
+
+  //   dnll[i].push_back( curminnll[i][0] - prevminnll[0] );
+  //   dnll[i].push_back( curminnll[i][1] - prevminnll[1] );
+
+  // }
+
+  // for (unsigned int c = 0; c < cats.size(); ++c) {
+  //   std::cout << "========================================================"<< std::endl;
+  //   std::cout << "Cat " << cats[c] << std::endl;
+
+  //   for (int i=0; i<=order; ++i){
+  //     // fitresult[c]->floatParsFinal().getSize()
+  //     std::cout << "Order " << i << " 2*dnll " << dnll[i][c] << std::endl;
+  //   }
+  // }
+
+  
+
+  
 
   //Save the resulting workspace
   //w->Print("V");
@@ -208,8 +279,75 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 
 }
 
-std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir) {
+//-----------------------------------------------------------------------------------
+RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooAbsPdf* polymgg, RooWorkspace* w, std::vector<std::string> cats){
 
+  RooAbsPdf* thepdf = new RooGenericPdf(); 
+  RooArgList *coefList;
+  std::string formula;
+  //------------------------------------------------------------------------
+  //dijet model
+  if ( model == "dijet" ){
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_dijet%s_linc_cat%d", name.c_str(), catnum)), *w->var(TString::Format("PhotonsMass_bkg_dijet%s_logc_cat%d", name.c_str(), catnum)));
+    thepdf = new RooGenericPdf(Form("PhotonsMassBkg_%s%s_%s", model.c_str(), name.c_str(), cats[catnum].c_str()), "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" ,  *coefList);
+    //------------------------------------------------------------------------
+    //Pow model
+  } else if ( model == "pow") {
+    // coefList = new RooArgList(*polymgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a_cat%d", catnum)));
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_pow_a_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_polymgg_a0_cat%d", catnum)));
+    formula = "TMath::Max(1e-50,pow(1. + pow(@0,1.)*@2,@1))";
+
+    std::cout << "====================================================================" << std::endl;
+    std::cout << formula << std::endl;
+    // exit(-1);
+
+    thepdf = new RooGenericPdf(Form("PhotonsMassBkg_%s%s_%s", model.c_str(), name.c_str(), cats[catnum].c_str()), formula.c_str(), *coefList );
+    
+    //------------------------------------------------------------------------
+    //expow model
+  } else if ( model == "expow") {
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow_lam_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow_alp_cat%d", catnum)));
+    formula = "exp(@1*@0)*pow(@0,@2)";
+    std::cout << "====================================================================" << std::endl;
+    std::cout << formula << std::endl;
+
+    thepdf = new RooGenericPdf(Form("PhotonsMassBkg_%s%s_%s", model.c_str(), name.c_str(), cats[catnum].c_str()), formula.c_str(), *coefList );
+    //------------------------------------------------------------------------
+    //invpow model
+  } else if ( model == "invpow") {
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_invpow_slo_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum)) );
+    formula = "pow(1+@0*@1,@2)";
+    std::cout << "====================================================================" << std::endl;
+    std::cout << formula << std::endl;
+
+    thepdf = new RooGenericPdf(Form("PhotonsMassBkg_%s%s_%s", model.c_str(), name.c_str(), cats[catnum].c_str()), formula.c_str(), *coefList );
+    //------------------------------------------------------------------------
+    //invpowlin model
+  } else if ( model == "invpowlin") {
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_invpowlin_slo_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_alp_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_bet_cat%d", catnum)) );
+    formula = "pow(1+@0*@1,@2+@3*@0)";
+
+    thepdf = new RooGenericPdf(Form("PhotonsMassBkg_%s%s_%s", model.c_str(), name.c_str(), cats[catnum].c_str()), formula.c_str(), *coefList );
+    //------------------------------------------------------------------------
+    //moddijet model
+  } else if ( model == "moddijet" ) {
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_moddijet_lina_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_moddijet_loga_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_moddijet_linb_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_moddijet_sqrb_cat%d", catnum)) ) ;
+
+    // w->var(TString::Format("PhotonsMass_bkg_moddijet_sqrb_cat%d", catnum))->setConstant(1.); 
+    
+    formula = "TMath::Max(1e-50,pow(@0,@1+@2*log(@0))*pow(1.-@0*@4,@3))";
+
+    thepdf = new RooGenericPdf(Form("PhotonsMassBkg_%s%s_%s", model.c_str(), name.c_str(), cats[catnum].c_str()), formula.c_str(), *coefList );
+
+  }
+      
+  return thepdf;
+}
+
+//-----------------------------------------------------------------------------------
+std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats) {
+
+  std::string model = "dijet";
   Int_t ncat = NCAT;
   RooDataSet* data[NCAT];
   RooRealVar* nBackground[NCAT]; 
@@ -218,6 +356,7 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
   RooRealVar* mgg = w->var("mgg");  
   mgg->setUnit("GeV");
   Float_t minMassFit, maxMassFit;
+  double minnll=10e8;
 
   for (int c = 0; c < ncat; ++c) {
     if (c==0){ 
@@ -227,32 +366,27 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
       minMassFit = MINmassBE;
       maxMassFit = MAXmass;    
     }
-  
-    RooAbsPdf* PhotonsMassBkgTmp0;
-    if (c==0){ 
-      data[c] = (RooDataSet*) w->data("Data_EBEB");
-      PhotonsMassBkgTmp0 = new RooGenericPdf("PhotonsMassBkg_DiJet_EBEB", "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
-      nBackground[c] = new RooRealVar("PhotonsMassBkg_DiJet_EBEB_norm", "nbkg",data[c]->sumEntries(),0,3*data[c]->sumEntries());
-    } else if (c==1){ 
-      data[c] = (RooDataSet*) w->data("Data_EBEE");
-      PhotonsMassBkgTmp0 = new RooGenericPdf("PhotonsMassBkg_DiJet_EBEE", "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))" , RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) );
-      nBackground[c] = new RooRealVar("PhotonsMassBkg_DiJet_EBEE_norm", "nbkg",data[c]->sumEntries(),0,3*data[c]->sumEntries());
-    }
-  
+
+    data[c] = (RooDataSet*) w->data(Form("Data_%s", cats[c].c_str()));
+    RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, 0, w, cats);
+    nBackground[c] = new RooRealVar(Form("PhotonsMassBkg_%s_%s_norm", model.c_str(), cats[c].c_str()), "nbkg",data[c]->sumEntries(),0,3*data[c]->sumEntries());
+
     //RooPowLogPdf *PhotonsMassBkgTmp0 = new RooPowLogPdf(TString::Format("PhotonsMassBkg_DiJet_cat%d",c), TString::Format("PhotonsMassBkg_DiJet_cat%d",c),  *mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) ;
 
     fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(2),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
     w->import(*PhotonsMassBkgTmp0);
     w->import(*nBackground[c]);
 
-    std::cout << TString::Format("******************************** Background Fit results DIJET cat %d***********************************", c) << std::endl;
+    std::cout << TString::Format("******************************** Background Fit results %s cat %s***********************************", model.c_str(), cats[c].c_str()) << std::endl;
     fitresult[c]->Print("V");
     
     //************************************************
     // Plot PhotonsMass background fit results per categories 
     TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories",0,0,500,500);
-    PlotFitResult(w, ctmp, c, mgg, data[c], PhotonsMassBkgTmp0, minMassFit, maxMassFit, blind, dobands, 3, year, ws_dir);
-    ctmp->SaveAs( Form("%s/Bkg_cat%d_DIJET_%s.png", ws_dir.c_str(),c,year.c_str()) );
+    minnll = fitresult[c]->minNll();
+    std::cout << fitresult[c]->floatParsFinal().getSize() << " " << minnll << std::endl;
+    PlotFitResult(w, ctmp, c, mgg, data[c], model, PhotonsMassBkgTmp0, minMassFit, maxMassFit, blind, dobands, fitresult[c]->floatParsFinal().getSize(), year, ws_dir);
+    ctmp->SaveAs( Form("%s/Bkg_cat%d_%s_%s.png", ws_dir.c_str(), c, model.c_str(), year.c_str() ) );
 
   }
   
@@ -260,11 +394,81 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
 
 }
 
+//-----------------------------------------------------------------------------------
+std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats) {
 
-void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir){
+  Int_t ncat = NCAT;
+  RooDataSet* data[NCAT];
+  RooRealVar* nBackground[NCAT]; 
+  RooAbsPdf* polymgg[NCAT];
+  std::vector<RooFitResult*> fitresult;
+
+  RooRealVar* mgg = w->var("mgg");  
+  mgg->setUnit("GeV");
+  Float_t minMassFit, maxMassFit;
+  double minnll=10e8;
+
+  RooArgList *coeffs; 
+  for (int c = 0; c < ncat; ++c) {
+    if (c==0){ 
+      minMassFit = MINmass;
+      maxMassFit = MAXmass;
+    } else if (c==1){
+      minMassFit = MINmassBE;
+      maxMassFit = MAXmass;    
+    }
+
+    //We need the polynomial of mgg
+    coeffs = new RooArgList();
+    coeffs->add(*mgg);
+    std::string formula = "TMath::Max(1e-50,";
+    // for (int i=0; i<=order; ++i){
+    for (int i=0; i<=order; ++i){
+      if (i == 0){formula += "1.";}
+      else { 
+	formula += Form(" + pow(@0,%d.)*@%d", i, i); 
+	coeffs->add( *w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i-1, c))  );
+      }
+      if ( i == order ){formula += ")";}
+    }
+
+    std::cout << formula << std::endl; 
+ 
+    polymgg[c] = new RooGenericPdf(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), formula.c_str(), *coeffs );
+
+    data[c] = (RooDataSet*) w->data(Form("Data_%s", cats[c].c_str()));
+    RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, polymgg[c], w, cats);
+    nBackground[c] = new RooRealVar(Form("PhotonsMassBkg_%s%d_%s_norm", model.c_str(), order, cats[c].c_str()), "nbkg", data[c]->sumEntries(),0,3*data[c]->sumEntries());
+
+    // RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_Pow_cat%d",c), "TMath::Max(1e-50,1.+ @0*@1 + pow(@0,2.)*@2 + pow(@0,3.)*@3)", RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a0_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a1_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a2_cat%d",c)),*w->var(TString::Format("PhotonsMass_bkg_pow_a3_cat%d",c)) ) );
+  
+    fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(2),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
+    w->import(*PhotonsMassBkgTmp0);
+    w->import(*nBackground[c]);
+
+    std::cout << TString::Format("******************************** Background Fit results %s cat %s***********************************", model.c_str(), cats[c].c_str()) << std::endl;
+    fitresult[c]->Print("V");
+
+    //************************************************
+    // Plot PhotonsMass background fit results per categories 
+    TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories",0,0,500,500);
+    minnll = fitresult[c]->minNll();
+    std::cout << fitresult[c]->floatParsFinal().getSize() << " " << minnll << std::endl;
+    PlotFitResult(w, ctmp, c, mgg, data[c], model, PhotonsMassBkgTmp0, minMassFit, maxMassFit, blind, dobands, fitresult[c]->floatParsFinal().getSize(), year, ws_dir);
+    ctmp->SaveAs( Form("%s/Bkg_cat%d_%s%d_%s.png", ws_dir.c_str(),c, model.c_str(), order, year.c_str() ) );
+    
+  }
+  
+  return fitresult;
+
+}
+
+//-----------------------------------------------------------------------------------
+void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir){
 
   RooPlot* plotPhotonsMassBkg[NCAT];
 
+  if( blind ) { maxMassFit = 1000.; }
   plotPhotonsMassBkg[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
   
   data->plotOn(plotPhotonsMassBkg[c],RooFit::Invisible());    
@@ -291,7 +495,7 @@ void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDa
 
   TLegend *legdata = new TLegend(0.37,0.67,0.62,0.82, TString::Format("Category %d",c), "brNDC");
   legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(2),"Data","LPE");
-  legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(1),"Parametric Model: DiJet","L");
+  legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(1),Form("Parametric Model: %s", model.c_str()),"L");
   legdata->SetTextSize(0.035);
   legdata->SetTextFont(42);
   // legdata->SetTextAlign(31);
@@ -299,7 +503,7 @@ void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDa
   legdata->SetFillStyle(0);
   legdata->Draw("same");
 
-  TPaveText* label_cms = get_labelcms(0, year, false);
+  TPaveText* label_cms = get_labelcms(1, year, false);
   TPaveText* label_sqrt = get_labelsqrt(0);
   label_cms->Draw("same");
   label_sqrt->Draw("same");
@@ -383,42 +587,6 @@ void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDa
     plotPhotonsMassBkg[c]->Draw("SAME"); 
   }
   
-}
-
-std::vector<RooFitResult*> BkgModelFitPowFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir) {
-
-  Int_t ncat = NCAT;
-  RooDataSet* data[NCAT];
-  std::vector<RooFitResult*> fitresult;
-
-  RooRealVar* mgg = w->var("mgg");  
-  mgg->setUnit("GeV");
-  Float_t minMassFit, maxMassFit;
-  minMassFit = MINmass;
-  maxMassFit = MAXmass;
-
-
-  for (int c = 0; c < ncat; ++c) {
-    data[c] = (RooDataSet*) w->data(TString::Format("Data_cat%d",c));
-    
-    RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_Pow_cat%d",c), "TMath::Max(1e-50,1.+ @0*@1 + pow(@0,2.)*@2 + pow(@0,3.)*@3)", RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a0_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a1_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a2_cat%d",c)),*w->var(TString::Format("PhotonsMass_bkg_pow_a3_cat%d",c)) ) );
-  
-    fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(2),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
-    w->import(*PhotonsMassBkgTmp0);
-
-    std::cout << TString::Format("******************************** Background Fit results POW cat %d***********************************", c) << std::endl;
-    fitresult[c]->Print("V");
-
-    //************************************************
-    // Plot PhotonsMass background fit results per categories 
-    TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories",0,0,500,500);
-    PlotFitResult(w, ctmp, c, mgg, data[c], PhotonsMassBkgTmp0, minMassFit, maxMassFit, blind, dobands, 1, year, ws_dir);
-    ctmp->SaveAs( Form("%s/Bkg_cat%d_POW_%s.png", ws_dir.c_str(),c,year.c_str()) );
-    
-  }
-  
-  return fitresult;
-
 }
 
 std::vector<RooFitResult*> BkgModelFitExpPARFunc(RooWorkspace* w) {

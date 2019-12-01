@@ -26,6 +26,9 @@
 std::map<std::string, double> luminosity { {"2015", 2.62}, {"2016", 35.9}, {"2017", 41.527}, {"2018", 59.67}, {"2018_newjson", 56.077-54.19}, {"2018ABC_prompt", 28.04}, {"2018ABC_rereco", 28.04}};
 std::map<std::string, double> luminosityErrorFrac { {"2015", 0.023}, {"2016", 0.026}, {"2017", 0.023}, {"2018", 0.025}, {"2018_newjson", 0.025}, {"2018ABC_prompt", 0.025}, {"2018ABC_rereco", 0.025}};
 
+// int firstfile = 1;
+// int lastfile = 600;
+
 std::map<std::string, TChain*> chains;
 std::map<std::string, TChain*> treesforfit;
 std::map<std::string, int> lineStyles;
@@ -42,6 +45,8 @@ void initADD(const TString & baseDirectory); // initializes ADD samples; perform
 void initRSG(const TString & baseDirectory); // initializes RSG samples; performed by a loop rather than being listed explicitly
 void initHeavyHiggs(const TString & baseDirectory); // initializes Heavy Higgs samples; performed by a loop rather than being listed explicitly
 void listSamples(); // list the available samples
+
+// inline void setfirstlast(int first, int last){firstfile=first;lastfile=last;}
 
 TString filestring(TString sample)
 {
@@ -242,12 +247,27 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   //   chData2017_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017F-31Mar2018-v1__MINIAOD/190920_220749/0000/*.root");
   // }
 
-  // TChain *chData2017 = new TChain(treeType);
+  TChain *chData2017 = new TChain(treeType);
   // chData2017->Add(baseDirectory + "/store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017B-31Mar2018-v1__MINIAOD/190920_204250/*.root");
   // chData2017->Add(baseDirectory + "/store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017C-31Mar2018-v1__MINIAOD/190920_220716/*.root");
   // chData2017->Add(baseDirectory + "/store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017D-31Mar2018-v1__MINIAOD/190920_220728/*.root");
   // chData2017->Add(baseDirectory + "/store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017E-31Mar2018-v1__MINIAOD/190920_220739/*.root");
   // chData2017->Add(baseDirectory + "/store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017F-31Mar2018-v1__MINIAOD/190920_220749/*.root");
+  //IT IS THE UNSKIMMED I COPIED
+  // for (int i=firstfile; i <= lastfile; i++){  
+
+  //   chData2017->Add(Form("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017B-31Mar2018-v1__MINIAOD/190920_204250/0000/out_DoubleEG_Run2017B-31Mar2018-v1_numEvent100_%d.root", i));
+  //   chData2017->Add(Form("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017C-31Mar2018-v1__MINIAOD/190920_220716/0000/out_DoubleEG_Run2017C-31Mar2018-v1_numEvent100_%d.root", i));
+  //   chData2017->Add(Form("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017D-31Mar2018-v1__MINIAOD/190920_220728/0000/out_DoubleEG_Run2017D-31Mar2018-v1_numEvent100%d.root_", i));
+  //   chData2017->Add(Form("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017E-31Mar2018-v1__MINIAOD/190920_220739/0000/out_DoubleEG_Run2017E-31Mar2018-v1_numEvent100_%d.root", i));
+  //   chData2017->Add(Form("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017F-31Mar2018-v1__MINIAOD/190920_220749/0000/out_DoubleEG_Run2017F-31Mar2018-v1_numEvent100_%d.root", i));
+
+  // }
+  chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017B-31Mar2018-v1__MINIAOD/190920_204250/0000/*.root");
+  chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017C-31Mar2018-v1__MINIAOD/190920_220716/0000/*.root");
+  chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017D-31Mar2018-v1__MINIAOD/190920_220728/0000/*.root");
+  chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017E-31Mar2018-v1__MINIAOD/190920_220739/0000/*.root");
+  chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/crab_DoubleEG__Run2017F-31Mar2018-v1__MINIAOD/190920_220749/0000/*.root");
 
   // TChain *chDataJetHT2017_unskimmed = new TChain(treeType);
   // if(includeUnskimmed) {
@@ -546,7 +566,7 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   // chains["data_2016"] = chData2016;
   // chains["data_2016_unskimmed"] = chData2016_unskimmed;
   // chains["data_2016_preREMINIAOD"] = chData2016_preREMINIAOD;
-  // chains["data_2017"] = chData2017;
+  chains["data_2017"] = chData2017;
   // chains["data_2017_unskimmed"] = chData2017_unskimmed;
   // chains["data_2018_prompt"] = chData2018_prompt;
   // chains["data_2018"] = chData2018;
