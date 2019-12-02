@@ -1,0 +1,7 @@
+xrdcp -r root://cmseos.fnal.gov//store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017B-31Mar2018-v1__MINIAOD/ /eos/cms/store/user/apsallid/exodiphoton/
+xrdcp -r root://cmseos.fnal.gov//store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017C-31Mar2018-v1__MINIAOD/ /eos/cms/store/user/apsallid/exodiphoton/
+xrdcp -r root://cmseos.fnal.gov//store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017D-31Mar2018-v1__MINIAOD/ /eos/cms/store/user/apsallid/exodiphoton/
+xrdcp -r root://cmseos.fnal.gov//store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017E-31Mar2018-v1__MINIAOD/ /eos/cms/store/user/apsallid/exodiphoton/
+xrdcp -r root://cmseos.fnal.gov//store/user/cawest/diphoton/55993ad/DoubleEG/crab_DoubleEG__Run2017F-31Mar2018-v1__MINIAOD/ /eos/cms/store/user/apsallid/exodiphoton/
+
+
