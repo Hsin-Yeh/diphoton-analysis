@@ -124,7 +124,7 @@ void testTheShapes(const std::string &year, const std::string &ws_indir, const s
     tmpin.freco = TFile::Open(Form("%s/ws_ResponseAndGen_M%s_k%s_%s.root", ws_indir.c_str(), M_bins.c_str(), coupling.c_str(),year.c_str()));  
     tmpin.wsreco = (RooWorkspace*) tmpin.freco->Get("HLFactory_ws");
     tmpin.fparamshape = TFile::Open(Form("%s/SignalParametricShapes_ws_kMpl%s.root", ws_outdir.c_str(), coupling.c_str()));
-    tmpin.wsparamshape = (RooWorkspace*) tmpin.fparamshape->Get("model_signal");
+    tmpin.wsparamshape = (RooWorkspace*) tmpin.fparamshape->Get("ws_inputs");
 
     theInput.push_back(tmpin);
 

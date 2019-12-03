@@ -387,10 +387,16 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     gnR->GetYaxis()->SetTitle("n_{R} [GeV]");
     gnR->GetXaxis()->SetTitle("m_{X}[GeV]");
     fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", 500,upperxmax);
+    // if (c==0){
+    //   fnR[c]->SetParameter(0,3.4);
+    // } else if (c==1){
+
+    // } else if (c==2){
+    // }
     gnR->Fit(TString::Format("fnR_cat%d",c), "R");
     gnR->Draw("APE");
     fnR[c]->Draw("same");   
-    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/nRVsMass_k%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/nRVsMass_%s_cat%d.png",couplingIn.c_str(), c));
 
     gnL->GetYaxis()->SetTitle("n_{L} [GeV]");
     gnL->GetXaxis()->SetTitle("m_{X} [GeV]");

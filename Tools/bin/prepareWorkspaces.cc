@@ -93,7 +93,7 @@ void AddSigData(RooWorkspace* w, Float_t mass, std::string coupling, const std::
 
   RooRealVar* mgg = buildRooVar("mgg", "m_{#gamma#gamma}", 2385, 230., 10000., "GeV");
   RooRealVar* mggGen = buildRooVar("mggGen", "m_{#gamma#gamma} gen", 2385, 230., 10000, "GeV");
-  RooRealVar* weight = buildRooVar("weight", "event weight", 0, 0 , 1000 , "nounits");
+  // RooRealVar* weight = buildRooVar("weight", "event weight", 0, 0 , 1000 , "nounits");
   RooRealVar* eventClass = buildRooVar("eventClass", "eventClass", 0, -10, 10, "nounits");
   
   RooArgSet* rooVars = new RooArgSet(*mgg, *mggGen, *eventClass); 
@@ -236,8 +236,8 @@ void sigModelResponseFcnFit(RooWorkspace* w, Float_t mass, std::string coupling,
   int iMass = (int)  abs(mass);
   TCanvas* canv2 = new TCanvas( Form("Canvas2_M%f_k%s", mass , coupling.c_str()) , Form("Canvas2_M%f_k%s", mass , coupling.c_str()) );
   canv2->cd();
-  TPaveText* label_cms = get_labelcms(0, year , true);
-  TPaveText* label_sqrt = get_labelsqrt(0);
+  // TPaveText* label_cms = get_labelcms(0, year , true);
+  // TPaveText* label_sqrt = get_labelsqrt(0);
 
   for(int c = 0; c<ncat+1; c++){
     std::cout << "RESPONSE FUNCTION FIT FOR CATEGORY " << c<< std::endl; 
@@ -263,7 +263,7 @@ void sigModelResponseFcnFit(RooWorkspace* w, Float_t mass, std::string coupling,
    
     responseadd[c]= new  RooDCBShape(TString::Format("responseaddpdf_cat%d",c),TString::Format("responseaddpdf_cat%d",c) , *w->var("massReduced"), cbpos_mean, cbpos_sigma,  cbneg_alphacb, cbpos_alphacb,  cbneg_n,cbpos_n) ;
 
-    w->import(*responseadd[c]);
+    w->import(*responseadd[c], RooFit::RecycleConflictNodes() );
     bool fixPar = false;
     if(mass==2000 && fixPar){
       w->var(TString::Format("reducedmass_sig_mean_cat%d",c))->setVal(-3.);
@@ -350,13 +350,13 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
   int ncat = NCAT;
   RooDataSet* signal;
   //  RooBreitWigner* bw[NCAT+1];
-  RooGenericPdf* bw[NCAT+1];
+  // RooGenericPdf* bw[NCAT+1];
   RooDCBShape* mgenadd[NCAT+1];
   int iMass =  (int) abs(mass);
   TCanvas* canv3 = new TCanvas( Form("Canvas3_M%f_k%s", mass , coupling.c_str()) , Form("Canvas3_M%f_k%s", mass , coupling.c_str()) );
   canv3->cd();
-  TPaveText* label_cms = get_labelcms(0, "2016", true);
-  TPaveText* label_sqrt = get_labelsqrt(0);
+  // TPaveText* label_cms = get_labelcms(0, "2016", true);
+  // TPaveText* label_sqrt = get_labelsqrt(0);
   
   for(int c = 2; c<ncat+1; c++){
     
@@ -463,7 +463,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 
   TCanvas* canv1 = new TCanvas(Form("Canvas1_%s",isample.c_str()),Form("Canvas_%s",isample.c_str()));
   canv1->cd();
-  RooPlot* p = w->var("mgg")->frame(RooFit::Range(230., 10000.), RooFit::Bins( 2385));
+  // RooPlot* p = w->var("mgg")->frame(RooFit::Range(230., 10000.), RooFit::Bins( 2385));
 
   //========================================================================
   std::cout << "Fit the response function" <<std::endl;

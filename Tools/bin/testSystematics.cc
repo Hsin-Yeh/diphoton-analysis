@@ -113,7 +113,7 @@ void testTheSystematics(const std::string &year, const std::string &ws_indir, co
     tmpin.M_bins = M_bins;
     tmpin.name = getBase(isample);
     tmpin.fparamshape = TFile::Open(Form("%s/SignalParametricShapes_ws_kMpl%s.root", ws_indir.c_str(), coupling.c_str()));
-    tmpin.wsparamshape = (RooWorkspace*) tmpin.fparamshape->Get("model_signal");
+    tmpin.wsparamshape = (RooWorkspace*) tmpin.fparamshape->Get("ws_inputs");
 
     theInput.push_back(tmpin);
 

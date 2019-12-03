@@ -41,6 +41,7 @@ std::map<std::string, std::string> prettyName;
 TString filestring(TString sample);
 void init(bool includeUnskimmmed, bool includeSignal); // initializes samples; can skip long initialization of unskimmed samples
 void initForFit(const std::string & inputdir); //initializes reduced samples for parametric signal fit
+void initForFitBkg(const std::string & inputdir); //initializes reduced samples for parametric bkg fit
 void initADD(const TString & baseDirectory); // initializes ADD samples; performed by a loop rather than being listed explicitly
 void initRSG(const TString & baseDirectory); // initializes RSG samples; performed by a loop rather than being listed explicitly
 void initHeavyHiggs(const TString & baseDirectory); // initializes Heavy Higgs samples; performed by a loop rather than being listed explicitly
@@ -1191,13 +1192,19 @@ void initForFit(const std::string & inputdir)
     }
   }
 
-  //Data 2017
-  treesforfit["data_2017"] = new TChain(treeType);
-  treesforfit["data_2017"]->Add(Form("%s/%s.root",inputdir.c_str(), "data_2017" ));
-    
 
 }
 
+void initForFitBkg(const std::string & inputdir){
+  //Data 2017
+  TString treeType("HighMassDiphoton");
+
+  std::vector<std::string> years = {"2017", "2018"};
+
+  treesforfit["data_2017"] = new TChain(treeType);
+  treesforfit["data_2017"]->Add(Form("%s/%s.root",inputdir.c_str(), "data_2017" ));
+
+}
 
 
 #endif
