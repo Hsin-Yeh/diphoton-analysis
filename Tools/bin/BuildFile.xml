@@ -44,5 +44,6 @@
   <bin file="bkgFit.cc" name="bkgFit.exe"/>
   <bin file="testShapes.cc" name="testShapes.exe"/>
   <bin file="testSystematics.cc" name="testSystematics.exe"/>
+  <bin file="bias_study.cc" name="bias_study.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>
