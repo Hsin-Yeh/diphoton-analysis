@@ -52,7 +52,7 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
 RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooPolyVar* polymgg, RooWorkspace* w, std::vector<std::string> cats);
 void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
 std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats);
-std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats);
+std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory);
 std::vector<RooFitResult*> BkgModelFitExpPARFunc(RooWorkspace* w);
 void runAllFits(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, int order);
 void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample, std::vector<std::string> cats, int order);
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
   //========================================================================
   //read the reduced input root trees
-  initForFit(inputdir);
+  initForFitBkg(inputdir);
 
   //Categories
   std::vector<std::string> cats; 
@@ -201,8 +201,6 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 
   std::cout << ws_dir << std::endl;
 
-  TFile *fout = new TFile(Form("%s/bkg_%s.root", ws_dir.c_str(),year.c_str()), "recreate");
-
   TString fileBaseName("HighMassGG");    
   TString fileBkgName("HighMassGG.inputbkg");
   TString card_name("HighMass-hgg_models_Bkg.rs");
@@ -213,6 +211,8 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   w->var("mgg")->setMax(MAXmass);
   w->Print("V");
 
+  //First we find the order of the functions (true) and then we save those pdfs 
+  bool findorder = false; 
   //blind or not
   bool blind = true;
 
@@ -244,60 +244,98 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   models.push_back("moddijet");
   
   // fitresults[order] = BkgModelFitFunc(w, models[4], blind, dobands, year, ws_dir, order, cats); 
-
-  for (int i=1; i<=order; ++i){
-
-    if (i==1){
-      prevminnll.push_back( 0. ) ;//BB
-      prevminnll.push_back( 0. ) ;//BE
-      prevdof.push_back( 0 ) ;//BB
-      prevdof.push_back( 0 ) ;//BE
-     } else{
-      prevminnll[0] = curminnll[i-1][0];
-      prevminnll[1] = curminnll[i-1][1];
-      prevdof[0] = curdof[i-1][0];
-      prevdof[1] = curdof[i-1][1];
-    }
-    fitresults[i] = BkgModelFitFunc(w, models[3], blind, dobands, year, ws_dir, i, cats); 
-    curminnll[i].push_back( fitresults[i][0]->minNll() );
-    curminnll[i].push_back( fitresults[i][1]->minNll() );
-    curdof[i].push_back( fitresults[i][0]->floatParsFinal().getSize() );
-    curdof[i].push_back( fitresults[i][1]->floatParsFinal().getSize() );
-
-    dnll[i].push_back( 2*(curminnll[i][0] - prevminnll[0]) );
-    dnll[i].push_back( 2*(curminnll[i][1] - prevminnll[1]) );
-    diffdof[i].push_back( curdof[i][0] - prevdof[0] );
-    diffdof[i].push_back( curdof[i][1] - prevdof[1] );
-
-    //In the zero order no sense to take the diff
-    if (i==1){
-      diffdof[i][0] = -1000;
-      diffdof[i][1] = -1000;
-    }
-  }
-
-  for (unsigned int c = 0; c < cats.size(); ++c) {
-    std::cout << "========================================================"<< std::endl;
-    std::cout << "Cat " << cats[c] << std::endl;
-
+  
+  if (findorder){
+    std::vector<int> dummy;
     for (int i=1; i<=order; ++i){
-      // fitresult[c]->floatParsFinal().getSize()
-      std::cout << "Order " << i << " 2*dnll " << dnll[i][c] << " dof difference " << diffdof[i][c]  << std::endl;
-      std::cout << "TMath::Prob(-2dnll,order-prev_order) " <<  TMath::Prob(  -dnll[i][c], diffdof[i][c] ) << std::endl;
-      fitresults[i][c]->Print("V");
+
+      if (i==1){
+	prevminnll.push_back( 0. ) ;//BB
+	prevminnll.push_back( 0. ) ;//BE
+	prevdof.push_back( 0 ) ;//BB
+	prevdof.push_back( 0 ) ;//BE
+      } else{
+	prevminnll[0] = curminnll[i-1][0];
+	prevminnll[1] = curminnll[i-1][1];
+	prevdof[0] = curdof[i-1][0];
+	prevdof[1] = curdof[i-1][1];
+      }
+      fitresults[i] = BkgModelFitFunc(w, models[3], blind, dobands, year, ws_dir, i, cats, findorder, dummy); 
+      curminnll[i].push_back( fitresults[i][0]->minNll() );
+      curminnll[i].push_back( fitresults[i][1]->minNll() );
+      curdof[i].push_back( fitresults[i][0]->floatParsFinal().getSize() );
+      curdof[i].push_back( fitresults[i][1]->floatParsFinal().getSize() );
+
+      dnll[i].push_back( 2*(curminnll[i][0] - prevminnll[0]) );
+      dnll[i].push_back( 2*(curminnll[i][1] - prevminnll[1]) );
+      diffdof[i].push_back( curdof[i][0] - prevdof[0] );
+      diffdof[i].push_back( curdof[i][1] - prevdof[1] );
+
+      //In the zero order no sense to take the diff
+      if (i==1){
+	diffdof[i][0] = -1000;
+	diffdof[i][1] = -1000;
+      }
     }
+
+    for (unsigned int c = 0; c < cats.size(); ++c) {
+      std::cout << "========================================================"<< std::endl;
+      std::cout << "Cat " << cats[c] << std::endl;
+
+      for (int i=1; i<=order; ++i){
+	// fitresult[c]->floatParsFinal().getSize()
+	std::cout << "Order " << i << " 2*dnll " << dnll[i][c] << " dof difference " << diffdof[i][c]  << std::endl;
+	std::cout << "TMath::Prob(-2dnll,order-prev_order) " <<  TMath::Prob(  -dnll[i][c], diffdof[i][c] ) << std::endl;
+	fitresults[i][c]->Print("V");
+      }
+    }
+  } else {
+  
+    //We will have a workspace and file for each final pdf because the values of the rs file 
+    //cannot be set all at once to have a succesfull fit. 
+    std::map<std::string, TFile *> fout; //[model][file]
+    std::map<std::string, std::vector<int> > modelorder; //[model][order] for cats
+    
+    //SET YOUR FINAL ORDER CHOICES HERE (as usual c=0 EBEB c=1 EBEE)
+    modelorder["pow"].push_back(1);
+    modelorder["pow"].push_back(1);
+
+    modelorder["expow"].push_back(2);
+    modelorder["expow"].push_back(1);
+
+    modelorder["invpow"].push_back(3);
+    modelorder["invpow"].push_back(1);
+
+    modelorder["invpowlin"].push_back(1);
+    modelorder["invpowlin"].push_back(1);
+
+    modelorder["moddijet"].push_back(1);
+    modelorder["moddijet"].push_back(1);
+
+    
+    // std::string themodel = "pow"; // with models[0]
+    // std::string themodel = "expow"; // with models[1]
+    // std::string themodel = "invpow"; // with models[2]
+    // std::string themodel = "invpowlin"; // with models[3]
+    std::string themodel = "moddijet"; // with models[4]
+    fout[themodel] = new TFile(Form("%s/bkg_%s_%s.root", ws_dir.c_str(),themodel.c_str(), year.c_str()), "recreate");
+   
+   // fitresults[modelorder[themodel][c]] =  BkgModelFitFunc(w, models[4], blind, dobands, year, ws_dir, modelorder[themodel][c] , cats, findorder, c); 
+    //The order is dummy in this case
+    fitresults[0] =  BkgModelFitFunc(w, models[4], blind, dobands, year, ws_dir, -99 , cats, findorder, modelorder[themodel]); 
+
+    for (unsigned int c = 0; c < cats.size(); ++c) {
+    }
+
+  
+
+    //Save the resulting workspace
+    //w->Print("V");
+    fout[themodel]->cd();
+    w->Write();
+    fout[themodel]->Write();
+    fout[themodel]->Close();
   }
-
-  
-
-  
-
-  //Save the resulting workspace
-  //w->Print("V");
-  fout->cd();
-  w->Write();
-  fout->Write();
-  fout->Close();
 
 }
 
@@ -357,11 +395,11 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
     //invpowlin model
   } else if ( model == "invpowlin") {
     // coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_invpowlin_slo_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_alp_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_bet_cat%d", catnum)) );
-    // coefList = new RooArgList(*polymgg, *w->var(TString::Format("PhotonsMass_bkg_invpowlin_slo_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_alp_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_bet_cat%d", catnum)) );
-    coefList = new RooArgList(*xvar, *polymgg, *w->var(TString::Format("PhotonsMass_bkg_invpowlin_slo_cat%d", catnum)) );
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_invpowlin_slo_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_alp_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpowlin_bet_cat%d", catnum)) );
+    // coefList = new RooArgList(*xvar, *polymgg, *w->var(TString::Format("PhotonsMass_bkg_invpowlin_slo_cat%d", catnum)) );
 
-    // formula = "pow(1+@0*@1,@2+@3*@0)";
-    formula = "pow(1-@0*@2,@1)";
+    formula = "pow(1+@0*@1,@2+@3*@0)";
+    // formula = "pow(1-@0*@2,@1)";
     std::cout << "====================================================================" << std::endl;
     std::cout << formula << std::endl;
 
@@ -439,7 +477,7 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
 }
 
 //-----------------------------------------------------------------------------------
-std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats) {
+std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory) {
 
   //RooMsgService::instance().setGlobalKillBelow(RooFit::WARNING) ;
   RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
@@ -478,6 +516,11 @@ std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, b
     //   if ( i == order ){formula += ")";}
     // }
     RooArgList *coeffs = new RooArgList();
+
+    //In case we do not want to find the correct order then 
+    //we set the order we want for the relevant category. 
+    if ( !findorder ) {order = orderforcategory[c]; }
+
     for (int i=0; i<=order; ++i){
       coeffs->add( *w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i, c))  );
     }
@@ -491,7 +534,7 @@ std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, b
 
     //In case of the dijet model we want the polynomial of the 1-mgg
     if (model == "moddijet"){
-      OneMinusMgg[c] = new RooPolyVar("OneMinusMgg","OneMinusMgg", *mgg, RooArgList( RooFit::RooConst(1.), RooFit::RooConst(-1.) ), 0 );
+      OneMinusMgg[c] = new RooPolyVar(Form("OneMinusMgg_%s", cats[c].c_str()), Form("OneMinusMgg_%s", cats[c].c_str()), *mgg, RooArgList( RooFit::RooConst(1.), RooFit::RooConst(-1.) ), 0 );
       polymgg[c] = new RooPolyVar(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), *OneMinusMgg[c], *coeffs, 0 );
     }
 
