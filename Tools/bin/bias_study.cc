@@ -63,8 +63,8 @@ struct thepdf {
 
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
-std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, int ntoys, std::vector<window> windows);
-void fitToys(std::vector<thepdf> thetoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, bool approx_minos);
+std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, int ntoystart, int ntoyend, std::vector<window> windows);
+void fitToys(std::vector<thepdf> thetoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos);
 RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooPolyVar* polymgg, RooWorkspace* w, std::vector<std::string> cats);
 void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
 TPaveText* get_labelsqrt( int legendquadrant );
@@ -73,11 +73,11 @@ TPaveText* get_labelcms( int legendquadrant, std::string year, bool sim);
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-  std::string year, inputdir, order, ntoys;
+  std::string year, inputdir, themodel, ntoystart, ntoyend;
   
 
-  if(argc!=4) {
-    std::cout << "Syntax: bkgFit.exe [2016/2017/2018] [input] [ntoys]" << std::endl;
+  if(argc!=6) {
+    std::cout << "Syntax: bias_study.exe [2016/2017/2018] [input] [model] [toystart] [toysend]" << std::endl;
       return -1;
   }
   else {
@@ -87,7 +87,9 @@ int main(int argc, char *argv[])
       return -1;
     }
     inputdir = argv[2];
-    ntoys = argv[3];
+    themodel = argv[3];
+    ntoystart = argv[4];
+    ntoyend = argv[5];
  }
 
   //Categories
@@ -96,9 +98,19 @@ int main(int argc, char *argv[])
   cats.push_back("EBEB");
   cats.push_back("EBEE");
 
+  //Models
+  std::vector<std::string> models;
+  // models.push_back("pow");
+  // models.push_back("expow");
+  // models.push_back("invpow");
+  // models.push_back("invpowlin");
+  // models.push_back("moddijet");
+  //Due to speed issues will run each model separately and sent to condor. 
+  models.push_back(themodel);
+
   bool blind = true;
   bool dobands = false;
-  bool approxminos = false;
+  bool approxminos = true;
 
   std::vector<window> windows;
   window tmpwind;
@@ -133,25 +145,17 @@ int main(int argc, char *argv[])
 
   //========================================================================
   //throw toys 
-  std::vector<thepdf> thetoys = throwtoys(year, inputdir, cats, std::stoi(ntoys), windows);
-  fitToys(thetoys, blind, dobands, year, inputdir, cats, approxminos);
+  std::vector<thepdf> thetoys = throwtoys(year, inputdir, cats, models, std::stoi(ntoystart), std::stoi(ntoyend), windows);
+  fitToys(thetoys, blind, dobands, year, inputdir, cats, models, approxminos);
 
 }
 
 //-----------------------------------------------------------------------------------
 //Definitions
 //-----------------------------------------------------------------------------------
-std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, int ntoys, std::vector<window> windows){
+std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, int ntoystart, int ntoyend, std::vector<window> windows){
 
   RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
-
-    //Models
-  std::vector<std::string> models;
-  models.push_back("pow");
-  models.push_back("expow");
-  models.push_back("invpow");
-  models.push_back("invpowlin");
-  models.push_back("moddijet");
   
   //Order
   std::map<std::string, std::vector<int> > modelorder; //[model][order] for cats
@@ -244,8 +248,9 @@ std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir
       // tmppdf.pdf->Print();
       std::cout << tmppdf.nominalnorm << " " << gRandom->Poisson(  nBackground[c]->getVal() ) << std::endl; 
 
-      for (int toy = 0; toy < ntoys; ++toy){
+      for (int toy = ntoystart; toy < ntoyend; ++toy){
 	// RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , TRandom::Poisson(  nBackground[c]->getVal() ) );
+	gRandom->SetSeed(0);
 	RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , gRandom->Poisson(  nBackground[c]->getVal() ) );
 	data->SetName(Form("toy_%s_%s_%d",model.c_str(), cats[c].c_str(), toy));
 	data->SetTitle(Form("toy_%s_%s_%d",model.c_str(), cats[c].c_str(), toy));
@@ -263,20 +268,11 @@ std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir
 
 }
 //-----------------------------------------------------------------------------------
-void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, bool approx_minos){
+void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos){
 
   RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
   RooPolyVar* polymgg[NCAT];
   RooPolyVar * OneMinusMgg[NCAT];
-
-  //For the building of the models
-  //Models
-  std::vector<std::string> models;
-  models.push_back("pow");
-  models.push_back("expow");
-  models.push_back("invpow");
-  models.push_back("invpowlin");
-  models.push_back("moddijet");
 
   std::map<std::string, TString > card_name; 
   std::map<std::string, HLFactory *> hlf;
@@ -312,13 +308,6 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
     mgg->setMin(minMassFit);
     mgg->setMax(maxMassFit);
     
-    //We will create the ntuple to hold the bias results. 
-    std::map<std::string, TNtuple* > biases; //[windows][ntuple]
-    biases.clear();    
-    for (auto wind : pdf.truenorms){
-      biases[wind.name] = new TNtuple(Form("%s/tree_bias_%s_%s_%s", ws_dir.c_str(), pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), Form("%s/tree_bias_%s_%s_%s", ws_dir.c_str(), pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), "toy:truth:fit:minos:errhe:errp:errm:bias:fitmin:fitmax" );
-    }
-
     RooArgList *coeffs = new RooArgList();
     
     for (int i=0; i<=pdf.order; ++i){
@@ -338,13 +327,22 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
     RooDataSet* edset;
     RooArgSet *set_mgg;
 
+    //We will create the ntuple to hold the bias results. 
+    std::map<std::string, TNtuple* > biases; //[windows][ntuple]
+    biases.clear();    
+    std::map<std::string, TFile* > biasesfiles; //[toyname+windows][file]
+
     for (auto toy : pdf.toys){
 
-      std::cout << "TOY " << toy->GetName() << std::endl;
+      std::string thetoyname = toy->GetName();
+      std::cout << "TOY " << thetoyname << std::endl;
       mgg->setMin(minMassFit);
       mgg->setMax(maxMassFit);
  
-      //Here we obtain ghat(mgg) after a fit to the toy from h(mgg). 
+      std::size_t found = thetoyname.find_last_of("_");
+      int toynum = std::stoi(thetoyname.substr(found+1));
+      
+     //Here we obtain ghat(mgg) after a fit to the toy from h(mgg). 
       fitresult[pdf.model].push_back ( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*toy, RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(-1000),RooFit::Warnings(false),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) ) ;
 
       fitresult[pdf.model].back()->Print("V");
@@ -359,6 +357,7 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
       //For the pull
       RooRealVar *roonorm;
       for (auto wind : pdf.truenorms){
+
       	mgg->setRange(wind.name.c_str(), wind.low, wind.high);
       	set_mgg = new RooArgSet(*mgg);
       	RooAbsReal * integral = PhotonsMassBkgTmp0->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg), wind.name.c_str());
@@ -425,8 +424,8 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
       	  roonorm->setConstant(true); 
       	  RooMinimizer *minimm = new RooMinimizer(*nll);
       	  minimm->setPrintLevel( -1 );
-      	  // minimm->setMaxIterations(15);
-      	  // minimm->setMaxFunctionCalls(100);                            
+      	  minimm->setMaxIterations(15);
+      	  minimm->setMaxFunctionCalls(100);                            
       	  // minimm->setStrategy(1);
       	  // minimm->setEps(1000);
       	  // minimm->setOffsetting(true);
@@ -440,8 +439,8 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
       	  std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
       	  RooMinimizer *minimp = new RooMinimizer(*nll);
       	  minimp->setPrintLevel( -1 );
-      	  // minimp->setMaxIterations(15);
-      	  // minimp->setMaxFunctionCalls(100);                            
+      	  minimp->setMaxIterations(15);
+      	  minimp->setMaxFunctionCalls(100);                            
       	  // minimp->setStrategy(1);
       	  // minimp->setEps(1000);
       	  // minimp->setOffsetting(true);
@@ -468,15 +467,27 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
       	  bias = (nomnorm-wind.norm)/abs(errh);
       	}
 
-	std::string thetoyname = toy->GetName();
-	std::size_t found = thetoyname.find_last_of("_");
-	int toynum = std::stoi(thetoyname.substr(found+1));
+	//Will need to save the info for later processing. 
+	//If the code reached here it means that it didn't stack and 
+	//we can have some output, avoiding corrupted root files. 
+	//All pdf model, cat, window info will be saved in a separate tree inside this file. 
+	//Speed issues require to save separate files and sent to condor. 
+	biasesfiles[wind.name] = new TFile(Form("%s/biasfiles/%s/%s/%s/tree_bias_%s_%s.root", ws_dir.c_str(), year.c_str(), pdf.model.c_str(), wind.name.c_str(), thetoyname.c_str(), wind.name.c_str()), "recreate");
+	biasesfiles[wind.name]->cd();
+
+	biases[wind.name] = new TNtuple(Form("tree_bias_%s_%s_%s", pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), Form("tree_bias_%s_%s_%s", pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), "toy:truth:fit:minos:errhe:errp:errm:bias:fitmin:fitmax" );
       	biases[wind.name]->Fill( toynum, wind.norm, nomnorm,  minos, hesseerr, fiterrh, fiterrl, bias, minMassFit, maxMassFit );
+	//Save ntuple here
+	biases[wind.name]->Write();
+	//Save toy file
+	biasesfiles[wind.name]->Write();
+	biasesfiles[wind.name]->Close();
 
       } //end of loop over windows
 
+
     } //end of loop over toys
-    
+
   }//end of loop over pdfs 
 
 }
