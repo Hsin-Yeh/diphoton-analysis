@@ -1,4 +1,4 @@
-mgg[335,1000];
+mgg[320,5000];
 weight[0, 1000];
 eventClass[0,10];
 
@@ -10,24 +10,24 @@ PhotonsMass_bkg_dijet_linc_cat1[5.,-100.0,100.0];
 PhotonsMass_bkg_dijet_logc_cat0[-1.,-100.0,100.0];
 PhotonsMass_bkg_dijet_logc_cat1[-1.,-100.0,100.0];
 
-PhotonsMass_bkg_pow_a_cat0[-7., -100., 100.];
-PhotonsMass_bkg_pow_a_cat1[-7., -100., 100.];
+PhotonsMass_bkg_pow_a_cat0[-5., -100., 100.];
+PhotonsMass_bkg_pow_a_cat1[-5., -100., 100.];
 
-PhotonsMass_bkg_polymgg_a0_cat0[2.e-3, -100., 100.];
-PhotonsMass_bkg_polymgg_a1_cat0[1., -100., 100.];
-PhotonsMass_bkg_polymgg_a2_cat0[1., -100., 100.];
-PhotonsMass_bkg_polymgg_a3_cat0[1., -100., 100.];
-PhotonsMass_bkg_polymgg_a4_cat0[1., -100., 100.];
-PhotonsMass_bkg_polymgg_a5_cat0[1., -100., 100.];
-PhotonsMass_bkg_polymgg_a6_cat0[1., -100., 100.];
+PhotonsMass_bkg_polymgg_a0_cat0[800., -1000., 1000.];
+PhotonsMass_bkg_polymgg_a1_cat0[2.e-3, -100., 100.];
+PhotonsMass_bkg_polymgg_a2_cat0[2.e-3, -100., 100.];
+PhotonsMass_bkg_polymgg_a3_cat0[0.001, -100., 100.];
+PhotonsMass_bkg_polymgg_a4_cat0[0.01, -100., 100.];
+PhotonsMass_bkg_polymgg_a5_cat0[2.e-9, -100., 100.];
+PhotonsMass_bkg_polymgg_a6_cat0[2.e-9, -100., 100.];
 
-PhotonsMass_bkg_polymgg_a0_cat1[2.e-3, -100., 100.];
-PhotonsMass_bkg_polymgg_a1_cat1[-0.1, -100., 100.];
-PhotonsMass_bkg_polymgg_a2_cat1[-0.1, -100., 100.];
-PhotonsMass_bkg_polymgg_a3_cat1[-0.1, -100., 100.];
-PhotonsMass_bkg_polymgg_a4_cat1[-0.1, -100., 100.];
-PhotonsMass_bkg_polymgg_a5_cat1[-0.1, -100., 100.];
-PhotonsMass_bkg_polymgg_a6_cat1[-0.1, -100., 100.];
+PhotonsMass_bkg_polymgg_a0_cat1[1.e-4, -100., 100.];
+PhotonsMass_bkg_polymgg_a1_cat1[2.e-5, -100., 100.];
+PhotonsMass_bkg_polymgg_a2_cat1[2.e-6, -100., 100.];
+PhotonsMass_bkg_polymgg_a3_cat1[2.e-9, -100., 100.];
+PhotonsMass_bkg_polymgg_a4_cat1[2.e-9, -100., 100.];
+PhotonsMass_bkg_polymgg_a5_cat1[2.e-9, -100., 100.];
+PhotonsMass_bkg_polymgg_a6_cat1[2.e-9, -100., 100.];
 
 PhotonsMass_bkg_expow_alp_cat0[-4., -100., 100.];
 PhotonsMass_bkg_expow_alp_cat1[-4., -100., 100.];
@@ -57,7 +57,7 @@ PhotonsMass_bkg_moddijet_loga_cat0[-1., -100., 100.];
 PhotonsMass_bkg_moddijet_loga_cat1[-1., -100., 100.];
 
 PhotonsMass_bkg_moddijet_linb_cat0[-0.1, -100., 100.];
-PhotonsMass_bkg_moddijet_linb_cat1[-0.1, -100., 100.];
+PhotonsMass_bkg_moddijet_linb_cat1[0., -100., 100.];
 
 PhotonsMass_bkg_moddijet_sqrb_cat0[1./13.e+3, -100., 100.];
 PhotonsMass_bkg_moddijet_sqrb_cat1[1./13.e+3, -100., 100.];

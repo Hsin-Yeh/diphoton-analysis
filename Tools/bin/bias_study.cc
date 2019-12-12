@@ -28,6 +28,7 @@
 #include "TLegend.h"
 #include "TGraphAsymmErrors.h"
 #include "TRandom.h"
+#include "TNtuple.h"
 
 using namespace RooFit;
 using namespace RooStats;
@@ -35,8 +36,8 @@ using namespace RooStats;
 static const Int_t NCAT = 2; //BB and BE for the moment 
 float MINmass = 320.;
 float MINmassBE = 360.;
-float MAXmass = 1000.;
-Int_t nBinsMass= 120;
+float MAXmass = 1000.;//1000.
+Int_t nBinsMass= 120;//120
 
 struct window {
   std::string name; 
@@ -63,7 +64,7 @@ struct thepdf {
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
 std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, int ntoys, std::vector<window> windows);
-void fitToys(std::vector<thepdf> thetoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats);
+void fitToys(std::vector<thepdf> thetoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, bool approx_minos);
 RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooPolyVar* polymgg, RooWorkspace* w, std::vector<std::string> cats);
 void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
 TPaveText* get_labelsqrt( int legendquadrant );
@@ -97,6 +98,7 @@ int main(int argc, char *argv[])
 
   bool blind = true;
   bool dobands = false;
+  bool approxminos = false;
 
   std::vector<window> windows;
   window tmpwind;
@@ -132,7 +134,7 @@ int main(int argc, char *argv[])
   //========================================================================
   //throw toys 
   std::vector<thepdf> thetoys = throwtoys(year, inputdir, cats, std::stoi(ntoys), windows);
-  fitToys(thetoys, blind, dobands, year, inputdir, cats);
+  fitToys(thetoys, blind, dobands, year, inputdir, cats, approxminos);
 
 }
 
@@ -261,7 +263,7 @@ std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir
 
 }
 //-----------------------------------------------------------------------------------
-void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats){
+void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, bool approx_minos){
 
   RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
   RooPolyVar* polymgg[NCAT];
@@ -309,6 +311,13 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
     mgg->setUnit("GeV");
     mgg->setMin(minMassFit);
     mgg->setMax(maxMassFit);
+    
+    //We will create the ntuple to hold the bias results. 
+    std::map<std::string, TNtuple* > biases; //[windows][ntuple]
+    biases.clear();    
+    for (auto wind : pdf.truenorms){
+      biases[wind.name] = new TNtuple(Form("%s/tree_bias_%s_%s_%s", ws_dir.c_str(), pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), Form("%s/tree_bias_%s_%s_%s", ws_dir.c_str(), pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), "toy:truth:fit:minos:errhe:errp:errm:bias:fitmin:fitmax" );
+    }
 
     RooArgList *coeffs = new RooArgList();
     
@@ -325,11 +334,17 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
     }
 
     RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(pdf.model, "", pdf.catnum, mgg, polymgg[pdf.catnum], w[pdf.model], cats);
+    RooDataSet* dset;
+    RooDataSet* edset;
+    RooArgSet *set_mgg;
 
     for (auto toy : pdf.toys){
 
       std::cout << "TOY " << toy->GetName() << std::endl;
-
+      mgg->setMin(minMassFit);
+      mgg->setMax(maxMassFit);
+ 
+      //Here we obtain ghat(mgg) after a fit to the toy from h(mgg). 
       fitresult[pdf.model].push_back ( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*toy, RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(-1000),RooFit::Warnings(false),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) ) ;
 
       fitresult[pdf.model].back()->Print("V");
@@ -341,6 +356,124 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
       PlotFitResult(w[pdf.model], ctmp[pdf.model].back(), pdf.catnum, mgg, toy, pdf.model, PhotonsMassBkgTmp0, minMassFit, maxMassFit, blind, dobands, fitresult[pdf.model].back()->floatParsFinal().getSize(), year, ws_dir, pdf.order);
       ctmp[pdf.model].back()->SaveAs( Form("%s/Bkg_%s_%d_%s.png", ws_dir.c_str(),toy->GetName(), pdf.order, year.c_str() ) );
  
+      //For the pull
+      RooRealVar *roonorm;
+      for (auto wind : pdf.truenorms){
+      	mgg->setRange(wind.name.c_str(), wind.low, wind.high);
+      	set_mgg = new RooArgSet(*mgg);
+      	RooAbsReal * integral = PhotonsMassBkgTmp0->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg), wind.name.c_str());
+      	dset = (RooDataSet*) toy->reduce(Form("mgg > %f && mgg < %f", wind.low, wind.high ) );
+
+      	double nomnorm = integral->getVal()*dset->sumEntries();
+      	if (nomnorm == 0.) {continue;}
+      	std::cout << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
+
+      	double largeNum = std::max(0.1,nomnorm*50.); 
+      	roonorm =  new RooRealVar(Form("norm_%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(),  wind.name.c_str()), Form("norm_%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(),  wind.name.c_str()) , nomnorm,-largeNum,largeNum);
+      	roonorm->setConstant(false);
+
+      	RooExtendPdf *epdf = new RooExtendPdf(Form("%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(), wind.name.c_str()), Form("%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(), wind.name.c_str()), *PhotonsMassBkgTmp0, *roonorm, wind.name.c_str());
+
+      	edset = (RooDataSet*) dset;
+      	RooAbsReal *nll = epdf->createNLL( *edset, Extended());
+      	RooMinimizer *minim = new RooMinimizer(*nll);
+      	// minim->setEps(1000);
+      	// minim->setOffsetting(true);
+      	// minim->setMinimizerType("Minuit2");
+      	// minim->setMaxIterations(15);
+      	// minim->setMaxFunctionCalls(100);
+      	minim->setPrintLevel(-1);
+	
+      	std::cout << "Running migrad" << std::endl;
+	//Strategy { Speed =0, Balance =1, Robustness =2 }
+      	minim->setStrategy(0);
+      	int migrad = minim->migrad();
+
+      	std::cout << "int migrad" << migrad << std::endl;
+      	if (migrad != 0){ continue; }
+
+      	nomnorm = roonorm->getVal();
+                        
+      	std::cout << "Now running hesse" << std::endl;
+      	int hes = minim->hesse();
+      	std::cout << "int hesse" << hes << std::endl;
+      	double hesseerr = roonorm->getError();
+      	double fiterrh  = roonorm->getErrorHi();
+      	double fiterrl  = roonorm->getErrorLo();
+
+	int minos = -999;
+	if (!approx_minos){
+      	  std::cout << "Running minos" << std::endl;
+	  
+      	  minos = minim->minos( RooArgSet(*roonorm) ) ;
+      	  if (minos == 0){ 
+      	    if (roonorm->getErrorHi() != 0.){ fiterrh = roonorm->getErrorHi();}
+      	    if (roonorm->getErrorLo() != 0.){ fiterrl = roonorm->getErrorLo();}
+      	  }
+      	} else {
+      	  std::cout << "Computing approximate minos errors" << std::endl;
+      	  double fitval  = roonorm->getVal();
+      	  fiterrh = abs(roonorm->getErrorHi()/2.);
+      	  fiterrl = abs(roonorm->getErrorLo()/2.);
+
+      	  std::cout << "Computing NLL at minimum" << std::endl;
+      	  double minll  = nll->getVal();
+      	  if (fiterrl < fitval){ roonorm->setVal(fitval-fiterrl);}
+      	  else { roonorm->setVal(0.1); fiterrl = fitval - 0.1;}
+
+      	  std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
+      	  roonorm->setConstant(true); 
+      	  RooMinimizer *minimm = new RooMinimizer(*nll);
+      	  minimm->setPrintLevel( -1 );
+      	  // minimm->setMaxIterations(15);
+      	  // minimm->setMaxFunctionCalls(100);                            
+      	  // minimm->setStrategy(1);
+      	  // minimm->setEps(1000);
+      	  // minimm->setOffsetting(true);
+      	  // minimm->setMinimizerType("Minuit2");
+      	  minimm->migrad();
+      	  double nllm = nll->getVal();
+    
+          roonorm->setVal(fitval+fiterrh);
+      	  roonorm->setConstant(true); 
+	
+      	  std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
+      	  RooMinimizer *minimp = new RooMinimizer(*nll);
+      	  minimp->setPrintLevel( -1 );
+      	  // minimp->setMaxIterations(15);
+      	  // minimp->setMaxFunctionCalls(100);                            
+      	  // minimp->setStrategy(1);
+      	  // minimp->setEps(1000);
+      	  // minimp->setOffsetting(true);
+      	  // minimp->setMinimizerType("Minuit2");
+      	  minimp->migrad();
+      	  double nllp =  nll->getVal();
+                
+      	  if ( (nllm-minll > 0.) && (nllp-minll > 0.) ){
+      	    fiterrh = std::max(hesseerr,fiterrh / sqrt(2.*(nllp-minll))); 
+      	    fiterrl = std::max(hesseerr,fiterrl / sqrt(2.*(nllm-minll)));
+      	    minos = 0;
+      	  } else {
+      	    minos = 1;
+      	  }
+
+      	}//end of approx minos
+      	double errh = (fiterrh != 0.) ? fiterrh : hesseerr;
+      	double errl = (fiterrl != 0.) ? fiterrl : hesseerr;
+	
+      	double bias = 0.;
+      	if (nomnorm > wind.norm){                            
+      	  bias = (nomnorm-wind.norm)/abs(errl);
+      	} else{
+      	  bias = (nomnorm-wind.norm)/abs(errh);
+      	}
+
+	std::string thetoyname = toy->GetName();
+	std::size_t found = thetoyname.find_last_of("_");
+	int toynum = std::stoi(thetoyname.substr(found+1));
+      	biases[wind.name]->Fill( toynum, wind.norm, nomnorm,  minos, hesseerr, fiterrh, fiterrl, bias, minMassFit, maxMassFit );
+
+      } //end of loop over windows
 
     } //end of loop over toys
     
