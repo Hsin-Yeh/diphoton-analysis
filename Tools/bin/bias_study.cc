@@ -352,7 +352,7 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
       // TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories",0,0,500,500);
       ctmp[pdf.model].push_back( new TCanvas(Form("ctmp_%s_%s",pdf.model.c_str(), toy->GetName()),"PhotonsMass Background Categories",0,0,500,500)  );
       PlotFitResult(w[pdf.model], ctmp[pdf.model].back(), pdf.catnum, mgg, toy, pdf.model, PhotonsMassBkgTmp0, minMassFit, maxMassFit, blind, dobands, fitresult[pdf.model].back()->floatParsFinal().getSize(), year, ws_dir, pdf.order);
-      ctmp[pdf.model].back()->SaveAs( Form("%s/Bkg_%s_%d_%s.png", ws_dir.c_str(),toy->GetName(), pdf.order, year.c_str() ) );
+      // ctmp[pdf.model].back()->SaveAs( Form("%s/Bkg_%s_%d_%s.png", ws_dir.c_str(),toy->GetName(), pdf.order, year.c_str() ) );
  
       //For the pull
       RooRealVar *roonorm;
