@@ -1,4 +1,4 @@
-mgg[320,5000];
+mgg[0,5000];
 weight[0, 1000];
 eventClass[0,10];
 
@@ -44,10 +44,10 @@ PhotonsMass_bkg_invpow_alp_cat1[-30., -100., 100.];
 PhotonsMass_bkg_invpowlin_slo_cat0[1.e-3, -100., 100.];
 PhotonsMass_bkg_invpowlin_slo_cat1[1.e-3, -100., 100.];
 
-PhotonsMass_bkg_invpowlin_alp_cat0[-4., -100., 100.];
+PhotonsMass_bkg_invpowlin_alp_cat0[-10., -100., 100.];
 PhotonsMass_bkg_invpowlin_alp_cat1[-4., -100., 100.];
 
-PhotonsMass_bkg_invpowlin_bet_cat0[0., -100., 100.];
+PhotonsMass_bkg_invpowlin_bet_cat0[1.e-3., -100., 100.];
 PhotonsMass_bkg_invpowlin_bet_cat1[0., -100., 100.];
 
 PhotonsMass_bkg_moddijet_lina_cat0[5., -100., 100.];

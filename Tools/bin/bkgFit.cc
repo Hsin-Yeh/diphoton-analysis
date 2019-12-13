@@ -37,8 +37,10 @@ static const Int_t NCAT = 2; //BB and BE for the moment
 // std::map<std::string, float> MINmass, MAXmass;
 float MINmass = 320.;
 float MINmassBE = 360.;
-float MAXmass = 1000.;
-Int_t nBinsMass= 120;
+//Will go up to 5000 for the moment. 
+float MAXmass = 5000.;
+//Will use 2 GeV bins so this is only for data viewing. 
+Int_t nBinsMass=120;
 
 //std::map<std::string, float> test;
 // MINmass["EBEB"] = 230.;
@@ -121,7 +123,8 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
   Int_t ncat = NCAT;//BB and BE for the moment
 
   Float_t minMassFit, maxMassFit;
-  minMassFit = MINmass;
+  //we want to see the whole range. Later we will limit the fit to our ranges of interest. 
+  minMassFit = 0.;
   maxMassFit = MAXmass;
 
   RooRealVar* mgg = buildRooVar("mgg", "M(gg)", 250, MINmass, MAXmass,"GeV");
@@ -143,7 +146,7 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
   RooDataSet* dataToFit[NCAT];  
   for (int c=0; c<ncat; ++c) {
     // int theCat = c+1;
-
+ 
     if (c==0) dataToFit[c] = (RooDataSet*) Data.reduce(*w->var("mgg"),mainCut+TString::Format("&& eventClass==0"));
     if (c==1) dataToFit[c] = (RooDataSet*) Data.reduce(*w->var("mgg"),mainCut+TString::Format("&& eventClass==1"));
 
@@ -212,7 +215,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   w->Print("V");
 
   //First we find the order of the functions (true) and then we save those pdfs 
-  bool findorder = false; 
+  bool findorder = true; 
   //blind or not
   bool blind = true;
 
@@ -540,11 +543,27 @@ std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, b
 
     data[c] = (RooDataSet*) w->data(Form("Data_%s", cats[c].c_str()));
     RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, polymgg[c], w, cats);
+    // Make list of model parameters
+    // RooArgSet* params = PhotonsMassBkgTmp0->getParameters(*mgg);
+    // w->defineSet("parameters", *params);
+    // w->defineSet("observables", *mgg);
+    // // Save snapshot of prefit parameters
+    // RooArgSet* initParams = (RooArgSet*) params->snapshot() ;
+    // if (order==1){ w->saveSnapshot(Form("initial_fit_params_cat%s", cats[c].c_str() ), *params, kTRUE); }
+    // else { w->loadSnapshot(Form("initial_fit_params_cat%s", cats[c].c_str() ) );  }
+
     nBackground[c] = new RooRealVar(Form("PhotonsMassBkg_%s%d_%s_norm", model.c_str(), order, cats[c].c_str()), "nbkg", data[c]->sumEntries(),0,3*data[c]->sumEntries());
 
     // RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_Pow_cat%d",c), "TMath::Max(1e-50,1.+ @0*@1 + pow(@0,2.)*@2 + pow(@0,3.)*@3)", RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a0_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a1_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a2_cat%d",c)),*w->var(TString::Format("PhotonsMass_bkg_pow_a3_cat%d",c)) ) );
   
-    fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(-1000),RooFit::Warnings(false),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
+    //RooFit::Minos(kTRUE), RooFit::Strategy(2), RooFit::Offset(true),
+    // ROOT::Math::MinimizerOptions::SetDefaultTolerance(1e-3); 
+    ROOT::Math::MinimizerOptions::SetDefaultMaxIterations(10000); 
+    ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(10000);
+    ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2");   
+    
+    fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(3), RooFit::Warnings(false), SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
+    // fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit"), RooFit::PrintLevel(-1000),RooFit::Warnings(false),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
     w->import(*PhotonsMassBkgTmp0);
     w->import(*nBackground[c]);
 
@@ -571,6 +590,8 @@ void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDa
   RooPlot* plotPhotonsMassBkg[NCAT];
 
   if( blind ) { maxMassFit = 1000.; }
+  //2 GeV bins
+  nBinsMass = (int) round( (maxMassFit-minMassFit)/2. );
   plotPhotonsMassBkg[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
   
   data->plotOn(plotPhotonsMassBkg[c],RooFit::Invisible());    

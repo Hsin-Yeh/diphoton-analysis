@@ -64,7 +64,7 @@ struct thepdf {
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
 std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, int ntoystart, int ntoyend, std::vector<window> windows);
-void fitToys(std::vector<thepdf> thetoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos);
+void fitToys(std::vector<thepdf> thetoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos);
 RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooPolyVar* polymgg, RooWorkspace* w, std::vector<std::string> cats);
 void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
 TPaveText* get_labelsqrt( int legendquadrant );
@@ -73,11 +73,11 @@ TPaveText* get_labelcms( int legendquadrant, std::string year, bool sim);
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-  std::string year, inputdir, themodel, ntoystart, ntoyend;
+  std::string year, inputdir, outputdir, themodel, ntoystart, ntoyend;
   
 
-  if(argc!=6) {
-    std::cout << "Syntax: bias_study.exe [2016/2017/2018] [input] [model] [toystart] [toysend]" << std::endl;
+  if(argc!=7) {
+    std::cout << "Syntax: bias_study.exe [2016/2017/2018] [input] [output] [model] [toystart] [toysend]" << std::endl;
       return -1;
   }
   else {
@@ -87,9 +87,10 @@ int main(int argc, char *argv[])
       return -1;
     }
     inputdir = argv[2];
-    themodel = argv[3];
-    ntoystart = argv[4];
-    ntoyend = argv[5];
+    outputdir = argv[3];
+    themodel = argv[4];
+    ntoystart = argv[5];
+    ntoyend = argv[6];
  }
 
   //Categories
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
   //========================================================================
   //throw toys 
   std::vector<thepdf> thetoys = throwtoys(year, inputdir, cats, models, std::stoi(ntoystart), std::stoi(ntoyend), windows);
-  fitToys(thetoys, blind, dobands, year, inputdir, cats, models, approxminos);
+  fitToys(thetoys, blind, dobands, year, inputdir, outputdir, cats, models, approxminos);
 
 }
 
@@ -268,7 +269,7 @@ std::vector<thepdf> throwtoys(const std::string &year, const std::string &ws_dir
 
 }
 //-----------------------------------------------------------------------------------
-void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos){
+void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos){
 
   RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
   RooPolyVar* polymgg[NCAT];
@@ -472,7 +473,7 @@ void fitToys(std::vector<thepdf> thepdfwithtoys, bool blind, bool dobands, const
 	//we can have some output, avoiding corrupted root files. 
 	//All pdf model, cat, window info will be saved in a separate tree inside this file. 
 	//Speed issues require to save separate files and sent to condor. 
-	biasesfiles[wind.name] = new TFile(Form("%s/biasfiles/%s/%s/%s/tree_bias_%s_%s.root", ws_dir.c_str(), year.c_str(), pdf.model.c_str(), wind.name.c_str(), thetoyname.c_str(), wind.name.c_str()), "recreate");
+	biasesfiles[wind.name] = new TFile(Form("%s/biasfiles/%s/%s/%s/tree_bias_%s_%s.root", out_dir.c_str(), year.c_str(), pdf.model.c_str(), wind.name.c_str(), thetoyname.c_str(), wind.name.c_str()), "recreate");
 	biasesfiles[wind.name]->cd();
 
 	biases[wind.name] = new TNtuple(Form("tree_bias_%s_%s_%s", pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), Form("tree_bias_%s_%s_%s", pdf.cat.c_str(),pdf.model.c_str(),wind.name.c_str()), "toy:truth:fit:minos:errhe:errp:errm:bias:fitmin:fitmax" );

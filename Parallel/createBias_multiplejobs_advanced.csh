@@ -19,10 +19,6 @@ setenv inoutpath "/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_10_2_1
 # windows for the output structure
 setenv windows "500_550 550_600 600_650 650_700 700_750 750_800 800_900 900_1000 1000_1200 1200_1800 1800_2500 2500_3500 3500_4500 4500_5500"
 
-#When running on multiple jobs you should give the number of input files in eos
-#because this will the queue variable. Do it in wc style in the future.
-#procid goes to N-1  
-
 setenv alljobs "1000"
 #This is for the number of jobs per clusterid
 set jobsperclusterchoice=10
@@ -83,6 +79,8 @@ mv bias_$batch.sub ${year}/${model}/jobs/bias_$batch.sub
 chmod 755 ${year}/${model}/jobs/bias_$batch.sub
 
 echo bias_$batch.sub
+
+rm voodoo
 
 end
 

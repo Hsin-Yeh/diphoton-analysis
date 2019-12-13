@@ -1,4 +1,4 @@
-mgg[320,5000];
+mgg[0,5000];
 weight[0, 1000];
 eventClass[0,10];
 
@@ -13,17 +13,17 @@ PhotonsMass_bkg_dijet_logc_cat1[-1.,-100.0,100.0];
 PhotonsMass_bkg_pow_a_cat0[-5., -100., 100.];
 PhotonsMass_bkg_pow_a_cat1[-5., -100., 100.];
 
-PhotonsMass_bkg_polymgg_a0_cat0[-9, -1000., 1000.];
+PhotonsMass_bkg_polymgg_a0_cat0[-2.e-1, -1000., 1000.];
 PhotonsMass_bkg_polymgg_a1_cat0[-2.e-3, -100., 100.];
-PhotonsMass_bkg_polymgg_a2_cat0[-2.e-3, -1000., 1000.];
+PhotonsMass_bkg_polymgg_a2_cat0[-2.e-5, -1000., 1000.];
 PhotonsMass_bkg_polymgg_a3_cat0[2.e-9, -100., 100.];
 PhotonsMass_bkg_polymgg_a4_cat0[2.e-10, -100., 100.];
 PhotonsMass_bkg_polymgg_a5_cat0[2.e-9, -100., 100.];
 PhotonsMass_bkg_polymgg_a6_cat0[2.e-9, -100., 100.];
 
-PhotonsMass_bkg_polymgg_a0_cat1[-100., -1000., 1000.];
-PhotonsMass_bkg_polymgg_a1_cat1[-4.e-3, -100., 100.];
-PhotonsMass_bkg_polymgg_a2_cat1[2.e-6, -1000., 1000.];
+PhotonsMass_bkg_polymgg_a0_cat1[1.e-1, -1000., 1000.];
+PhotonsMass_bkg_polymgg_a1_cat1[-4.e-6, -1000., 1000.];
+PhotonsMass_bkg_polymgg_a2_cat1[2.e-10, -1000., 1000.];
 PhotonsMass_bkg_polymgg_a3_cat1[2.e-9, -100., 100.];
 PhotonsMass_bkg_polymgg_a4_cat1[2.e-9, -100., 100.];
 PhotonsMass_bkg_polymgg_a5_cat1[2.e-9, -100., 100.];
@@ -38,8 +38,8 @@ PhotonsMass_bkg_expow_lam_cat1[0., -100., 100.];
 PhotonsMass_bkg_invpow_slo_cat0[2.e-3, -100., 100.];
 PhotonsMass_bkg_invpow_slo_cat1[2.e-3, -100., 100.];
 
-PhotonsMass_bkg_invpow_alp_cat0[10., -1000., 1000.];
-PhotonsMass_bkg_invpow_alp_cat1[-30., -100., 100.];
+PhotonsMass_bkg_invpow_alp_cat0[-10., -1000., 1000.];
+PhotonsMass_bkg_invpow_alp_cat1[-20., -1000., 1000.];
 
 PhotonsMass_bkg_invpowlin_slo_cat0[1.e-3, -100., 100.];
 PhotonsMass_bkg_invpowlin_slo_cat1[1.e-3, -100., 100.];
