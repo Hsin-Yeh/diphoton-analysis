@@ -16,6 +16,7 @@
 #include "RooExtendPdf.h"
 #include "RooMinimizer.h"
 #include "RooStats/RooStatsUtils.h"
+#include "RooNumIntConfig.h"
 
 //ROOT
 #include "TCanvas.h"
@@ -51,7 +52,7 @@ Int_t nBinsMass=120;
 //Declarations here definition after main
 RooRealVar* buildRooVar(std::string name, std::string title, int nBins, double xMin, double xMax, std::string unit);
 void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &year, const std::string &ws_dir, bool blind, std::vector<std::string> cats);
-RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooPolyVar* polymgg, RooWorkspace* w, std::vector<std::string> cats);
+RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooFormulaVar* polymgg, RooWorkspace* w, std::vector<std::string> cats);
 void PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
 std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, std::vector<std::string> cats);
 std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory);
@@ -263,7 +264,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 	prevdof[0] = curdof[i-1][0];
 	prevdof[1] = curdof[i-1][1];
       }
-      fitresults[i] = BkgModelFitFunc(w, models[3], blind, dobands, year, ws_dir, i, cats, findorder, dummy); 
+      fitresults[i] = BkgModelFitFunc(w, models[2], blind, dobands, year, ws_dir, i, cats, findorder, dummy); 
       curminnll[i].push_back( fitresults[i][0]->minNll() );
       curminnll[i].push_back( fitresults[i][1]->minNll() );
       curdof[i].push_back( fitresults[i][0]->floatParsFinal().getSize() );
@@ -343,7 +344,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 }
 
 //-----------------------------------------------------------------------------------
-RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooPolyVar* polymgg, RooWorkspace* w, std::vector<std::string> cats){
+RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooFormulaVar* polymgg, RooWorkspace* w, std::vector<std::string> cats){
 
   RooAbsPdf* thepdf = new RooGenericPdf(); 
   RooArgList *coefList = new RooArgList();
@@ -370,11 +371,11 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
     //expow model
   } else if ( model == "expow") {
     //Below the normal coef and formula
-    // coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow_lam_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow_alp_cat%d", catnum)));
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow_lam_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow_alp_cat%d", catnum)));
     // coefList = new RooArgList(*polymgg, *w->var(TString::Format("PhotonsMass_bkg_expow_lam_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow_alp_cat%d", catnum)));
-    coefList = new RooArgList(*polymgg, *xvar, *w->var(TString::Format("PhotonsMass_bkg_expow_alp_cat%d", catnum)));
-    // formula = "exp(@3*@0)*pow(@1,@2)";
-    formula = "exp(@0)*pow(@1,@2)";
+    // coefList = new RooArgList(*polymgg, *xvar, *w->var(TString::Format("PhotonsMass_bkg_expow_alp_cat%d", catnum)));
+    formula = "exp(@1*@0)*pow(@0,@2)";
+    // formula = "exp(@0)*pow(@1,@2)";
 
     // w->var(TString::Format("PhotonsMass_bkg_expow_lam_cat%d", catnum))->setConstant(1.);
 
@@ -383,6 +384,27 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
     // exit(-1);
 
     //------------------------------------------------------------------------
+    //expow2 model
+  } else if ( model == "expow2") {
+    // RooArgList *bla = new RooArgList(*w->var(TString::Format("PhotonsMass_bkg_expow2_lam0_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam1_cat%d", catnum)));
+    // RooFormulaVar *hmax = new RooFormulaVar(Form("hmax_cat%d", catnum),"( @1 != 0. ? (-@0/(4.*@1)>300. && -@0/(4.*@1)<3500. ? @0*@0/(4.*@1+@1) : TMath::Max(@0*3500+2*@1*3500.*3500,@0*3500+2*@1*300.*300)) : @0*3500.)", *bla );
+    // coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow2_lam0_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam1_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_alp_cat%d", catnum)), *hmax);
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow2_lam0_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam1_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_alp_cat%d", catnum)) );
+    // formula = "exp( @1*@0+@2*@0*@0  )*pow(@0, -@3*@3 + @4  )";
+    formula = "exp( (@1*@0/3500.) + ((@2*@0*@0)/(3500.*3500.))  )*pow( @0,@3 )";
+
+    //------------------------------------------------------------------------
+    //expow3 model
+  } else if ( model == "expow3") {
+    // RooArgList *bla = new RooArgList(*w->var(TString::Format("PhotonsMass_bkg_expow2_lam0_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam1_cat%d", catnum)));
+    // RooFormulaVar *hmax = new RooFormulaVar(Form("hmax_cat%d", catnum),"( @1 != 0. ? (-@0/(4.*@1)>300. && -@0/(4.*@1)<3500. ? @0*@0/(4.*@1+@1) : TMath::Max(@0*3500+2*@1*3500.*3500,@0*3500+2*@1*300.*300)) : @0*3500.)", *bla );
+    // coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow2_lam0_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam1_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_alp_cat%d", catnum)), *hmax);
+    coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_expow2_lam0_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam1_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_lam2_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_expow2_alp_cat%d", catnum)) );
+    // formula = "exp( @1*@0+@2*@0*@0  )*pow(@0, -@3*@3 + @4  )";
+    formula = "exp( (@1*@0/3500.) + ((@2*@0*@0)/(3500.*3500.)) + ((@3*@0*@0*@0)/(3500.*3500.*3500.)) )*pow( @0,@4 )";
+
+    //------------------------------------------------------------------------
+
     //invpow model
   } else if ( model == "invpow") {
     // coefList = new RooArgList(*xvar, *w->var(TString::Format("PhotonsMass_bkg_invpow_slo_cat%d", catnum)), *w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum)) );
@@ -452,7 +474,7 @@ std::vector<RooFitResult*> BkgModelFitDiJetFunc(RooWorkspace* w, bool blind, boo
     }
 
     data[c] = (RooDataSet*) w->data(Form("Data_%s", cats[c].c_str()));
-    RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, 0, w, cats);
+    RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, new RooFormulaVar("dummy","dummy", "@0", RooArgList(*mgg)), w, cats);
     nBackground[c] = new RooRealVar(Form("PhotonsMassBkg_%s_%s_norm", model.c_str(), cats[c].c_str()), "nbkg",data[c]->sumEntries(),0,3*data[c]->sumEntries());
 
     //RooPowLogPdf *PhotonsMassBkgTmp0 = new RooPowLogPdf(TString::Format("PhotonsMassBkg_DiJet_cat%d",c), TString::Format("PhotonsMassBkg_DiJet_cat%d",c),  *mgg, *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d",c))) ;
@@ -488,8 +510,9 @@ std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, b
   RooDataSet* data[NCAT];
   RooRealVar* nBackground[NCAT]; 
   // RooAbsPdf* polymgg[NCAT];
-  RooPolyVar* polymgg[NCAT];
-  std::vector<RooFitResult*> fitresult;
+  // RooPolyVar* polymgg[NCAT];
+  RooFormulaVar* polymgg[NCAT];
+    std::vector<RooFitResult*> fitresult;
 
   RooRealVar* mgg = w->var("mgg");  
   mgg->setUnit("GeV");
@@ -497,7 +520,7 @@ std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, b
   Float_t minMassFit, maxMassFit;
   double minnll=10e8;
 
-  RooPolyVar * OneMinusMgg[NCAT];
+  RooFormulaVar * OneMinusMgg[NCAT];
 
   for (int c = 0; c < ncat; ++c) {
     if (c==0){ 
@@ -519,51 +542,88 @@ std::vector<RooFitResult*> BkgModelFitFunc(RooWorkspace* w, std::string model, b
     //   if ( i == order ){formula += ")";}
     // }
     RooArgList *coeffs = new RooArgList();
+    RooArgList *coeffs1minusMgg = new RooArgList();
 
     //In case we do not want to find the correct order then 
     //we set the order we want for the relevant category. 
     if ( !findorder ) {order = orderforcategory[c]; }
 
-    for (int i=0; i<=order; ++i){
-      coeffs->add( *w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i, c))  );
+    //BE CAREFUL: As we define the formula here it is : 
+    //1. + a0*x + a1 * x^2 + ...
+    coeffs->add(*mgg);
+ 
+    if (model == "moddijet"){
+      OneMinusMgg[c] = new RooFormulaVar(Form("OneMinusMgg_%s", cats[c].c_str()), Form("OneMinusMgg_%s", cats[c].c_str()), "@1+@2*@0" , RooArgList( *mgg, RooFit::RooConst(1.), RooFit::RooConst(-1.) ) );
     }
+    coeffs1minusMgg->add(*OneMinusMgg[c]);
+    for (int i=0; i<=order; ++i){
+      // w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i, c))->setConstant(false);
+      // coeffs->add( *w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i, c))  );
+      if (i == 0){formula += "1.";}
+      else { 
+	formula += Form(" + pow(@0/3500.,%d.)*@%d", i, i); 
+	coeffs->add( *w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i-1, c))  );
+	coeffs1minusMgg->add( *w->var(TString::Format("PhotonsMass_bkg_polymgg_a%d_cat%d", i-1, c))  );
+      }
+      if ( i == order ){formula += ")";}
+    }
+
+    // w->var("PhotonsMass_bkg_polymgg_a3_cat0")->setConstant(true);
+    // w->var("PhotonsMass_bkg_polymgg_a3_cat1")->setConstant(true);
+    // w->var("PhotonsMass_bkg_polymgg_a4_cat0")->setConstant(true);
    
     std::cout << "====================================================================" << std::endl;
     std::cout << formula << std::endl;
     // exit(-1);
     
     // polymgg[c] = new RooGenericPdf(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), formula.c_str(), *coeffs );
-    polymgg[c] = new RooPolyVar(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), *mgg, *coeffs, 0 );
+    polymgg[c] = new RooFormulaVar(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), formula.c_str(), *coeffs );
 
     //In case of the dijet model we want the polynomial of the 1-mgg
     if (model == "moddijet"){
-      OneMinusMgg[c] = new RooPolyVar(Form("OneMinusMgg_%s", cats[c].c_str()), Form("OneMinusMgg_%s", cats[c].c_str()), *mgg, RooArgList( RooFit::RooConst(1.), RooFit::RooConst(-1.) ), 0 );
-      polymgg[c] = new RooPolyVar(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), *OneMinusMgg[c], *coeffs, 0 );
+      //The formula should be the same as above. Only the 1-mgg changes. 
+      polymgg[c] = new RooFormulaVar(Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), Form("PhotonsMassBkg_polymgg%d_%s", order, cats[c].c_str()), formula.c_str(), *coeffs1minusMgg);
     }
 
     data[c] = (RooDataSet*) w->data(Form("Data_%s", cats[c].c_str()));
-    RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, polymgg[c], w, cats);
+    //Will use the ones from Pasquale for expow
+    if ((model=="expow") && (order==2)){model="expow2";}
+    if ((model=="expow") && (order==3)){model="expow3";}
+   RooAbsPdf* PhotonsMassBkgTmp0 = buildPdf(model, "", c, mgg, polymgg[c], w, cats);
     // Make list of model parameters
-    // RooArgSet* params = PhotonsMassBkgTmp0->getParameters(*mgg);
-    // w->defineSet("parameters", *params);
-    // w->defineSet("observables", *mgg);
+    RooArgSet* params = PhotonsMassBkgTmp0->getParameters(*mgg);
+    w->defineSet("parameters", *params);
+    w->defineSet("observables", *mgg);
     // // Save snapshot of prefit parameters
     // RooArgSet* initParams = (RooArgSet*) params->snapshot() ;
     // if (order==1){ w->saveSnapshot(Form("initial_fit_params_cat%s", cats[c].c_str() ), *params, kTRUE); }
     // else { w->loadSnapshot(Form("initial_fit_params_cat%s", cats[c].c_str() ) );  }
+    // w->saveSnapshot(Form("fit_params_cat%s", cats[c].c_str() ), *params, kTRUE);
+    // w->loadSnapshot(Form("fit_params_cat%s", cats[c].c_str() ) );
 
     nBackground[c] = new RooRealVar(Form("PhotonsMassBkg_%s%d_%s_norm", model.c_str(), order, cats[c].c_str()), "nbkg", data[c]->sumEntries(),0,3*data[c]->sumEntries());
 
     // RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_Pow_cat%d",c), "TMath::Max(1e-50,1.+ @0*@1 + pow(@0,2.)*@2 + pow(@0,3.)*@3)", RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a0_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a1_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a2_cat%d",c)),*w->var(TString::Format("PhotonsMass_bkg_pow_a3_cat%d",c)) ) );
   
+    //From https://roostatsworkbook.readthedocs.io/en/latest/modelbuilding.html :
+    //For reasons of backward compatibility, likelihood offsetting is not applied by 
+    //default in RooFit, It can be activated by adding Offset(kTRUE) to RooAbsReal::createNLL() 
+    //or RooAbsReal::fitTo(), and users are recommended to do this for all non-trivial fits.
+    
     //RooFit::Minos(kTRUE), RooFit::Strategy(2), RooFit::Offset(true),
-    // ROOT::Math::MinimizerOptions::SetDefaultTolerance(1e-3); 
+    // ROOT::Math::MinimizerOptions::SetDefaultTolerance(1e-4); 
+    // ROOT::Math::MinimizerOptions::SetDefaultPrecision(1e-8); 
     ROOT::Math::MinimizerOptions::SetDefaultMaxIterations(10000); 
     ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(10000);
     ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2");   
-    
-    fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::PrintLevel(3), RooFit::Warnings(false), SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
-    // fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit"), RooFit::PrintLevel(-1000),RooFit::Warnings(false),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
+    //https://root.cern.ch/root/html/tutorials/roofit/rf901_numintconfig.C.html
+    // Print current global default configuration for numeric integration strategies
+    // RooAbsReal::defaultIntegratorConfig()->Print("v") ;
+    // RooAbsReal::defaultIntegratorConfig()->setEpsAbs(1e-8);
+    // RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-8);
+ 
+    fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::Offset(kTRUE), RooFit::Strategy(2), RooFit::PrintLevel(3), RooFit::Warnings(false), SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
+    // fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit"), RooFit::Offset(kTRUE), RooFit::PrintLevel(-1000),RooFit::Warnings(false),SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
     w->import(*PhotonsMassBkgTmp0);
     w->import(*nBackground[c]);
 
