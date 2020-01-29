@@ -1,7 +1,8 @@
 #!/bin/tcsh
 
 # Models we are studying
-setenv models "pow expow invpow invpowlin moddijet " 
+#setenv models "pow expow invpow invpowlin moddijet " 
+setenv models "expow" 
 
 # Years 
 setenv years "2017"

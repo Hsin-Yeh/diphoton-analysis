@@ -45,5 +45,6 @@
   <bin file="testShapes.cc" name="testShapes.exe"/>
   <bin file="testSystematics.cc" name="testSystematics.exe"/>
   <bin file="bias_study.cc" name="bias_study.exe"/>
+  <!--  <bin file="fTestEXO.cc" name="fTestEXO.exe"/> -->
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>

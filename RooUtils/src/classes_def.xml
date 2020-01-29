@@ -4,5 +4,7 @@
 <class name="RooStarMomentMorph"/>
 <class name="RooDCBShape"/>
 <class name="RooSpline1D"/>
+<class name="RooPowerLaw"/>
+<class name="RooPowerLawSum"/>
 
 </lcgdict>
