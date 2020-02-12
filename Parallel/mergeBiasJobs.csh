@@ -11,11 +11,13 @@ rm -rf ${finalout}
 mkdir ${finalout}
 
 #This is where is the input from the jobs
-setenv input "/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_10_2_13/src/diphoton-analysis/output/bkg/biasfiles/2017/expow"
+setenv input "/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_10_2_13/src/diphoton-analysis/output/bkg/biasfiles/2017"
 
 # Models we are studying
 #setenv models "pow expow invpow invpowlin moddijet " 
-setenv models "expow" 
+#setenv models "expow" 
+#setenv models "Laurent invpowlin Atlas Exponential Expow"
+setenv models "Laurent PowerLaw invpowlin Atlas Exponential Expow"
 
 # Years 
 setenv years "2017"
@@ -30,7 +32,7 @@ foreach model ($models)
 echo "===================================================================================="
 echo "Model $model" 
 
-hadd -f ${finalout}/tree_bias_${model}_${year}.root ${input}/tree_bias_*.root
+hadd -f ${finalout}/tree_bias_${model}_${year}.root ${input}/${model}/tree_bias_*.root
 
 end
 

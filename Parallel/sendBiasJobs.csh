@@ -2,7 +2,8 @@
 
 # Models we are studying
 #setenv models "pow expow invpow invpowlin moddijet " 
-setenv models "expow" 
+#setenv models "expow" 
+setenv models "Laurent PowerLaw invpowlin Atlas Exponential Expow"
 
 # Years 
 setenv years "2017"

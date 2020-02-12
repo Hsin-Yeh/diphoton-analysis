@@ -2,6 +2,8 @@
 #include "diphoton-analysis/Tools/interface/utilities.hh"
 #include "diphoton-analysis/RooUtils/interface/RooDCBShape.h"
 #include "diphoton-analysis/RooUtils/interface/RooPowLogPdf.h"
+#include "diphoton-analysis/Utils/interface/PdfModelBuilder.h"
+#include "diphoton-analysis/Utils/interface/CMS_lumi.h"
 
 //RooFit
 #include "RooWorkspace.h"
@@ -20,6 +22,7 @@
 #include "RooNumIntConfig.h"
 #include "RooNLLVar.h"
 #include "TRandom3.h"
+#include "RooHist.h"
 
 //ROOT
 #include "TCanvas.h"
@@ -75,7 +78,7 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
 theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries);
 RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar* xvar, RooWorkspace* w, std::vector<std::string> cats);
 gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
-theFitResult BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, int c, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory);
+theFitResult BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, int c, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory, RooArgSet* theparamsout);
 void runAllFits(const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, int order);
 void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample, std::vector<std::string> cats, int order);
 std::string getBase(const std::string & sampleName);
@@ -83,6 +86,7 @@ void SetConstantParams(const RooArgSet* params) ;
 TPaveText* get_labelsqrt( int legendquadrant );
 TPaveText* get_labelcms( int legendquadrant, std::string year, bool sim);
 gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::string name, bool gofToys);
+RooAbsPdf* getPdf(PdfModelBuilder &pdfsModel, std::string type, int order, const char* ext);
 
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -232,12 +236,14 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   TString fileBaseName("HighMassGG");    
   TString fileBkgName("HighMassGG.inputbkg");
   TString card_name("HighMass-hgg_models_Bkg.rs");
-  HLFactory hlf("HLFactory", card_name, false);
-  RooWorkspace* w = hlf.GetWs();
-  // range for the variables
-  w->var("mgg")->setMin(MINmass);
-  w->var("mgg")->setMax(MAXmass);
-  w->Print("V");
+  // HLFactory hlf("HLFactory", card_name, false);
+  // RooWorkspace* w = hlf.GetWs();
+  // // range for the variables
+  // w->var("mgg")->setMin(MINmass);
+  // w->var("mgg")->setMax(MAXmass);
+  // w->Print("V");
+  std::map<std::string , HLFactory * >  hlf;
+  std::map<std::string , RooWorkspace* > w;
 
   //First we find the order of the functions (true) and then we save those pdfs 
   bool findorder = true; 
@@ -245,8 +251,8 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   bool blind = true;
 
   //========================================================================
-  std::cout << "Adding bkg data" <<std::endl;
-  AddBkgData(w, isample, year, ws_dir, blind, cats);
+  // std::cout << "Adding bkg data" <<std::endl;
+  // AddBkgData(w, isample, year, ws_dir, blind, cats);
   //========================================================================
   
   //bands
@@ -266,17 +272,44 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 
   //Models
   std::vector<std::string> models;
-  //models.push_back("pow");
-  models.push_back("expow");
+  //Chosen ones
+  // models.push_back("Laurent");
+  // models.push_back("PowerLaw");
+  // models.push_back("Atlas");
+  // models.push_back("Exponential");
+  // models.push_back("Expow");
+  // models.push_back("invpowlin");
+
+  // models.push_back("pow");
+  // models.push_back("Laurent");
+  // models.push_back("PowerLaw");
+  // models.push_back("Atlas");
+  // models.push_back("Exponential");
+  // models.push_back("Expow");
+  // models.push_back("Chebychev");
+  // models.push_back("DijetSimple");
+  // models.push_back("Dijet");
+  // models.push_back("VVdijet");
+
+  // models.push_back("expow");
   // models.push_back("invpow");
-  //models.push_back("invpowlin");
+  // models.push_back("invpowlin");
   // models.push_back("moddijet");
-  // models.push_back("dijet");
+  models.push_back("dijet");
 
   //Latex models
   std::map< std::string, std::string > latexModels;
   latexModels["pow"] =  "$p(m_{\\gamma\\gamma})^a$";
-  latexModels["expow"] =  "$e^{p(m_{\\gamma\\gamma})} \\times m_{\\gamma\\gamma}^a$";
+  latexModels["Laurent"] = "$\\sum_{i=0}^{N} p_{i}/m_{\\gamma\\gamma}^{n_{i}}$";
+  latexModels["PowerLaw"] = "$\\sum_{i=0}^{N} p_{2i} m_{\\gamma\\gamma}^{p_{2i+1}} $";
+  latexModels["Atlas"] = "$(1-m_{\\gamma\\gamma}^{1/3})^{b} m_{\\gamma\\gamma}^{\\sum_{j=0}^{k} a_{j}(logm_{\\gamma\\gamma})^{j}}$";
+  latexModels["Exponential"] = "$\\sum_{i=0}^{N} e^{-p_{i} m_{\\gamma\\gamma} }$";
+  latexModels["Expow"] = "$e^{p(m_{\\gamma\\gamma})} \\times m_{\\gamma\\gamma}^a$";
+  latexModels["Chebychev"] = "$\\sum_{i=0}^{N} p_{i} m_{\\gamma\\gamma}^{i}$";
+  latexModels["DijetSimple"] = "$m_{\\gamma\\gamma}^{a+b\\ log(m_{\\gamma\\gamma})}$";
+  latexModels["Dijet"] = "$e^{\\sum_{i=0}^{N} p_{i} (log(m_{\\gamma\\gamma}))^{i}}$";
+  latexModels["VVdijet"] = "$\\frac{p_{0} ((1-m_{\\gamma\\gamma})/\\sqrt(s))^{p_1}}{(m_{\\gamma\\gamma}/\\sqrt(s))^{p_{2}}}$";
+  latexModels["expow"] = "$e^{p(m_{\\gamma\\gamma})} \\times m_{\\gamma\\gamma}^a$";
   latexModels["invpow"] =  "$(1 - p(m_{\\gamma\\gamma}))^a$";
   latexModels["invpowlin"] =  "$(1-m_{\\gamma\\gamma})^{p(m_{\\gamma\\gamma})} $";
   latexModels["moddijet"] =  "$m_{\\gamma\\gamma}^{a+b \\cdot log(m_{\\gamma\\gamma})} \\times p(1-m_{\\gamma\\gamma})^c$";
@@ -284,23 +317,51 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   //We will have a workspace and file for each final pdf, 
   //final meaning after choosing the correct order
   std::map<std::string, TFile *> fout; //[model][file]
+  // TFile * fout; //[model][file]
   std::map<std::string, std::vector<int> > modelorder; //[model][order] for cats
     
   //SET YOUR FINAL ORDER CHOICES HERE (as usual c=0 EBEB c=1 EBEE)
   modelorder["pow"].push_back(4);
   modelorder["pow"].push_back(4);
 
-  modelorder["expow"].push_back(1);
-  modelorder["expow"].push_back(1);
+  modelorder["Laurent"].push_back(1);//2
+  modelorder["Laurent"].push_back(1);//2
 
-  modelorder["invpow"].push_back(2);
-  modelorder["invpow"].push_back(2);
+  modelorder["PowerLaw"].push_back(1);//3
+  modelorder["PowerLaw"].push_back(1);//3
 
-  modelorder["invpowlin"].push_back(2);
-  modelorder["invpowlin"].push_back(2);
+  modelorder["Atlas"].push_back(1);//2
+  modelorder["Atlas"].push_back(1);//2
 
-  modelorder["moddijet"].push_back(1);
-  modelorder["moddijet"].push_back(1);
+  modelorder["Exponential"].push_back(1);//3
+  modelorder["Exponential"].push_back(1);//3
+
+  // modelorder["Chebychev"].push_back(3);
+  // modelorder["Chebychev"].push_back(3);
+
+  modelorder["DijetSimple"].push_back(2);//2
+  modelorder["DijetSimple"].push_back(2);//2
+
+  modelorder["Dijet"].push_back(3);//2
+  modelorder["Dijet"].push_back(3);//2
+
+  modelorder["VVdijet"].push_back(1);//1
+  modelorder["VVdijet"].push_back(1);//1
+
+  // modelorder["expow"].push_back(2);//1
+  // modelorder["expow"].push_back(2);//1
+
+  modelorder["Expow"].push_back(1);//2
+  modelorder["Expow"].push_back(1);//2
+
+  modelorder["invpow"].push_back(2);//1
+  modelorder["invpow"].push_back(2);//1
+
+  modelorder["invpowlin"].push_back(1);//2
+  modelorder["invpowlin"].push_back(1);//2
+
+  modelorder["moddijet"].push_back(2);
+  modelorder["moddijet"].push_back(2);
 
   modelorder["dijet"].push_back(1);
   modelorder["dijet"].push_back(1);
@@ -313,15 +374,31 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   // fprintf(resFile,"Family label & Functional form & order & $ -2 \\Delta NLL_{N+1}=-2(NLL_{N+1} - NLL_{N}) $ & gof(\\chi^{2}/ndof) & gof(prob) & p-value & (mimin,hesse,minos) \\\\\n");
   fprintf(resFile,"\\hline\n");
   fprintf(resFile,"\\hline\n");
-  fprintf(resFile,"Family label & Functional form & order & $ -2 \\Delta NLL_{N+1} $ & $gof(\\chi^{2}/ndof)$ & gof(prob) & p-value & (minim,hesse,minos) \\\\\n");
+  fprintf(resFile,"Family label & Functional form & order & \\# params & $ -2 \\Delta NLL_{N+1} $ & gof$(\\chi^{2}/ndof)$ & gof(prob) & p-value & (minim,hesse,minos) \\\\\n");
   fprintf(resFile,"\\hline\n");
   fprintf(resFile,"\\hline\n");
+
+  //We will save all models and orders in a file initially. 
+  // fout = new TFile(Form("%s/bkg_%s.root", ws_dir.c_str(), year.c_str()), "recreate");
+  // fout->cd();
 
   if (findorder){
     //Let's loop through all the models
     for (auto themodel : models){
 
       std::cout << themodel << std::endl; 
+
+      hlf[themodel] = new HLFactory(Form("HLFactory_%s", themodel.c_str() ), card_name, false);
+      w[themodel] = hlf[themodel]->GetWs();
+      w[themodel]->var("mgg")->setMin(MINmass);
+      w[themodel]->var("mgg")->setMax(MAXmass);
+      w[themodel]->Print("V");
+ 
+      //========================================================================
+      std::cout << "Adding bkg data" <<std::endl;
+      AddBkgData(w[themodel], isample, year, ws_dir, blind, cats);
+      //========================================================================
+
 
       //In the first time, when searching one by one, change below to the 
       //pdf that you are studying. 
@@ -332,22 +409,41 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
       // if (themodel != "invpowlin"){continue;}
       // if (themodel != "moddijet"){continue;}
 
-      //We will save all models and orders in a file initially. 
+      // //We will save all models and orders in a file initially. 
       fout[themodel] = new TFile(Form("%s/bkg_%s_%s.root", ws_dir.c_str(),themodel.c_str(), year.c_str()), "recreate");
       fout[themodel]->cd();
+
+      RooArgSet* theparamsout = new RooArgSet();
 
       Int_t ncat = NCAT;
       for (int c = 0; c < ncat; ++c) {
 	std::cout << "========================================================"<< std::endl;
 	std::cout << "Cat " << cats[c] << std::endl;
 
-	fprintf(resFile,"\\multicolumn{8}{c}{Category %s} \\\\\n",cats[c].c_str());
+	fprintf(resFile,"\\multicolumn{9}{c}{Category %s} \\\\\n",cats[c].c_str());
 	fprintf(resFile,"\\hline\n");
 
 	for (int i=1; i<=order; ++i){
 
 	  //We won't go above the order we found. 
 	  if (i > modelorder[themodel][c]){continue;}
+
+	  //In power law only odd number of parameters are allowed. 
+	  if (themodel == "PowerLaw" && i%2==0 ){continue;}
+
+	  //In exponential only odd number of params allowed
+	  if (themodel == "Exponential" && i%2==0 ){continue;}
+	  //In exponential needs to be at least of order 3 and smaller than order 5
+	  if (themodel == "Exponential" && (i<1 || i > 3) ){continue;}
+	  
+	  //In VVDijet only one order is allowed
+	  if (themodel == "VVDijet" && (i<1 || i > 2) ){continue;}
+
+	  //In DijetSimple only one order is allowed
+	  if (themodel == "DijetSimple" && (i!=2) ){continue;}
+
+	  //In Dijet we need at least order 2
+	  if (themodel == "Dijet" && (i<2) ){continue;}
 
 	  if (i==1){
 	    prevminnll[themodel] = 0.;
@@ -359,7 +455,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 	  // int counter = 0;
 	  // while (TMath::Prob(  -dnll[themodel][i][c], diffdof[themodel][i][c] ) < 0.05 && counter < 3){
 	  // fitresults[themodel][i].push_back( BkgModelFitFunc(w, themodel, blind, dobands, year, ws_dir, i, c, findorder, modelorder[themodel]) ); 
-	  fitresults[themodel][i] = BkgModelFitFunc(w, themodel, blind, dobands, year, ws_dir, i, c, cats, findorder, modelorder[themodel]) ; 
+	  fitresults[themodel][i] = BkgModelFitFunc(w[themodel], themodel, blind, dobands, year, ws_dir, i, c, cats, findorder, modelorder[themodel], theparamsout) ; 
 	  //   ++counter;
 	  // }
 	  curminnll[themodel][i] =  fitresults[themodel][i].minNll;
@@ -377,7 +473,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
 
 	  //Print the results to file, dijet not in the alternative functions
 	  if (themodel != "dijet"){
-	    fprintf(resFile,"%s & %s & %d & %10.2f & %10.2f & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", themodel.c_str(), latexModels[themodel].c_str(),i,-dnll[themodel][i], fitresults[themodel][i].gofresults.chi2overndof, fitresults[themodel][i].gofresults.prob, TMath::Prob(  -dnll[themodel][i], diffdof[themodel][i] ) , fitresults[themodel][i].minimizestatus ,fitresults[themodel][i].hessestatus ,fitresults[themodel][i].minosstatus );
+	    fprintf(resFile,"%s & %s & %d & %d & %10.2f & %10.2f & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", themodel.c_str(), latexModels[themodel].c_str(),i,curdof[themodel][i],-dnll[themodel][i], fitresults[themodel][i].gofresults.chi2overndof, fitresults[themodel][i].gofresults.prob, TMath::Prob(  -dnll[themodel][i], diffdof[themodel][i] ) , fitresults[themodel][i].minimizestatus ,fitresults[themodel][i].hessestatus ,fitresults[themodel][i].minosstatus );
 	  }
 
 
@@ -405,11 +501,15 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
      
       //Save the resulting workspace with all orders
       //w->Print("V");
-      w->Write();
+      w[themodel]->Write();
       fout[themodel]->Write();
       fout[themodel]->Close();
     } //end of loop through models
 
+    // w->Write();
+    // fout->Write();
+    // fout->Close();
+    
     //Now let's print the results to see what order to choose
     //We want the results per category and then per model. 
     // for (unsigned int c = 0; c < cats.size(); ++c) {
@@ -742,8 +842,12 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
 			      );
     formula = "pow(1+@0*@1,@2)";
 
-    w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setMin(0.0);    
-
+    w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setMin(0.0);   
+    if (catnum==0){
+      w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setVal(2.5);
+    } else if (catnum==1){
+      w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setVal(0.5);
+    }
 
     std::cout << "====================================================================" << std::endl;
     std::cout << formula << std::endl;
@@ -762,6 +866,11 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
     formula = "pow(1+@0*@1+@2*@0*@0,@3)";
 
     w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setMin(0.0);    
+    if (catnum==0){
+      w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setVal(2.5);
+    } else if (catnum==1){
+      w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setVal(0.5);
+    }
 
     std::cout << "====================================================================" << std::endl;
     std::cout << formula << std::endl;
@@ -777,6 +886,13 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
 
     formula = "pow(1+@0*@1,@2+@3*@0)";
     // formula = "pow(1-@0*@2,@1)";
+    
+    if (catnum==0){
+      w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setVal(2.5);
+    } else if (catnum==1){
+      w->var(TString::Format("PhotonsMass_bkg_invpow_alp_cat%d", catnum))->setVal(0.5);
+    }
+
     std::cout << "====================================================================" << std::endl;
     std::cout << formula << std::endl;
 
@@ -845,7 +961,7 @@ RooAbsPdf* buildPdf(std::string model, std::string name, int catnum, RooRealVar*
 }
 
 //-----------------------------------------------------------------------------------
-theFitResult BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, int c, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory) {
+theFitResult BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, int order, int c, std::vector<std::string> cats, bool findorder, std::vector<int> orderforcategory, RooArgSet* theparamsout) {
 
   //RooMsgService::instance().setGlobalKillBelow(RooFit::WARNING) ;
   RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
@@ -901,89 +1017,110 @@ theFitResult BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, boo
   if ((model=="moddijet") && (order==1)){model="moddijet1";}
   if ((model=="moddijet") && (order==2)){model="moddijet2";}
 
-  PhotonsMassBkgTmp0[model] =  buildPdf(model, "", c, mgg, w, cats)  ;
-    // Make list of model parameters
-    // RooArgSet* theparams = PhotonsMassBkgTmp0->getParameters(*mgg);
+  PdfModelBuilder pdfsModel;
+  pdfsModel.setObsVar(mgg);
+  pdfsModel.setWorkspace(w);
 
-    // RooArgSet* theparams = PhotonsMassBkgTmp0[model][c]->getParameters((const RooArgSet*)(0));
-    RooArgSet* theparams = PhotonsMassBkgTmp0[model]->getParameters(*mgg);
-    w->defineSet("parameters", *theparams);
-    w->defineSet("observables", *mgg);
-    if (order==1){ w->saveSnapshot(Form("initial_%s_fit_params_cat%s", model.c_str(), cats[c].c_str() ), *theparams, kTRUE); }
-    // else {w->loadSnapshot(Form("initial_%s_fit_params_cat%s", model.c_str(), cats[c].c_str() ) );}
-
-    // w->saveSnapshot(Form("fit_params_cat%s", cats[c].c_str() ), *params, kTRUE);
-    // w->loadSnapshot(Form("fit_params_cat%s", cats[c].c_str() ) );
-    // Save snapshot of current parameters because the gof below will change them. 
-    // RooArgSet curparams = (RooArgSet) theparams->snapshot() ;
-    // RooArgSet preParams;
-    // theparams->snapshot(preParams) ;
-
-    nBackground = new RooRealVar(Form("PhotonsMassBkg_%s_%s_norm", model.c_str(), cats[c].c_str()), "nbkg", data->sumEntries(),0,3*data->sumEntries());
-
-    // RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_Pow_cat%d",c), "TMath::Max(1e-50,1.+ @0*@1 + pow(@0,2.)*@2 + pow(@0,3.)*@3)", RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a0_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a1_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a2_cat%d",c)),*w->var(TString::Format("PhotonsMass_bkg_pow_a3_cat%d",c)) ) );
+  if (model!="Laurent" && model!="PowerLaw" && model!="Atlas" && model!="Exponential" && 
+      model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
+      model!="Expow"
+      ){
+    PhotonsMassBkgTmp0[model] =  buildPdf(model, "", c, mgg, w, cats)  ;
+  } else {
+    PhotonsMassBkgTmp0[model] = getPdf(pdfsModel,model,order,Form("ftest_pdf_%s",cats[c].c_str() ));
+  } 
   
-    //From https://roostatsworkbook.readthedocs.io/en/latest/modelbuilding.html :
-    //For reasons of backward compatibility, likelihood offsetting is not applied by 
-    //default in RooFit, It can be activated by adding Offset(kTRUE) to RooAbsReal::createNLL() 
-    //or RooAbsReal::fitTo(), and users are recommended to do this for all non-trivial fits.
-    
-    //RooFit::Minos(kTRUE), RooFit::Strategy(2), RooFit::Offset(true),
-    // ROOT::Math::MinimizerOptions::SetDefaultTolerance(1e-4); 
-    // ROOT::Math::MinimizerOptions::SetDefaultPrecision(1e-8); 
-    ROOT::Math::MinimizerOptions::SetDefaultMaxIterations(10000); 
-    ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(10000);
-    ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2");   
-    //https://root.cern.ch/root/html/tutorials/roofit/rf901_numintconfig.C.html
-    // Print current global default configuration for numeric integration strategies
-    // RooAbsReal::defaultIntegratorConfig()->Print("v") ;
-    // RooAbsReal::defaultIntegratorConfig()->setEpsAbs(1e-8);
-    // RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-8);
+  
+  // Make list of model parameters
+  // RooArgSet* theparams = PhotonsMassBkgTmp0->getParameters(*mgg);
+
+  // RooArgSet* theparams = PhotonsMassBkgTmp0[model][c]->getParameters((const RooArgSet*)(0));
+  RooArgSet* theparams = PhotonsMassBkgTmp0[model]->getParameters(*mgg);
+  if (c==0){ 
+    theparamsout->add(*theparams);
+  } else if (c==1){
+    theparamsout->add(*theparams);
+    w->defineSet("parameters", *theparamsout);
+    w->defineSet("observables", *mgg);
+  }
  
-    //This is the current command but will change that
-    // fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::Offset(kTRUE), RooFit::Strategy(2), RooFit::PrintLevel(3), RooFit::Warnings(false), SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
-    //to this one
-    int fitStatus = 0;
-    double thisNll = 0.;
-    fitresult = theFit(PhotonsMassBkgTmp0[model], data, &thisNll, &fitStatus, /*max iterations*/ 3) ;
+  
+  if (order==1){ w->saveSnapshot(Form("initial_%s_fit_params_cat%s", model.c_str(), cats[c].c_str() ), *theparams, kTRUE); }
+  // else {w->loadSnapshot(Form("initial_%s_fit_params_cat%s", model.c_str(), cats[c].c_str() ) );}
+
+  // w->saveSnapshot(Form("fit_params_cat%s", cats[c].c_str() ), *params, kTRUE);
+  // w->loadSnapshot(Form("fit_params_cat%s", cats[c].c_str() ) );
+  // Save snapshot of current parameters because the gof below will change them. 
+  // RooArgSet curparams = (RooArgSet) theparams->snapshot() ;
+  // RooArgSet preParams;
+  // theparams->snapshot(preParams) ;
+
+  nBackground = new RooRealVar(Form("PhotonsMassBkg_%s_%s_norm", model.c_str(), cats[c].c_str()), "nbkg", data->sumEntries(),0,3*data->sumEntries());
+
+  // RooAbsPdf* PhotonsMassBkgTmp0 = new RooGenericPdf(TString::Format("PhotonsMassBkg_Pow_cat%d",c), "TMath::Max(1e-50,1.+ @0*@1 + pow(@0,2.)*@2 + pow(@0,3.)*@3)", RooArgList(*mgg, *w->var(TString::Format("PhotonsMass_bkg_pow_a0_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a1_cat%d",c)), *w->var(TString::Format("PhotonsMass_bkg_pow_a2_cat%d",c)),*w->var(TString::Format("PhotonsMass_bkg_pow_a3_cat%d",c)) ) );
+  
+  //From https://roostatsworkbook.readthedocs.io/en/latest/modelbuilding.html :
+  //For reasons of backward compatibility, likelihood offsetting is not applied by 
+  //default in RooFit, It can be activated by adding Offset(kTRUE) to RooAbsReal::createNLL() 
+  //or RooAbsReal::fitTo(), and users are recommended to do this for all non-trivial fits.
     
-    //After the fit for a specific model the results for the next order will be better with 
-    //initial values the previous order ones but when changing models this is an issue. So, 
-    //we set them independently for each model
+  //RooFit::Minos(kTRUE), RooFit::Strategy(2), RooFit::Offset(true),
+  // ROOT::Math::MinimizerOptions::SetDefaultTolerance(1e-4); 
+  // ROOT::Math::MinimizerOptions::SetDefaultPrecision(1e-8); 
+  ROOT::Math::MinimizerOptions::SetDefaultMaxIterations(10000); 
+  ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(10000);
+  ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2");   
+  //https://root.cern.ch/root/html/tutorials/roofit/rf901_numintconfig.C.html
+  // Print current global default configuration for numeric integration strategies
+  // RooAbsReal::defaultIntegratorConfig()->Print("v") ;
+  // RooAbsReal::defaultIntegratorConfig()->setEpsAbs(1e-8);
+  // RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-8);
  
-    theparams->snapshot(thepreParams[model]) ;
-
-    w->saveSnapshot(Form("%s_fit_params_cat%s", model.c_str(), cats[c].c_str() ), *theparams, kTRUE);
+  //This is the current command but will change that
+  // fitresult.push_back( (RooFitResult* ) PhotonsMassBkgTmp0->fitTo(*data[c], RooFit::Minimizer("Minuit2"), RooFit::Offset(kTRUE), RooFit::Strategy(2), RooFit::PrintLevel(3), RooFit::Warnings(false), SumW2Error(kTRUE), Range(minMassFit,maxMassFit), RooFit::Save(kTRUE)) );
+  //to this one
+  int fitStatus = 0;
+  double thisNll = 0.;
+  fitresult = theFit(PhotonsMassBkgTmp0[model], data, &thisNll, &fitStatus, /*max iterations*/ 3) ;
+    
+  //After the fit for a specific model the results for the next order will be better with 
+  //initial values the previous order ones but when changing models this is an issue. So, 
+  //we set them independently for each model
  
-    if (order == orderforcategory[c]){
-      w->import(*PhotonsMassBkgTmp0[model], RecycleConflictNodes());
-      w->import(*nBackground, RecycleConflictNodes());
-      theparams->printLatex();
-    }
+  // theparams->snapshot(thepreParams[model]) ;
 
-    std::cout << TString::Format("******************************** Background Fit results %s cat %s***********************************", model.c_str(), cats[c].c_str()) << std::endl;
-    fitresult.fitres->Print("V");
+  w->saveSnapshot(Form("%s_fit_params_cat%s", model.c_str(), cats[c].c_str() ), *theparams, kTRUE);
+ 
+  if (order == orderforcategory[c]){
+    w->import(*PhotonsMassBkgTmp0[model], RecycleConflictNodes());
+    w->import(*nBackground, RecycleConflictNodes());
+    theparams->printLatex();
+  }
 
-    //************************************************
-    // Plot PhotonsMass background fit results per categories 
-    TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories");
-    gof gofresult = PlotFitResult(w, ctmp, c, mgg, data, model, PhotonsMassBkgTmp0[model], minMassFit, maxMassFit, blind, dobands, fitresult.fitres->floatParsFinal().getSize(), year, ws_dir, order);
-    fitresult.gofresults = gofresult;
-    ctmp->SetLogy();
-    ctmp->SaveAs( Form("%s/Bkg_cat%d_%s_%s_log.png", ws_dir.c_str(),c, model.c_str(), year.c_str() ) );
-    ctmp->SetLogy(0);
-    // ctmp->SaveAs( Form("%s/Bkg_cat%d_%s%d_%s.png", ws_dir.c_str(),c, model.c_str(), order, year.c_str() ) );
-    ctmp->SaveAs( Form("%s/Bkg_cat%d_%s_%s.png", ws_dir.c_str(),c, model.c_str(), year.c_str() ) );
+  std::cout << TString::Format("******************************** Background Fit results %s cat %s***********************************", model.c_str(), cats[c].c_str()) << std::endl;
+  fitresult.fitres->Print("V");
 
-    //Due to the toys fit it changes the fit params. So, I have to load the snapshot. 
-    // if (order>=2){
-    //   w->loadSnapshot(Form("%s_fit_params_cat%s", prevmodel.c_str(), cats[c].c_str() ) );
-    // }
+  //************************************************
+  // Plot PhotonsMass background fit results per categories 
+  TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories",550,600);
+  gof gofresult = PlotFitResult(w, ctmp, c, mgg, data, model, PhotonsMassBkgTmp0[model], minMassFit, maxMassFit, blind, dobands, fitresult.fitres->floatParsFinal().getSize(), year, ws_dir, order);
+  fitresult.gofresults = gofresult;
+  ctmp->SetLogy();
+  // ctmp->SaveAs( Form("%s/Bkg_cat%d_%s_%s_log.png", ws_dir.c_str(),c, model.c_str(), year.c_str() ) );
+  ctmp->SaveAs( Form("%s/Bkg_cat%d_%s%d_%s.png", ws_dir.c_str(),c, model.c_str(), order, year.c_str() ) );
+  ctmp->SetLogy(0);
+  ctmp->SaveAs( Form("%s/Bkg_cat%d_%s%d_%s.png", ws_dir.c_str(),c, model.c_str(), order, year.c_str() ) );
+  // ctmp->SaveAs( Form("%s/Bkg_cat%d_%s_%s.png", ws_dir.c_str(),c, model.c_str(), year.c_str() ) );
+
+  //Due to the toys fit it changes the fit params. So, I have to load the snapshot. 
+  // if (order>=2){
+  //   w->loadSnapshot(Form("%s_fit_params_cat%s", prevmodel.c_str(), cats[c].c_str() ) );
+  // }
     
-    // theparams->assignValueOnly(preParams[model]);
-    // *theparams = *curparams;
+  // theparams->assignValueOnly(preParams[model]);
+  // *theparams = *curparams;
     
-    // delete PhotonsMassBkgTmp0;
+  // delete PhotonsMassBkgTmp0;
 
   return fitresult;
 
@@ -991,9 +1128,10 @@ theFitResult BkgModelFitFunc(RooWorkspace* w, std::string model, bool blind, boo
 
 //-----------------------------------------------------------------------------------
 gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order){
-
+  
   RooPlot* plotPhotonsMassBkg[NCAT];
-
+  RooPlot* resid[NCAT]; 
+  
   std::string name = Form("%s/Bkg_cat%d_%s_%s.png", ws_dir.c_str(),c, model.c_str(), year.c_str() );
   std::cout << "GOODNESS OF FIT WITH/OUT TOYS" << std::endl; 
   gof gofresult = getGoodnessOfFit(mgg, PhotonsMassBkgTmp0, data, name, gofwithtoys);
@@ -1025,7 +1163,7 @@ gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDat
   plotPhotonsMassBkg[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
 
   data->plotOn(plotPhotonsMassBkg[c],RooFit::Invisible());    
-   
+  
   PhotonsMassBkgTmp0->plotOn(plotPhotonsMassBkg[c],LineColor(kBlue),Range(minMassFit,maxMassFit));
 
   if( blind ) {
@@ -1034,35 +1172,112 @@ gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDat
   } else {
     data->plotOn(plotPhotonsMassBkg[c]);    
   } 
-  
-  plotPhotonsMassBkg[c]->GetXaxis()->SetTitle("m_{#gamma #gamma} [GeV]");
-  plotPhotonsMassBkg[c]->SetAxisRange(0.001,plotPhotonsMassBkg[c]->GetMaximum()*1.5,"Y");
-  plotPhotonsMassBkg[c]->Draw();  
 
-  TLegend *legdata = new TLegend(0.37,0.67,0.62,0.82, TString::Format("Category %d",c), "brNDC");
-  legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(2),"Data","LPE");
-  if (order == 0){
-    legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(1),Form("Parametric Model: %s", model.c_str()),"L");
-  } else{
-    legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(1),Form("Parametric Model: %s Order %d", model.c_str(), order),"L");
+  resid[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
+
+  TLine *lineone = new TLine(minMassFit,0,maxMassFit,0);
+  lineone->SetLineColor(kBlue);
+  lineone->SetLineWidth(2);
+  resid[c]->addObject(lineone);
+
+  RooCurve *fitc   = (RooCurve *) plotPhotonsMassBkg[c]->getObject(int(plotPhotonsMassBkg[c]->numItems()-2));
+  RooHist* hist   = (RooHist*) plotPhotonsMassBkg[c]->getObject(int(plotPhotonsMassBkg[c]->numItems()-1));
+  std::cout << hist->GetName() << " " << fitc->GetName() << std::endl; 
+  //According to https://twiki.cern.ch/twiki/bin/viewauth/CMS/PoissonErrorBars 
+  //we should use asymmetric vertical bars with "correct coverage". Since this is 
+  //RooFit and hist->SetBinErrorOption(TH1::kPoisson) doesn't work we manually loop. 
+  double alpha = 1 - 0.6827;
+  for (int i = 0; i < hist->GetN(); ++i) {
+    int N = 0;
+    // if( blind && 
+    // 	(hist->GetX()[i]-hist->GetErrorXlow(i)) >= minMassFit && 
+    // 	(hist->GetX()[i]+hist->GetErrorXhigh(i)) <= maxMassFit
+    // 	){ 
+    //   hist->SetPoint(i,hist->GetX()[i],0.);
+    //   N = fitc->Eval(hist->GetX()[i]);
+    // } else {
+    //   N = hist->GetY()[i];
+    // }
+    N = hist->GetY()[i];
+    double L =  (N==0) ? 0  : (ROOT::Math::gamma_quantile(alpha/2,N,1.));
+    double U =  ROOT::Math::gamma_quantile_c(alpha/2,N+1,1) ;
+    hist->SetPointEYlow(i, N-L);
+    hist->SetPointEYhigh(i, U-N);
   }
-  legdata->SetTextSize(0.035);
+
+  RooHist* hresid = plotPhotonsMassBkg[c]->residHist(hist->GetName(),fitc->GetName(),true);
+  if (!dobands) {resid[c]->addPlotable(hresid,"PE");}
+
+  ctmp->Divide(1,2);
+
+  ctmp->cd(1);
+  gPad->SetPad(0.,0.38,1.,0.95);
+  gPad->SetTopMargin(0.0015);
+  gPad->SetBottomMargin(0.02);
+  gPad->SetLogy(true);
+  gPad->SetFillStyle(0);
+  gPad->SetTickx();
+        
+  ctmp->cd(2);        
+  gPad->SetPad(0.,0.,1.,0.38);
+  gPad->SetFillStyle(0);
+  gPad->SetTopMargin(0.0015);
+  gPad->SetBottomMargin(0.32);
+  gPad->SetFillStyle(0);
+  gPad->SetTickx();
+
+  ctmp->cd(1);
+
+  plotPhotonsMassBkg[c]->SetTitle("");
+  plotPhotonsMassBkg[c]->GetYaxis()->SetTitleSize(0.09);
+  plotPhotonsMassBkg[c]->GetXaxis()->SetLabelSize( 1.2*plotPhotonsMassBkg[c]->GetXaxis()->GetLabelSize() );
+  plotPhotonsMassBkg[c]->GetXaxis()->SetTitleSize( 1.2*plotPhotonsMassBkg[c]->GetXaxis()->GetTitleSize() );
+  plotPhotonsMassBkg[c]->GetXaxis()->SetTitleOffset( 1.15 );
+  // double ymax = fitc->interpolate(plotPhotonsMassBkg[c]->GetXaxis()->GetXmin())*2.;
+  // double ymin = fitc->interpolate(plotPhotonsMassBkg[c]->GetXaxis()->GetXmax())*0.3;
+  // ymin = std::max(1.1e-1,ymin);
+  // plotPhotonsMassBkg[c]->GetYaxis()->SetRangeUser(ymin,ymax);
+  plotPhotonsMassBkg[c]->GetXaxis()->SetMoreLogLabels();
+  plotPhotonsMassBkg[c]->GetYaxis()->SetLabelSize( plotPhotonsMassBkg[c]->GetXaxis()->GetLabelSize() * ctmp->GetWh() / gPad->GetWh() * 1.3 );
+  plotPhotonsMassBkg[c]->GetYaxis()->SetTitleSize( plotPhotonsMassBkg[c]->GetXaxis()->GetTitleSize() * ctmp->GetWh() / gPad->GetWh() * 1.3 );
+  plotPhotonsMassBkg[c]->GetYaxis()->SetTitleOffset( 0.75 );
+
+  plotPhotonsMassBkg[c]->GetXaxis()->SetTitle("m_{#gamma#gamma} (GeV)");
+  plotPhotonsMassBkg[c]->SetAxisRange(0.11,plotPhotonsMassBkg[c]->GetMaximum()*2.0,"Y");
+
+  if (!dobands){ plotPhotonsMassBkg[c]->Draw(); } 
+
+  TLegend *legdata = new TLegend(0.2,0.37,0.35,0.62, "", "brNDC");
+  legdata->SetFillColor(kWhite);
+  legdata->SetFillStyle(0);
+  legdata->SetShadowColor(kWhite);
+  legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(2),"Data","LPE");
+  if (order == 0 || model == "dijet"){
+    legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(1),Form("Fit Model: %s", model.c_str()),"L");
+  } else{
+    legdata->AddEntry(plotPhotonsMassBkg[c]->getObject(1),Form("Fit Model: %s Order %d", model.c_str(), order),"L");
+  }
+  // if (dobands){
+  //   legdata->AddEntry(onesigma,"#pm 1 s.d.","f");
+  //   legdata->AddEntry(twosigma,"#pm 2 s.d.","f");
+  // }
+
+  legdata->SetTextSize(0.05);
   legdata->SetTextFont(42);
   // legdata->SetTextAlign(31);
   legdata->SetBorderSize(0);
-  legdata->SetFillStyle(0);
-  legdata->Draw("same");
+  if (!dobands) {legdata->Draw("same");}
 
   TPaveText* label_cms = get_labelcms(1, year, false);
   TPaveText* label_sqrt = get_labelsqrt(0);
   label_cms->Draw("same");
   label_sqrt->Draw("same");
-  
+ 
   //write down the chi2 of the fit on the
  
   TPaveText* label_chi2 = new TPaveText(0.55,0.33,0.79,0.44, "brNDC");
   label_chi2->SetFillColor(kWhite);
-  label_chi2->SetTextSize(0.035);
+  label_chi2->SetTextSize(0.05);
   label_chi2->SetTextFont(42);
   label_chi2->SetTextAlign(31); // align right
   label_chi2->AddText(TString::Format("Fit chi square/dof = %.3f", gofresult.chi2overndof));
@@ -1071,15 +1286,64 @@ gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDat
   } else{
     label_chi2->AddText(TString::Format("Chi square Prob = %.3f", gofresult.prob));
   }
-  label_chi2->Draw("same");
+  if (!dobands) {label_chi2->Draw("same");}
+
+
+  ctmp->cd(2);
+  gPad->SetGridy();
+  resid[c]->SetTitle("");
+  resid[c]->GetXaxis()->SetMoreLogLabels();
+  resid[c]->GetXaxis()->SetNdivisions(510);
+  resid[c]->GetYaxis()->SetNdivisions(505);
+  resid[c]->GetYaxis()->CenterTitle();
+  resid[c]->GetYaxis()->SetTitleSize( plotPhotonsMassBkg[c]->GetYaxis()->GetTitleSize() * 1.4 );
+  resid[c]->GetYaxis()->SetTitleOffset( plotPhotonsMassBkg[c]->GetYaxis()->GetTitleOffset() * 0.6 ); 
+  resid[c]->GetYaxis()->SetLabelSize( plotPhotonsMassBkg[c]->GetYaxis()->GetLabelSize() * 1.3 );
+  resid[c]->GetXaxis()->SetTitleSize( plotPhotonsMassBkg[c]->GetXaxis()->GetTitleSize() * 2. * 1.3/1.2 );
+  resid[c]->GetXaxis()->SetTitleOffset( plotPhotonsMassBkg[c]->GetXaxis()->GetTitleOffset() );
+  resid[c]->GetXaxis()->SetLabelSize( plotPhotonsMassBkg[c]->GetXaxis()->GetLabelSize() * 6.5/3.5 );
+  resid[c]->GetYaxis()->SetRangeUser( -3, 3 );
+  resid[c]->GetYaxis()->SetTitle("(data-fit)/#sigma_{stat}");
+  resid[c]->GetXaxis()->SetTitle("m_{#gamma#gamma} (GeV)");
+  if (!dobands) {resid[c]->Draw();}
+
+  ctmp->cd(1);
+  float margin = gPad->GetBottomMargin()+gPad->GetTopMargin();
+  gPad->SetTopMargin(0.1*margin);
+  gPad->SetBottomMargin(0.1*margin);
+
+  ctmp->cd(2);
+  margin = gPad->GetBottomMargin()+gPad->GetTopMargin();
+  gPad->SetBottomMargin(margin);
+  gPad->SetTopMargin(0.1*margin);
+                
+  plotPhotonsMassBkg[c]->GetXaxis()->SetTitle("");
+  plotPhotonsMassBkg[c]->GetXaxis()->SetLabelSize(0.);
+  
+  ctmp->cd();
+  if (c==0){
+    TLatex *ptCat0= new TLatex(0.2,0.44175, "EBEB");
+    ptCat0->SetTextFont(61);
+    ptCat0->SetTextSize(0.051);
+    ptCat0->Draw("same");
+  } else if (c==1){
+    TLatex *ptCat1= new TLatex(0.2,0.44175, "EBEE");
+    ptCat1->SetTextFont(61);
+    ptCat1->SetTextSize(0.051);
+    ptCat1->Draw("same");
+  }
+   
+  CMS_lumi( (TPad*) gPad, 4, 0 );
 
   //********************************************************************************//
   if (dobands) {
 
+    ctmp->cd(1);
     RooAbsPdf *cpdf = PhotonsMassBkgTmp0;
     TGraphAsymmErrors *onesigma = new TGraphAsymmErrors();
     TGraphAsymmErrors *twosigma = new TGraphAsymmErrors();
-      
+    TGraphAsymmErrors *bias = new TGraphAsymmErrors();
+
     RooRealVar *nlim = new RooRealVar(TString::Format("nlim%d",c),"",0.0,0.0,10.0);
     nlim->removeRange();
       
@@ -1098,47 +1362,137 @@ gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDat
 	
       RooAbsReal *nll = epdf->createNLL(*(data),Extended());
       RooMinimizer minim(*nll);
+      minim.setMinimizerType("Minuit2");
       minim.setStrategy(0);
+      minim.setPrintLevel(-1);
       // double clone = 1.0 - 2.0*RooStats::SignificanceToPValue(1.0);
-      double cltwo = 1.0 - 2.0*RooStats::SignificanceToPValue(2.0);
+      // double cltwo = 1.0 - 2.0*RooStats::SignificanceToPValue(2.0);
 	
       minim.migrad();
-      minim.minos(*nlim);
-      printf("errlo = %5f, errhi = %5f\n",nlim->getErrorLo(),nlim->getErrorHi());
-	
+
+      minim.hesse();
+      RooFitResult* result = minim.lastMinuitFit();
+      double errm = nlim->getPropagatedError(*result);
       onesigma->SetPoint(i-1,center,nombkg);
-      onesigma->SetPointError(i-1,0.,0.,-nlim->getErrorLo(),nlim->getErrorHi());
+      onesigma->SetPointError(i-1,lowedge,upedge,-errm, errm);
+
+      // minim.minos(*nlim);
+      // printf("errlo = %5f, errhi = %5f\n",nlim->getErrorLo(),nlim->getErrorHi());
 	
-      minim.setErrorLevel(0.5*pow(ROOT::Math::normal_quantile(1-0.5*(1-cltwo),1.0), 2)); // the 0.5 is because qmu is -2*NLL
+      // onesigma->SetPoint(i-1,center,nombkg);
+      // onesigma->SetPointError(i-1,lowedge,upedge,-nlim->getErrorLo(),nlim->getErrorHi());
+	
       // eventually if cl = 0.95 this is the usual 1.92!      
-	
+      // minim.setErrorLevel(0.5*pow(ROOT::Math::normal_quantile(1-0.5*(1-cltwo),1.0), 2)); // the 0.5 is because qmu is -2*NLL
+      //if on the other hand cl = 1.0 - 2.0*RooStats::SignificanceToPValue(2.0)= 0.95449974 this is 2. 
+      minim.setErrorLevel(2); 
       minim.migrad();
-      minim.minos(*nlim);
-	
+
+      minim.hesse();
+      result = minim.lastMinuitFit();
+      errm = nlim->getPropagatedError(*result);
       twosigma->SetPoint(i-1,center,nombkg);
-      twosigma->SetPointError(i-1,0.,0.,-nlim->getErrorLo(),nlim->getErrorHi());
+      // twosigma->SetPointError(i-1,0.,0.,-nlim->getErrorLo(),nlim->getErrorHi());
+      twosigma->SetPointError(i-1,lowedge,upedge,-nlim->getErrorLo(),nlim->getErrorHi());
+
+      // minim.minos(*nlim);
+      // printf("lowedge, = %5f, upper edge = %5f, errlo = %5f, errhi = %5f\n",lowedge,upedge,nlim->getErrorLo(),nlim->getErrorHi());
+      // twosigma->SetPoint(i-1,center,nombkg);
+      // twosigma->SetPointError(i-1,lowedge,upedge,-nlim->getErrorLo(),nlim->getErrorHi());
 	
       delete nll;
       delete epdf;
     }
 
     mgg->setRange("errRange",minMassFit,maxMassFit);
+
+    // plotPhotonsMassBkg[c]->Draw(); 
+    plotPhotonsMassBkg[c]->remove(hist->GetName(), false);
+    plotPhotonsMassBkg[c]->remove(fitc->GetName(), false);
+
+    twosigma->SetLineColor(kYellow);
+    twosigma->SetFillColor(kYellow);
+    twosigma->SetMarkerColor(kYellow);
+    // twosigma->Draw("E2 SAME");
+    // twosigma->Draw("E2");
+
+    onesigma->SetLineColor(kGreen);
+    onesigma->SetFillColor(kGreen);
+    onesigma->SetMarkerColor(kGreen);
+    // onesigma->Draw("E2 SAME");
       
-    twosigma->SetLineColor(kGreen);
-    twosigma->SetFillColor(kGreen);
-    twosigma->SetMarkerColor(kGreen);
-    twosigma->Draw("L3 SAME");
-      
-    onesigma->SetLineColor(kYellow);
-    onesigma->SetFillColor(kYellow);
-    onesigma->SetMarkerColor(kYellow);
-    onesigma->Draw("L3 SAME");
-      
-    legdata->AddEntry(onesigma,"#pm1#sigma","F");
-    legdata->AddEntry(twosigma,"#pm2#sigma","F");
+    bias->SetLineColor(kOrange);
+    bias->SetFillColor(kOrange);
+    bias->SetMarkerColor(kOrange);
+    // bias->Draw("E2 SAME");
+
+    plotPhotonsMassBkg[c]->addObject(twosigma,"LE3");
+    plotPhotonsMassBkg[c]->addObject(onesigma,"LE3");
+    plotPhotonsMassBkg[c]->addObject(fitc);
+    plotPhotonsMassBkg[c]->addObject(hist);
+   
+    plotPhotonsMassBkg[c]->Draw(); 
+
+
+    legdata->AddEntry(onesigma,"#pm 1 s.d.","F");
+    legdata->AddEntry(twosigma,"#pm 2 s.d.","F");
+    // legdata->AddEntry(bias,"bias","F");
     legdata->Draw("same");
+
+    label_chi2->Draw("same");
+
+    ctmp->cd(2);
+    //error in  pulls
+    TGraphAsymmErrors *ronesigma = (TGraphAsymmErrors *) onesigma->Clone();
+    TGraphAsymmErrors *rtwosigma = (TGraphAsymmErrors *) twosigma->Clone();
+
+    for (int i = 0; i < ronesigma->GetN(); ++i) {
+      double px = ronesigma->GetX()[i];
+      double py = ronesigma->GetY()[i];
+      ronesigma->SetPoint(i,px,0.);
+      rtwosigma->SetPoint(i,px,0.);
+      //double hx = hist->GetX()[i];
+      double hy = hist->GetY()[i];
+
+      double oerrp = ronesigma->GetErrorYhigh(i);
+      double oerrm = ronesigma->GetErrorYlow(i);
+      double terrp = rtwosigma->GetErrorYhigh(i);
+      double terrm = rtwosigma->GetErrorYlow(i);
+      double herrp = hist->GetErrorYhigh(i);
+      double herrm = hist->GetErrorYlow(i);
+
+      if (py < hy){
+	if (herrm == 0.) { continue; }
+	oerrp /= herrm;
+	terrp /= herrm;
+	oerrm /= herrm;
+	terrm /= herrm;
+      } else{
+	if (herrp == 0.) { continue; }
+	oerrp /= herrp;
+	terrp /= herrp;
+	oerrm /= herrp;
+	terrm /= herrp;
+      }
+
+      ronesigma->SetPointEYhigh(i,oerrp);
+      ronesigma->SetPointEYlow(i,oerrm);
+      rtwosigma->SetPointEYhigh(i,terrp);
+      rtwosigma->SetPointEYlow(i,terrm);
+      
+    } //end of loop over sigma points
+
+    resid[c]->addObject(rtwosigma,"E2");
+    resid[c]->addObject(ronesigma,"E2");
+    resid[c]->addPlotable(hresid,"PE");
+    // resid[c]->addPlotable(rtwosigma,"E2");
+    // resid[c]->addPlotable(ronesigma,"E2");
+
+    resid[c]->Draw();
+
+    // onesigma->Draw("same");
     
-    plotPhotonsMassBkg[c]->Draw("SAME"); 
+    
   }
 
   return gofresult;
@@ -1272,6 +1626,7 @@ TPaveText* get_labelsqrt( int legendquadrant ) {
 
 }
 
+//-----------------------------------------------------------------------------------
 gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::string name, bool gofToys){
 	
   gof gofresult;
@@ -1361,4 +1716,20 @@ gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::s
   delete pdf;
   return gofresult;
 
+}
+//-----------------------------------------------------------------------------------
+RooAbsPdf* getPdf(PdfModelBuilder &pdfsModel, std::string type, int order, const char* ext){
+  if (type=="DijetSimple") return pdfsModel.getDijetSimple(Form("%s_dijetsimple%d",ext,order),order); 
+  else if (type=="Dijet") return pdfsModel.getDijet(Form("%s_dijet%d",ext,order),order); 
+  else if (type=="VVdijet") return pdfsModel.getVVdijet(Form("%s_vvdijet%d",ext,order),order); 
+  else if (type=="Atlas") return pdfsModel.getAtlas(Form("%s_atlas%d",ext,order),order); 
+  else if (type=="Expow") return pdfsModel.getExpow(Form("%s_expow%d",ext,order),order); 
+  else if (type=="Chebychev") return pdfsModel.getChebychev(Form("%s_cheb%d",ext,order),order); 
+  else if (type=="Exponential") return pdfsModel.getExponentialSingle(Form("%s_exp%d",ext,order),order); 
+  else if (type=="PowerLaw") return pdfsModel.getPowerLawSingle(Form("%s_pow%d",ext,order),order); 
+  else if (type=="Laurent") return pdfsModel.getLaurentSeries(Form("%s_lau%d",ext,order),order); 
+  else {
+    std::cerr << "[ERROR] -- getPdf() -- type " << type << " not recognised." << std::endl;
+    return NULL;
+  }
 }

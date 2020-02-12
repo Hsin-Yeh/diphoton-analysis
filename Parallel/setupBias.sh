@@ -20,7 +20,8 @@ cd -
 export PWD=`pwd`
 
 #models="pow expow invpow invpowlin moddijet" 
-models="expow" 
+#models="expow" 
+models="Laurent PowerLaw invpowlin Atlas Exponential Expow"
 
 mkdir -p ${PWD}/biasfiles/${THEYEAR}/${THEMODEL}
 mkdir -p output/bkg/biasfiles

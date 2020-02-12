@@ -15,6 +15,7 @@
 #include "RooPlot.h"
 #include "RooConstVar.h"
 #include "RooPolyVar.h"
+#include "RooAddPdf.h"
 #include "RooGenericPdf.h"
 #include "RooDataHist.h"
 #include "RooExtendPdf.h"
@@ -35,6 +36,7 @@
 #include "TLegend.h"
 #include "TGraphErrors.h"
 #include "TGraphAsymmErrors.h"
+#include "TMultiGraph.h"
 #include "TRandom.h"
 #include "TNtuple.h"
 #include "TArrow.h"
@@ -120,13 +122,13 @@ std::map<std::string, std::vector<window> > readJson(std::string inputfile, std:
 std::vector<thepdf> throwtoys(RooWorkspace* w,const std::string &year, const std::string &ws_dir, std::vector<std::string> cats, std::vector<std::string> models, int ntoystart, int ntoyend, std::map<std::string, std::vector<window> > windows);
 std::vector<biasfitres> fitToys(RooWorkspace* w, std::vector<thepdf> thetoys, std::string familymodel, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos);
 void makebiasrootfile(std::vector<biasfitres> bfr, const std::string &out_dir, std::string familymodel, std::string year, int ntoystart, int ntoyend);
-void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> models, std::vector<std::string> cats, std::string year, int ntoystart, int ntoyend);
+void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> models, std::vector<std::string> cats, std::string year, int ntoystart, int ntoyend, bool analyzerbiasaftertoys);
 theFitResult theFit(RooAbsPdf *pdf, RooExtendPdf *epdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries, bool fittoys);
 gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDataSet* data, std::string model, RooAbsPdf* PhotonsMassBkgTmp0, float minMassFit, float maxMassFit, bool blind, bool dobands, int numoffittedparams, const std::string &year, const std::string &ws_dir, int order);
 TPaveText* get_labelsqrt( int legendquadrant );
 TPaveText* get_labelcms( int legendquadrant, std::string year, bool sim);
 gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::string name, bool gofToys);
-std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::string> cats, std::string paper, bool plotto1invfb);
+std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::string> cats, std::string paper);
 void plotBiasTerm(const std::string &ws_dir, std::string year, std::vector<std::string> cats);
 
 //-----------------------------------------------------------------------------------
@@ -172,25 +174,30 @@ int main(int argc, char *argv[])
 
   //Models
   std::vector<std::string> models;
-  // models.push_back("pow");
-  // models.push_back("expow");
-  // models.push_back("invpow");
-  // models.push_back("invpowlin");
-  // models.push_back("moddijet");
   //Due to speed issues will run each model separately and sent to condor. 
   models.push_back(themodel);
+  //However, the first time we are going to run to create the json norm file we will 
+  //run through all models. Then, after the toys finish we will again switch back to 
+  //all models. 
+  // models.push_back("Laurent");
+  // models.push_back("PowerLaw");
+  // models.push_back("Atlas");
+  // models.push_back("Exponential");
+  // models.push_back("Expow");
+  // models.push_back("invpowlin");
 
   bool blind = true;
   bool dobands = false;
   bool approxminos = true;
-
+  bool analyzebiasaftertoys = false; 
+  
   //========================================================================
   //========================================================================
   //FIRST PART: Create or read json file containing the number of events 
   //            based on the true underlying distribution h(mγγ) for all mass 
   //            windows. I was forced to save that to a file due to a 
   //            segmentation fault coming from the createIntegral on the mgg, 
-  //            which whould be loaded from the intput file workspace and not 
+  //            which whould be loaded from the input file workspace and not 
   //            from the new created workspace contained the dijet function. 
   //========================================================================
   //========================================================================
@@ -217,22 +224,33 @@ int main(int argc, char *argv[])
   HLFactory *hlf = new HLFactory("HLFactory", card_name, false);
   RooWorkspace *w = hlf->GetWs();
   w->Print("V");
-  std::vector<thepdf> thetoys = throwtoys(w, year, inputdir, cats, models, std::stoi(ntoystart), std::stoi(ntoyend), windows);
+  std::vector<thepdf> thetoys;
+  if (!analyzebiasaftertoys){
+    thetoys = throwtoys(w, year, inputdir, cats, models, std::stoi(ntoystart), std::stoi(ntoyend), windows);
+  }
 
   //========================================================================
   //========================================================================
   //THIRD PART: Fit toys and save necessary info for the bias study. 
   //========================================================================
   //========================================================================
-  std::vector<biasfitres> thebiasres = fitToys(w, thetoys, themodel, blind, dobands, year, inputdir, outputdir, cats, models, approxminos);
-  makebiasrootfile(thebiasres, outputdir, themodel, year, std::stoi(ntoystart), std::stoi(ntoyend));
+  std::vector<biasfitres> thebiasres;
+  if (!analyzebiasaftertoys){
+    thebiasres = fitToys(w, thetoys, themodel, blind, dobands, year, inputdir, outputdir, cats, models, approxminos);
+    makebiasrootfile(thebiasres, outputdir, themodel, year, std::stoi(ntoystart), std::stoi(ntoyend));
+  }
 
   //========================================================================
   //========================================================================
   //FOURTH PART: Analyze the bias results. 
   //========================================================================
   //========================================================================
-  analyzeBias(inputdir, outputdir, models, cats, year, std::stoi(ntoystart), std::stoi(ntoyend));
+  if (!analyzebiasaftertoys){
+    analyzeBias(inputdir, outputdir, models, cats, year, std::stoi(ntoystart), std::stoi(ntoyend), analyzebiasaftertoys);
+  } else {
+    //toy number is dummy now. 
+    analyzeBias(inputdir, outputdir, models, cats, year, 1, 2, analyzebiasaftertoys);
+  }
 
 
 
@@ -290,25 +308,70 @@ std::map<std::string, std::vector<window> > computewindnorm(const std::string &y
   modelorder["pow"].push_back(4);
   modelorder["pow"].push_back(4);
 
-  modelorder["expow"].push_back(1);
-  modelorder["expow"].push_back(1);
+  modelorder["Laurent"].push_back(1);//2
+  modelorder["Laurent"].push_back(1);//2
 
-  modelorder["invpow"].push_back(2);
-  modelorder["invpow"].push_back(2);
+  modelorder["PowerLaw"].push_back(1);//1
+  modelorder["PowerLaw"].push_back(1);//1
 
-  modelorder["invpowlin"].push_back(2);
-  modelorder["invpowlin"].push_back(2);
+  modelorder["Atlas"].push_back(1);//2
+  modelorder["Atlas"].push_back(1);//2
 
-  modelorder["moddijet"].push_back(1);
-  modelorder["moddijet"].push_back(1);
+  modelorder["Exponential"].push_back(1);//3
+  modelorder["Exponential"].push_back(1);//3
+
+  // modelorder["Chebychev"].push_back(3);
+  // modelorder["Chebychev"].push_back(3);
+
+  modelorder["DijetSimple"].push_back(2);//2
+  modelorder["DijetSimple"].push_back(2);//2
+
+  modelorder["Dijet"].push_back(3);//2
+  modelorder["Dijet"].push_back(3);//2
+
+  modelorder["VVdijet"].push_back(1);//1
+  modelorder["VVdijet"].push_back(1);//1
+
+  // modelorder["expow"].push_back(2);//1
+  // modelorder["expow"].push_back(2);//1
+
+  modelorder["Expow"].push_back(1);//2
+  modelorder["Expow"].push_back(1);//2
+
+  modelorder["invpow"].push_back(2);//1
+  modelorder["invpow"].push_back(2);//1
+
+  modelorder["invpowlin"].push_back(1);//2
+  modelorder["invpowlin"].push_back(1);//2
+
+  modelorder["moddijet"].push_back(2);
+  modelorder["moddijet"].push_back(2);
 
   modelorder["dijet"].push_back(1);
   modelorder["dijet"].push_back(1);
+
+
+  std::map<std::string,std::string> modelnametopdf;
+  modelnametopdf["Laurent"] = "lau";
+  modelnametopdf["invpowlin"] = "invpowlin";
+  modelnametopdf["Atlas"] = "atlas";
+  modelnametopdf["Exponential"] = "exp";
+  modelnametopdf["Expow"] = "expow";
+  modelnametopdf["PowerLaw"] = "pow";
+  // modelnametopdf[""] = ;
 
   std::map<std::string , TFile *> fin; //[model][file]
+  // TFile * fin; //[model][file]
   std::map<std::string , RooWorkspace* > win; //[model][ws]
+  // RooWorkspace* win;
 
   RooRealVar* nBackground[NCAT];
+
+  // fin = TFile::Open(Form("%s/bkg_%s.root", ws_dir.c_str(), year.c_str()));
+  // fin->cd();
+  // win = (RooWorkspace*) fin->Get("HLFactory_ws");
+   
+  // RooRealVar* mgg = win->var("mgg");
 
   for (auto model : models){
 
@@ -316,8 +379,8 @@ std::map<std::string, std::vector<window> > computewindnorm(const std::string &y
 
     fin[model] = TFile::Open(Form("%s/bkg_%s_%s.root", ws_dir.c_str(), model.c_str(), year.c_str()));
     fin[model]->cd();
-    win[model] = (RooWorkspace*) fin[model]->Get("HLFactory_ws");
-
+    win[model] = (RooWorkspace*) fin[model]->Get(Form("HLFactory_%s_ws", model.c_str()));
+ 
     RooRealVar* mgg = win[model]->var("mgg");
 
     for (unsigned int c = 0; c < cats.size(); ++c) {
@@ -334,16 +397,29 @@ std::map<std::string, std::vector<window> > computewindnorm(const std::string &y
 	maxMassFit = MAXmass;    
       }
 
-      RooAbsPdf* thetmppdf = (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
+      RooAbsPdf* thetmppdf;
+
+      if (model!="Laurent" && model!="PowerLaw" && model!="Atlas" && model!="Exponential" && 
+	  model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
+	  model!="Expow"){
+	thetmppdf = (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
+	nBackground[c] = (RooRealVar*) win[model]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
+
+      } else {
+	thetmppdf = (RooAbsPdf*) win[model]->pdf( Form("ftest_pdf_%s_%s%d",cats[c].c_str() ,modelnametopdf[model].c_str(), modelorder[model][c] ) ) ;     
+	nBackground[c] = (RooRealVar*) win[model]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+
+      } 
+      
+      // thetmppdf= (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
 
       RooArgSet* theparams = new RooArgSet();
       theparams = thetmppdf->getParameters(*mgg);
       theparams->printLatex();
-      win[model]->loadSnapshot(TString::Format("%s%d_fit_params_cat%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
+      // win[model]->loadSnapshot(TString::Format("%s%d_fit_params_cat%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
+      win[model]->loadSnapshot(TString::Format("%s_fit_params_cat%s",model.c_str(), cats[c].c_str())); 
       std::cout << "ALWAYS CHECK THAT THE PARAMETERS LOADED ARE THE ONE EXPECTED" << std::endl; 
       theparams->printLatex();
-
-      nBackground[c] = (RooRealVar*) win[model]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
 
       RooArgSet *set_mgg;
 
@@ -390,23 +466,67 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
   modelorder["pow"].push_back(4);
   modelorder["pow"].push_back(4);
 
-  modelorder["expow"].push_back(1);
-  modelorder["expow"].push_back(1);
+  modelorder["Laurent"].push_back(1);//2
+  modelorder["Laurent"].push_back(1);//2
 
-  modelorder["invpow"].push_back(2);
-  modelorder["invpow"].push_back(2);
+  modelorder["PowerLaw"].push_back(1);//1
+  modelorder["PowerLaw"].push_back(1);//1
 
-  modelorder["invpowlin"].push_back(2);
-  modelorder["invpowlin"].push_back(2);
+  modelorder["Atlas"].push_back(1);//2
+  modelorder["Atlas"].push_back(1);//2
 
-  modelorder["moddijet"].push_back(1);
-  modelorder["moddijet"].push_back(1);
+  modelorder["Exponential"].push_back(1);//3
+  modelorder["Exponential"].push_back(1);//3
+
+  // modelorder["Chebychev"].push_back(3);
+  // modelorder["Chebychev"].push_back(3);
+
+  modelorder["DijetSimple"].push_back(2);//2
+  modelorder["DijetSimple"].push_back(2);//2
+
+  modelorder["Dijet"].push_back(3);//2
+  modelorder["Dijet"].push_back(3);//2
+
+  modelorder["VVdijet"].push_back(1);//1
+  modelorder["VVdijet"].push_back(1);//1
+
+  // modelorder["expow"].push_back(2);//1
+  // modelorder["expow"].push_back(2);//1
+
+  modelorder["Expow"].push_back(1);//2
+  modelorder["Expow"].push_back(1);//2
+
+  modelorder["invpow"].push_back(2);//1
+  modelorder["invpow"].push_back(2);//1
+
+  modelorder["invpowlin"].push_back(1);//2
+  modelorder["invpowlin"].push_back(1);//2
+
+  modelorder["moddijet"].push_back(2);
+  modelorder["moddijet"].push_back(2);
 
   modelorder["dijet"].push_back(1);
   modelorder["dijet"].push_back(1);
+
 
   std::map<std::string , TFile *> fin; //[model][file]
   std::map<std::string , RooWorkspace* > win; //[model][ws]
+  std::map<std::string,std::string> modelnametopdf;
+  modelnametopdf["Laurent"] = "lau";
+  modelnametopdf["invpowlin"] = "invpowlin";
+  modelnametopdf["Atlas"] = "atlas";
+  modelnametopdf["Exponential"] = "exp";
+  modelnametopdf["Expow"] = "expow";
+  modelnametopdf["PowerLaw"] = "pow";
+  // modelnametopdf[""] = ;
+
+  // TFile * fin; //[model][file]
+  // RooWorkspace* win;
+
+  // fin = TFile::Open(Form("%s/bkg_%s.root", ws_dir.c_str(), year.c_str()));
+  // fin->cd();
+  // win = (RooWorkspace*) fin->Get("HLFactory_ws");
+
   std::vector<thepdf> pdfs;
 
   std::vector<RooDataSet*> data_toys; 
@@ -417,13 +537,13 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
 
     std::cout << "MODEL " << model << std::endl; 
 
-    fin[model] = TFile::Open(Form("%s/bkg_%s_%s.root", ws_dir.c_str(), model.c_str(), year.c_str()));
-    fin[model]->cd();
-    win[model] = (RooWorkspace*) fin[model]->Get("HLFactory_ws");
-
     RooPlot* plotPhotonsMassBkg_toy[NCAT];
     RooRealVar* mgg = w->var("mgg");
     mgg->setBins(nBinsMass);
+
+    fin[model] = TFile::Open(Form("%s/bkg_%s_%s.root", ws_dir.c_str(), model.c_str(), year.c_str()));
+    fin[model]->cd();
+    win[model] = (RooWorkspace*) fin[model]->Get(Form("HLFactory_%s_ws", model.c_str()));
 
     for (unsigned int c = 0; c < cats.size(); ++c) {
 
@@ -445,7 +565,20 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
       tmppdf.cat = cats[c];
       tmppdf.catnum = c;
       tmppdf.model = model; 
-      tmppdf.pdf = (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str()));
+      // tmppdf.pdf = (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str()));
+
+      if (model!="Laurent" && model!="PowerLaw" && model!="Atlas" && model!="Exponential" && 
+	  model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
+	  model!="Expow"){
+	tmppdf.pdf = (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
+	nBackground[c] = (RooRealVar*) win[model]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
+
+      } else {
+	tmppdf.pdf = (RooAbsPdf*) win[model]->pdf( Form("ftest_pdf_%s_%s%d",cats[c].c_str() ,modelnametopdf[model].c_str(), modelorder[model][c] ) ) ;     
+	nBackground[c] = (RooRealVar*) win[model]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+
+      } 
+ 
       tmppdf.order = modelorder[model][c];
       // tmppdf.ws = win[model];
 
@@ -467,14 +600,12 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
       // 	// arg->getVal();
       // }
 
-      win[model]->loadSnapshot(TString::Format("%s%d_fit_params_cat%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
+      win[model]->loadSnapshot(TString::Format("%s_fit_params_cat%s",model.c_str(), cats[c].c_str())); 
       // theparams->assignValueOnly(*thesnap);
       // *theparams = *thesnap ;
       // thesnap->printLatex();
       std::cout << "ALWAYS CHECK THAT THE PARAMETERS LOADED ARE THE ONE EXPECTED" << std::endl; 
       theparams->printLatex();
-
-      nBackground[c] = (RooRealVar*) win[model]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
 
       tmppdf.nominalnorm = nBackground[c]->getVal();
       
@@ -546,7 +677,8 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
 //-----------------------------------------------------------------------------------
 std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithtoys, std::string familymodel, bool blind, bool dobands, const std::string &year, const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> cats, std::vector<std::string> models, bool approx_minos){
 
-  // RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+  RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+  gErrorIgnoreLevel = 1001;
   // Int_t ncat = NCAT;
 
   std::vector<biasfitres> thebiasresult; 
@@ -602,6 +734,8 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
     RooDataSet* edset;
     RooArgSet *set_mgg;
 
+    int suctoynum = -1;
+    
     for (auto toy : pdf.toys){
 
       // toy = (RooDataSet*) w->data(toy->GetName());
@@ -629,6 +763,7 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
       //I use back because I do not know if pdf.catnum follows the 0 to 1 order for categories. 
       fitresult.back().fitres->Print("V");
 
+
       //************************************************
       // PhotonsMass background fit results per categories 
       // TCanvas* ctmp = new TCanvas("ctmp","PhotonsMass Background Categories",0,0,500,500);
@@ -646,18 +781,27 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
       //For the pull
       RooRealVar *roonorm;
       RooFitResult *fitTest;
+      //And the dataset #events we need to take the percent from the integral of the pdf. 
+      dset = (RooDataSet*) toy->reduce(Form("mgg > %f && mgg < %f", minMassFit, maxMassFit) );
       for (auto wind : pdf.truenorms){
 
-	//load the succesful fit param values in the whole range
+	//We will try to load the succesful fit params of a toy. 
+	// if (suctoynum == -1 ){
+	//   //Here the fit in the window was unsuccesful for this toy (or it is the first toy) 
+	//   //so we at least load the full range params. 
+	//   w->loadSnapshot(Form("dijet_fit_params_cat%s", cats[pdf.catnum].c_str() ) );
+	//   theparams->printLatex();
+	//     } else {
+	//   //The fit was succesful so load the relevant toy params. 
+	//   w->loadSnapshot(Form("dijet_fit_params_cat%s_%s_toy%d", cats[pdf.catnum].c_str(), wind.name.c_str(), suctoynum ) );
+	// }
 	w->loadSnapshot(Form("dijet_fit_params_cat%s", cats[pdf.catnum].c_str() ) );
-	theparams->printLatex();
 
 	mgg->setRange(wind.name.c_str(), wind.low, wind.high);
 	set_mgg = new RooArgSet(*mgg);
-	RooAbsReal * integral = PhotonsMassBkgTmp0->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg), wind.name.c_str());
-	dset = (RooDataSet*) toy->reduce(Form("mgg > %f && mgg < %f", wind.low, wind.high ) );
-
+	RooAbsReal * integral = PhotonsMassBkgTmp0->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg), RooFit::Range(wind.name.c_str()));
 	double nomnorm = integral->getVal()*dset->sumEntries();
+	std::cout << "BEFORE CONTINUE integral->getVal()" << integral->getVal() << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
 	if (nomnorm == 0.) {continue;}
 	std::cout << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
 
@@ -711,7 +855,7 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
 	// }
 
 	std::cout << "---------------------------------------------------" << std::endl;
-	std::cout << "int minim_status" << minim_status << std::endl;
+	std::cout << "int minim_status " << minim_status << std::endl;
 	std::cout << "---------------------------------------------------" << std::endl;
 	if (minim_status != 0){ continue; }
 
@@ -795,6 +939,18 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
 	  bias = (nomnorm-wind.norm)/abs(errh);
 	}
 
+	//Save the snapshot of the succesful toy 
+	if (minos == 0){
+	  //Here the fit in the window was succesful so we should save the suctoynum
+	  suctoynum = toynum;
+	  w->saveSnapshot(Form("dijet_fit_params_cat%s_%s_toy%d", cats[pdf.catnum].c_str(), wind.name.c_str(), suctoynum ) , *theparams, kTRUE);
+	} else {
+	  //If the fit was unsuccesful for this toy then give the suctoynum -1 value 
+	  //so that later we can load at least the full range params. 
+	  suctoynum = -1;
+	}
+
+
 	//Will need to save the info for later processing. 
 	//If the code reached here it means that it didn't stack and 
 	//we can have some output, avoiding corrupted root files. 
@@ -877,7 +1033,7 @@ void makebiasrootfile(std::vector<biasfitres> bfr, const std::string &out_dir, s
 
 }
 //-----------------------------------------------------------------------------------
-void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> models, std::vector<std::string> cats, std::string year, int ntoystart, int ntoyend){
+void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vector<std::string> models, std::vector<std::string> cats, std::string year, int ntoystart, int ntoyend, bool analyzerbiasaftertoys){
   
   TStyle* m_gStyle = new TStyle();
   m_gStyle->SetOptStat(1111);
@@ -901,8 +1057,12 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
 
   std::map<std::string , std::map<std::string , std::vector<double> > > bpullvals, bpullvalsErr, pullvals, pullvalsErr, bcpullvals, bcpullvalsErr, windvals, windvalsErr;
   
-  bias_formula = buildBiasTerm(year, cats, "EXO-17-017", false); //false is to scale to year luminosity and not to 1/fb-1
+  bias_formula = buildBiasTerm(year, cats, "NEW"); 
   plotBiasTerm(ws_dir, year, cats);
+
+  //Will save the windows name for later; 
+  std::set<std::string> thewindows; 
+  thewindows.clear();
 
   float xfirst = 1e6;
   float xlast  = 0.;
@@ -910,7 +1070,11 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
   for (auto model : models){
     
     std::cout << "MODEL " << model << std::endl; 
-    fin[model] = TFile::Open(Form("%s/%s/tree_bias_%s_%s_%d_%d.root", out_dir.c_str(), model.c_str(), model.c_str(), year.c_str(), ntoystart, ntoyend));
+    if (!analyzerbiasaftertoys) {
+      fin[model] = TFile::Open(Form("%s/%s/tree_bias_%s_%s_%d_%d.root", out_dir.c_str(), model.c_str(), model.c_str(), year.c_str(), ntoystart, ntoyend));
+     } else {
+      fin[model] = TFile::Open(Form("%s/tree_bias_%s_%s.root", out_dir.c_str(), model.c_str(), year.c_str() ));
+    }
     fin[model]->cd();
     
     TDirectory *curdir = gDirectory;
@@ -941,6 +1105,7 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     	wind.name = name(name.Index(model)+model.length()+1,name.Length());
     	wind.low =  std::stod(wind.name.substr(0, wind.name.find("_")));
     	wind.high = std::stod(wind.name.substr(wind.name.find("_")+1, wind.name.length()));
+	thewindows.insert(wind.name);
 
     	std::cout << "model " << model << " cat " << cat << " wind.name " << wind.name << " wind.low " << wind.low << " wind.high " << wind.high <<std::endl;
 
@@ -950,8 +1115,9 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     	bcan[slabel] = new TCanvas(slabel,slabel);
     	bcan[slabel]->cd();
 
-    	hb[slabel] = new TH1F(Form("h_bias_%s",slabel.Data()), Form("h_bias_%s",slabel.Data()), 501, -5.005, 5.005);
-    	tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) );
+    	hb[slabel] = new TH1F(Form("h_bias_%s",slabel.Data()), Form("h_bias_%s",slabel.Data()), 101, -5.005, 5.005);
+    	// tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) );
+    	tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) , "minos==0");
     	hb[slabel]->Fit("gaus","L+Q");
     	Int_t nentries = hb[slabel]->GetEntries();
 
@@ -966,18 +1132,25 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     	med[0] = 0.;
     	hb[slabel]->GetQuantiles(nq,med,prb);
 
-    	hc[slabel] = new TH1F(Form("h_coverage_%s",slabel.Data()), Form("h_coverage_%s",slabel.Data()), 501, 0., 5.01);
-    	tree->Draw(Form("abs(bias)>>%s", hc[slabel]->GetName()) );
+    	hc[slabel] = new TH1F(Form("h_coverage_%s",slabel.Data()), Form("h_coverage_%s",slabel.Data()), 51, 0., 5.01);
+    	tree->Draw(Form("abs(bias)>>%s", hc[slabel]->GetName()) , "minos==0" );
+
+   	hc[slabel]->Draw();
+    	bcan[slabel]->SaveAs( Form("%s/coverage_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
 
     	prb[0] = 0.683;
     	qtl[0] = 0.;
     	hc[slabel]->GetQuantiles(nq,qtl,prb);
 
     	hd[slabel] = new TH1F(Form("h_deviation_%s",slabel.Data()), Form("h_deviation_%s",slabel.Data()), 501, -100.2, 100.2 );
-    	tree->Draw(Form("fit-truth>>%s", hd[slabel]->GetName()) );
+    	tree->Draw(Form("fit-truth>>%s", hd[slabel]->GetName()) , "minos==0" );
     	hd[slabel]->Fit("gaus","L+Q");
 
     	gausd[slabel] = (TF1*) hd[slabel]->GetListOfFunctions()->At(0);
+
+	hd[slabel]->Draw();
+    	bcan[slabel]->SaveAs( Form("%s/deviation_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
+
     	medd[0] = 0.;
     	hd[slabel]->GetQuantiles(nq,medd,prb);
 
@@ -1007,6 +1180,10 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     	hcb[slabel]->Fit("gaus","L+Q");
 
     	gauscb[slabel] = (TF1*) hcb[slabel]->GetListOfFunctions()->At(0);
+
+	hcb[slabel]->Draw();
+    	bcan[slabel]->SaveAs( Form("%s/corr_bias_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
+
     	medcb[0] = 0.;
     	hcb[slabel]->GetQuantiles(nq,medcb,prb);
 
@@ -1021,16 +1198,17 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
 
   //Time for plot
   m_gStyle->SetOptFit(0);
+  m_gStyle->SetOptTitle(0);
 
   std::map<TString , int > colors; 
-  colors["expow"] = 2; //kRed
-  colors["invpow"] = 4; //kBlue
+  colors["Expow"] = 2; //kRed
+  colors["Exponential"] = 4; //kBlue
   colors["invpowlin"] = 417; //kGreen+1
-  colors["moddijet"] = 433; //kCyan+1
-  colors["pow"] = 616; //kMagenta
-  // colors[""] = ; //kYellow
-  // colors[""] = ; //kGray
-  // colors[""] = ; //kOrange
+  colors["Atlas"] = 433; //kCyan+1
+  // colors["Laurent"] = 616; //kMagenta
+  // colors["invpow"] = ; //kYellow
+  // colors["moddijet"] = ; //kGray
+  // colors["pow"] = ; //kOrange
   
   //For pull
   std::map<std::string , TCanvas *> bcanv; //[cat]
@@ -1043,7 +1221,12 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
   std::map<std::string ,TLegend *> cbleg; //[cat]
 
   std::map<std::string , TH2F *> frame;
+  std::map<std::string , TH2F *> frameb;
   std::map<std::string , TBox *> box;
+
+  //This is to plot and test the new bias term function. 
+  std::map<TString , TF1 * > funsNEW; 
+  std::map<TString , TString > formNEW = buildBiasTerm(year, cats, "NEW"); 
 
   //First loop through cats since we want bias plots per category. 
   for (auto cat : cats){
@@ -1055,11 +1238,13 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
 
     bleg[cat]= new TLegend(0.6,0.12,0.95,0.47);
     bleg[cat]->SetFillStyle(0);
-      
+    bleg[cat]->SetBorderSize(0);
+
     frame[cat] = new TH2F(Form("frame_%s",cat.c_str()),Form("frame_%s",cat.c_str()),100,xfirst,xlast,100,-4,2);
     frame[cat]->SetStats(false);
     bcanv[cat]->cd();
     frame[cat]->Draw();
+    frame[cat]->SetTitle("");
     frame[cat]->GetXaxis()->SetTitle("mass [GeV]");
     frame[cat]->GetXaxis()->SetMoreLogLabels();
     frame[cat]->GetYaxis()->SetTitle("( n_{fit} - n_{true} )/ #sigma_{fit}");
@@ -1094,28 +1279,34 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     //Now with the deviation, nfit-ntrue/GeV
     canv[cat] = new TCanvas(Form("profile_bias_%s",cat.c_str()),Form("profile_bias_%s",cat.c_str()));
     canv[cat]->SetLogx();
+    canv[cat]->SetLogy();
     canv[cat]->SetGridy();
     canv[cat]->SetGridx();
 
-    leg[cat]= new TLegend(0.6,0.12,0.95,0.47);
+    leg[cat]= new TLegend(0.6,0.52,0.95,0.87);
     leg[cat]->SetFillStyle(0);
-      
-    frame[cat]->SetStats(false);
-    canv[cat]->cd();
-    frame[cat]->Draw();
-    frame[cat]->GetXaxis()->SetTitle("mass [GeV]");
-    frame[cat]->GetXaxis()->SetMoreLogLabels();
-    frame[cat]->GetYaxis()->SetTitle("| n_{fit} - n_{true} | / GeV");
+    leg[cat]->SetBorderSize(0);
 
-    box[cat]->SetFillColor(kGray);
-    box[cat]->Draw("same");       
+    frameb[cat] = new TH2F(Form("frameb_%s",cat.c_str()),Form("frameb_%s",cat.c_str()),100,xfirst,xlast,100,1e-6,2);
+    frameb[cat]->SetStats(false);
+    canv[cat]->cd();
+    frameb[cat]->SetMinimum(1e-6);
+    frameb[cat]->Draw();
+    frameb[cat]->SetTitle("");
+    frameb[cat]->GetXaxis()->SetTitle("mass [GeV]");
+    // frameb[cat]->GetXaxis()->SetMoreLogLabels();
+    frameb[cat]->GetYaxis()->SetTitle("| n_{fit} - n_{true} | / GeV");
+    // box[cat]->SetFillColor(kGray);
+    // box[cat]->Draw("same");       
 
     for (auto model : models){
 
       // A std::vector is at its heart an array. To get the array just get the address of the first element.
       profiles[model][cat] = new TGraphErrors( pullvals[model][cat].size(), &windvals[model][cat][0], &pullvals[model][cat][0], &windvalsErr[model][cat][0], &pullvalsErr[model][cat][0] ) ; 
-
-      profiles[model][cat]->GetXaxis()->SetRangeUser(0.001, 0.3);
+      
+      // profiles[model][cat]->GetXaxis()->SetRangeUser(0.001, 0.3);
+      profiles[model][cat]->GetHistogram()->SetMinimum(1e-6);
+      // profiles[model][cat]->GetYaxis()->SetRangeUser(1e-6,1.);
       profiles[model][cat]->GetXaxis()->SetTitleOffset( 0.9 );
       profiles[model][cat]->SetMarkerColor(colors[model]);
       profiles[model][cat]->SetMarkerStyle(kFullCircle);
@@ -1129,10 +1320,25 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
 
     }//end of loop through models
 
-    canv[cat]->SaveAs((Form("%s/profile_bias_%s_%s.png", ws_dir.c_str(), cat.c_str(), year.c_str())) );
+    //Will add the bias function in the same plot here. 
+    TString thekey = "";
+    for (auto wind : thewindows){
+      thekey = Form("%s_%s", cat.c_str(), wind.c_str()); 
+      funsNEW[thekey] = new TF1( Form("err_correction_%s", thekey.Data()), Form("%s", formNEW[thekey].Data()), 500., 1e6);
+      funsNEW[thekey]->SetLineColor(37);
+      funsNEW[thekey]->Draw("same");
+      canv[cat]->RedrawAxis();
+      canv[cat]->Modified();
+      canv[cat]->Update();
+    }
+    leg[cat]->AddEntry( funsNEW[thekey] , "bias function" ,"l" );
+    leg[cat]->Draw("same");
+
+    // canv[cat]->SaveAs((Form("%s/profile_bias_%s_%s.png", ws_dir.c_str(), cat.c_str(), year.c_str())) );
+    canv[cat]->SaveAs((Form("%s/profile_bias_%s_%s_log.png", ws_dir.c_str(), cat.c_str(), year.c_str())) );
 
    //------------------------------------------------------------------------------------------------------
-    //Now with the corrected pull, nfit-ntrue/GeV
+    //Now with the corrected pull, nfit-ntrue/s+b
     cbcanv[cat] = new TCanvas(Form("profile_corr_pull_%s",cat.c_str()),Form("profile_corr_pull_%s",cat.c_str()));
     cbcanv[cat]->SetLogx();
     cbcanv[cat]->SetGridy();
@@ -1140,7 +1346,8 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
 
     cbleg[cat]= new TLegend(0.6,0.12,0.95,0.47);
     cbleg[cat]->SetFillStyle(0);
-      
+    cbleg[cat]->SetBorderSize(0);
+
     frame[cat]->SetStats(false);
     cbcanv[cat]->cd();
     frame[cat]->Draw();
@@ -1222,14 +1429,15 @@ theFitResult theFit(RooAbsPdf *pdf, RooExtendPdf *epdf, RooDataSet *data, double
     // minuit_fitTest->setEps(1000);
     minuit_fitTest->setPrintLevel(5);
     if (fittoys){
+      minuit_fitTest->setStrategy(1);
       minuit_fitTest->setMaxIterations(15);
       minuit_fitTest->setMaxFunctionCalls(100);                            
     }
     minuit_fitTest->minimize("Minuit2","minimize");
     std::cout << "Now running hesse" << std::endl;
     hessestatus = minuit_fitTest->hesse();
-    std::cout << "Running minos" << std::endl;
-    minosstatus = minuit_fitTest->minos();
+    // std::cout << "Running minos" << std::endl;
+    // minosstatus = minuit_fitTest->minos();
     fitTest = minuit_fitTest->save("fitTest","fitTest");
     // offset= nll->offset();
     // std::cout << nll->isOffsetting() << std::endl;
@@ -1703,7 +1911,7 @@ std::map<std::string, std::vector<window> > readJson(std::string inputfile, std:
 }
 //-----------------------------------------------------------------------------------
 //Options for paper are: EXO-17-017 or EXO-16-027
-std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::string> cats, std::string paper, bool plotto1invfb){
+std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::string> cats, std::string paper){
 
   std::map<TString , TString > formula; 
  
@@ -1738,15 +1946,15 @@ std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::st
   tmpwind.low = 4500.; tmpwind.high = 6000.; tmpwind.name = "4500_6000";
   windows.push_back(tmpwind);
 
-  double luminosityscale;
+  double luminosityscale = 0.;
   
-  if (plotto1invfb){ luminosityscale = 1.;}
-  else {luminosityscale = luminosity[year];}
-
+  if (paper == "EXO-17-017" || paper == "NEW") {luminosityscale = luminosity[year];}
+  else if (paper == "EXO-16-027") {luminosityscale = 10.;}
+  else {std::cout << "NOT FOUND THE RELEVANT LUMISCALE FACTOR FOR BIAS TERM" << std::endl;}
+  
   for (auto cat : cats){
 
     for (auto wind : windows){
-
 
       //The key of the formula will be cat+windname
       TString thekey = Form("%s_%s", cat.c_str(), wind.name.c_str()); 
@@ -1759,7 +1967,7 @@ std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::st
       	  // //Above 650 GeV
       	  // else{ formula[thekey] = Form("(pow(x,2.0-0.36*log(x)))/%f", luminosityscale);}
       	} else if (cat=="EBEE"){
-	  formula[thekey] = Form("x<=750. ? 0.2/%f : (pow(x/600.,-3.5-0.2*log(x/600.))+15e-5)/%f", luminosityscale, luminosityscale);
+	  formula[thekey] = Form("x<=750. ? 0.2/%f : (pow(x/600.,-3.5-0.2*log(x/600.))/%f) +15e-5", luminosityscale, luminosityscale);
       	  // //Up to 750 GeV
       	  // if (wind.high <= 750.){ formula[thekey] = Form("0.2/%f", luminosityscale); } 
       	  // //Above 750 GeV
@@ -1768,12 +1976,15 @@ std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::st
       } //end of EXO-17-017 choice
       else if (paper == "EXO-16-027"){
       	if (cat=="EBEB"){ formula[thekey] = Form("pow(x,2.2-0.4*log(x))/%f", luminosityscale);}
-      	else if (cat=="EBEE"){formula[thekey] = Form("(0.1*(x/600.)^(-5)+2e-5)/%f", luminosityscale);}
+      	else if (cat=="EBEE"){formula[thekey] = Form("((0.1*(x/600.)^(-5))/%f) + 2e-6", luminosityscale);}
       } //end of EXO-16-027 choice
-
+      else if (paper == "NEW"){
+	if (cat=="EBEB"){formula[thekey] = Form("x<=650. ? 8.3/%f : (pow(x,3.6-0.51*log(x))/%f)", luminosityscale, luminosityscale);} 
+	else if (cat=="EBEE"){ formula[thekey] = Form("x<=650. ? 8.3/%f : (pow(x,3.6-0.51*log(x))/%f)", luminosityscale, luminosityscale);}
+      }//end of new choice
     }//end of loop over windows
   }//end of loop over categories
-
+  
   return formula;
   
 }
@@ -1787,9 +1998,11 @@ void plotBiasTerm(const std::string &ws_dir, std::string year, std::vector<std::
   std::map<TString , TLegend *> funleg;  
   std::map<TString , TF1 * > funsEXO17017; 
   std::map<TString , TF1 * > funsEXO16027; 
+  std::map<TString , TF1 * > funsNEW; 
 
-  std::map<TString , TString > formEXO17017 = buildBiasTerm(year, cats, "EXO-17-017", true); //true is to scale to 1/fb-1
-  std::map<TString , TString > formEXO16027 = buildBiasTerm(year, cats, "EXO-16-027", true); //true is to scale to 1/fb-1
+  std::map<TString , TString > formEXO17017 = buildBiasTerm(year, cats, "EXO-17-017"); 
+  std::map<TString , TString > formEXO16027 = buildBiasTerm(year, cats, "EXO-16-027"); 
+  std::map<TString , TString > formNEW = buildBiasTerm(year, cats, "NEW"); 
 
   std::vector<window> windows;
   window tmpwind;
@@ -1864,31 +2077,40 @@ void plotBiasTerm(const std::string &ws_dir, std::string year, std::vector<std::
       // funsEXO16027[thekey] = new TF1( Form("err_correction_%s", thekey.Data()), Form("%s", formEXO16027[thekey].Data()), wind.low, wind.high);
       funsEXO17017[thekey] = new TF1( Form("err_correction_%s", thekey.Data()), Form("%s", formEXO17017[thekey].Data()), 500., 1e6);
       funsEXO16027[thekey] = new TF1( Form("err_correction_%s", thekey.Data()), Form("%s", formEXO16027[thekey].Data()), 500., 1e6);
-       
+      funsNEW[thekey] = new TF1( Form("err_correction_%s", thekey.Data()), Form("%s", formNEW[thekey].Data()), 500., 1e6);
+
+      funsEXO17017[thekey]->GetHistogram()->SetTitle("");
+      funsEXO16027[thekey]->GetHistogram()->SetTitle("");
+      funsNEW[thekey]->GetHistogram()->SetTitle("");
+
       funsEXO16027[thekey]->SetLineColor(2);
       funsEXO17017[thekey]->SetLineColor(4);
-       
+      funsNEW[thekey]->SetLineColor(3);
+
       funsEXO17017[thekey]->GetHistogram()->GetYaxis()->SetTitle("#beta_{#gamma#gamma} (Events/fb^{-1})");
       funsEXO17017[thekey]->GetHistogram()->GetXaxis()->SetTitle("m_{#gamma#gamma} (GeV)");
 
       funsEXO16027[thekey]->GetHistogram()->GetYaxis()->SetTitle("#beta_{#gamma#gamma} (Events/fb^{-1})");
       funsEXO16027[thekey]->GetHistogram()->GetXaxis()->SetTitle("m_{#gamma#gamma} (GeV)");
 
+      funsNEW[thekey]->GetHistogram()->GetYaxis()->SetTitle("#beta_{#gamma#gamma} (Events/fb^{-1})");
+      funsNEW[thekey]->GetHistogram()->GetXaxis()->SetTitle("m_{#gamma#gamma} (GeV)");
+
       //Range in Y common
       funsEXO17017[thekey]->GetHistogram()->GetYaxis()->SetRangeUser(1e-6,1.);
       funsEXO16027[thekey]->GetHistogram()->GetYaxis()->SetRangeUser(1e-6,1.);
-      
+      funsNEW[thekey]->GetHistogram()->GetYaxis()->SetRangeUser(1e-6,1.);
+
       funsEXO17017[thekey]->GetHistogram()->GetXaxis()->SetRangeUser(0.,5e3);
       funsEXO16027[thekey]->GetHistogram()->GetXaxis()->SetRangeUser(0.,1e4);
-
-      
-
+      funsNEW[thekey]->GetHistogram()->GetXaxis()->SetRangeUser(0.,1e4);
 
       // funsEXO17017[thekey]->GetHistogram()->GetYaxis()->SetRangeUser(1e-6,1e-3);
       // funsEXO16027[thekey]->GetHistogram()->GetXaxis()->SetRangeUser(xfirst,xlast);
       if (counter == 0) {funsEXO17017[thekey]->Draw();}
       else {funsEXO17017[thekey]->Draw("same");}
       funsEXO16027[thekey]->Draw("same");
+      funsNEW[thekey]->Draw("same");
       can[cat]->Update();
       can[cat]->RedrawAxis();
       // can[cat]->Modified();
@@ -1902,7 +2124,8 @@ void plotBiasTerm(const std::string &ws_dir, std::string year, std::vector<std::
     funleg[cat]->SetHeader(Form("Bias function - %s for 1 fb-1 ",cat.c_str()));
     funleg[cat]->AddEntry( funsEXO16027[thekey] , "EXO-16-027, bias from MC" ,"l" );
     funleg[cat]->AddEntry( funsEXO17017[thekey] , "EXO-17-017, bias from data" ,"l" );
-  
+    funleg[cat]->AddEntry( funsNEW[thekey] , "New, bias from data" ,"l" );
+
     funleg[cat]->Draw("same");
     // can[cat]->RedrawAxis();
     // can[cat]->Modified();

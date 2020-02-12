@@ -6,7 +6,7 @@
 #include <limits>
 
 #include "../interface/RooPowLogPdf.h"
-#include "diphoton-analysis/Utils/interface/Faddeeva.h"
+#include "diphoton-analysis/RooUtils/interface/Faddeeva.h"
 
 #include "RooRealVar.h"
 

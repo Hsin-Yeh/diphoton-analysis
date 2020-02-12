@@ -15,6 +15,7 @@
 <use name="DataFormats/FWLite"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="diphoton-analysis/RooUtils"/>
+<use name="diphoton-analysis/Utils"/>
 <environment>
   <bin file="basicplots.cc" name="basicplots.exe"/>
   <bin file="datadriven.cc" name="datadriven.exe"/>
