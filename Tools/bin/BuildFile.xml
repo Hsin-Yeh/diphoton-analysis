@@ -1,5 +1,7 @@
 <use name="root"/>
 <use name="rootinteractive"/>
+<use name="roostats"/>
+<use name="diphoton-analysis/RooUtils"/>
 <environment>
   <bin file="basicplots.cc" name="basicplots.exe"/>
   <bin file="datadriven.cc" name="datadriven.exe"/>
@@ -24,5 +26,6 @@
   <bin file="plot_pdf_uncert.cc" name="plot_pdf_uncert.exe"/>
   <bin file="skim.cc" name="skim.exe"/>
   <bin file="prepareTrees.cc" name="prepareTrees.exe"/>
+  <bin file="prepareWorkspaces.cc" name="prepareWorkspaces.exe"/>
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>
