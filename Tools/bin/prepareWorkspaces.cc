@@ -51,7 +51,7 @@ struct theFitResult {
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
 RooRealVar* buildRooVar(std::string name, std::string title, int nBins, double xMin, double xMax, std::string unit);
-void runAllFits(const std::string &year, const std::string &ws_dir);
+void runAllFits(const std::string &year, const std::string &ws_dir, const std::string &checksample);
 void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample, FILE *resFilegen, FILE *resFileresp);
 void AddSigData(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, const std::string &isample);
 theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries);
@@ -68,10 +68,10 @@ float widthtonum(std::string coupling);
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-  std::string year, inputdir, outputdir;
+  std::string year, inputdir, outputdir, checksample;
 
-  if(argc!=4) {
-    std::cout << "Syntax: makeParametricFits.exe [2016/2017/2018] [input] [output]" << std::endl;
+  if(argc!=5) {
+    std::cout << "Syntax: prepareWorkspaces.exe [2016/2017/2018] [input] [output] [checksample]" << std::endl;
       return -1;
   }
   else {
@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
     }
     inputdir = argv[2];
     outputdir = argv[3];
+    checksample = argv[4];
  }
 
   //========================================================================
@@ -89,14 +90,14 @@ int main(int argc, char *argv[])
   initForFit(inputdir);
   //========================================================================
   //Run the fits
-  runAllFits(year,outputdir);
+  runAllFits(year,outputdir,checksample);
 
 }
 
 //-----------------------------------------------------------------------------------
 //Definitions
 //-----------------------------------------------------------------------------------
-void runAllFits(const std::string &year, const std::string &ws_dir){
+void runAllFits(const std::string &year, const std::string &ws_dir, const std::string &checksample){
 
   std::vector<std::string> samples = getSampleListForFit();
   FILE *resFilegen;
@@ -115,6 +116,9 @@ void runAllFits(const std::string &year, const std::string &ws_dir){
   for(auto isample : samples) {
     //We will process one year each time
     if ( isample.find(year) == std::string::npos ) continue; 
+    //Will check the problematic fits one by one
+    //2017 problems were on
+    if ( isample.find(checksample) == std::string::npos && checksample!="all") continue;    
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
     runfits(year, ws_dir, isample, resFilegen, resFileresp);
     // count++;
@@ -525,12 +529,16 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
     std::cout<<mass<<" "<<signal->sumEntries()<<std::endl;
     std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
 
-    int fitStatus = 0;
-    double thisNll = 0.;
-    theFitResult fitresults = theFit(mgenadd[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3) ;
-
-    // RooFitResult* fitresults = (RooFitResult* ) mgenadd[c]->fitTo(*signal,SumW2Error(kTRUE), Range(mass*0.8, mass*1.2), RooFit::Save(kTRUE));   
-    fitresults.fitres->Print("V");
+    // int fitStatus = 0;
+    // double thisNll = 0.;
+    RooFitResult* fitresult = (RooFitResult* ) mgenadd[c]->fitTo(*signal,SumW2Error(kTRUE), Range(mass*0.8, mass*1.2), RooFit::Save(kTRUE));  
+    // theFitResult fitresults = theFit(mgenadd[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3) ;
+    
+    // fitresults.fitres->Print("V");
+    fitresult->Print("V");
+    
+    // theFitResult fitresults;
+    // fitresults.fitres = fitresult;
 
     int nBinsForMassreduced = 120;
     RooPlot* plotg = w->var("mggGen")->frame(Range(mass*0.8,mass*1.2),Title("mass generated"),Bins(nBinsForMassreduced));
@@ -596,8 +604,8 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
     SetConstantParams(w->set(TString::Format("mgenpdfparam_cat%d",c)));
 
     //Let's save the results to file
-    float coup = widthtonum(coupling);
-    fprintf(resFilegen,"%s & %10.0f & %10.1e & %d & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", samplename.c_str() , mass, coup, c, chi2, prob, fitresults.minimizestatus ,fitresults.hessestatus ,fitresults.minosstatus );
+    // float coup = widthtonum(coupling);
+    // fprintf(resFilegen,"%s & %10.0f & %10.1e & %d & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", samplename.c_str() , mass, coup, c, chi2, prob, fitresults.minimizestatus ,fitresults.hessestatus ,fitresults.minosstatus );
 
 
     
@@ -626,7 +634,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   w->var("mgg")->setMax(MAXmass);
   w->var("mggGen")->setMin(MINmass);
   w->var("mggGen")->setMax(MAXmass);
-  w->Print("V");
+  // w->Print("V");
 
   //========================================================================
   std::cout << "Adding signal data for mass " << M_bins << " and coupling " << coupling <<std::endl;
