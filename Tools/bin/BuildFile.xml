@@ -3,6 +3,7 @@
 <use name="roostats"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="diphoton-analysis/RooUtils"/>
+<use name="diphoton-analysis/Utils"/>
 <use name="HiggsAnalysis/CombinedLimit"/>
 <environment>
   <bin file="basicplots.cc" name="basicplots.exe"/>
@@ -34,5 +35,11 @@
   <bin file="testShapes.cc" name="testShapes.exe"/>
   <bin file="testSystematics.cc" name="testSystematics.exe"/>
   <bin file="signalNorm.cc" name="signalNorm.exe"/>
+  <bin file="bkgFit.cc" name="bkgFit.exe"/>
+  <bin file="bias_study.cc" name="bias_study.exe"/>
+  <bin file="combine_bias_study.cc" name="combine_bias_study.exe"/>
+  <bin file="makeDatacardRes.cc" name="makeDatacardRes.exe"/>
+  <bin file="plotLimit.cc" name="plotLimit.exe"/>
+
 </environment>
 <flags CXXFLAGS="-Wall -Werror -g"/>

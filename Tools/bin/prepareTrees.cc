@@ -95,7 +95,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     }
     if( isample.find("data") == std::string::npos ) {
       // sampleCut+="*weightAll*" + std::to_string(luminosity[year]);
-      //Will normalize to 1/fb. Later with the _norm pdf we will 
+      //Will normalize to 1000/pb. Later with the _norm pdf we will 
       //normalize to luminosity. 
       sampleCut+="*weightAll";
     }

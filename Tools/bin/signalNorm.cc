@@ -33,6 +33,9 @@
 #include "RooFormulaVar.h"
 #include "RooPolyVar.h"
 #include "RooCustomizer.h"
+#include "RooBinning.h"
+
+int nBinsMass = 1100;//150//1250
 
 //-----------------------------------------------------------------------------------
 struct eff_reco {
@@ -180,6 +183,7 @@ int main(int argc, char *argv[])
     //Input
     fin[cp] = TFile::Open( Form("%s/SignalParametricShapes_ws_%s.root", inputworkspaces.c_str(), cp.c_str()) );
     wsin[cp] = (RooWorkspace*) fin[cp]->Get("ws_inputs");
+    std::cout<< wsin[cp]->var("mgg")->getBinning().numBins()<< std::endl;
     //Output
     fout[cp] = new TFile(Form("%s/%s_%s_%s.root", outputworkspaces.c_str(), insigname.c_str(),cp.c_str(),year.c_str()), "RECREATE");
     ws_out[cp] = new RooWorkspace("wtemplates","wtemplates");
@@ -212,16 +216,42 @@ int main(int argc, char *argv[])
   }
 
   //Observables
-  std::map<std::string , RooRealVar * > obsCat;
+  // std::map<std::string , RooRealVar * > obsCat;
   // obsCat["EBEE"] =  new RooRealVar("mggEBEE","mggEBEE", 2335, 330., 5000.);
   // obsCat["EBEB"] =  new RooRealVar("mggEBEB","mggEBEB", 2385, 230., 5000.);
-  obsCat["EBEE"] =  new RooRealVar("mgg","mgg", 2250, 500., 5000.);
-  obsCat["EBEB"] =  obsCat["EBEE"];
-  obsCat["All"]  =  new RooRealVar("mggAll","mggAll", 2385, 230., 5000.);
+  // obsCat["EBEE"] =  new RooRealVar("mgg","mgg", nBinsMass, 500., 6000.);//2250
+  // // RooBinning* mggRooBinning = new RooBinning(nBinsMass, 500., 6000.,"mgg");
+  // obsCat["EBEE"]->setBinning(*mggRooBinning,"mgg");
+  
+  // obsCat["EBEB"] =  obsCat["EBEE"];
+  // obsCat["All"]  =  new RooRealVar("mggAll","mggAll", nBinsMass, 230., 6000.);//2385
+  // // RooAbsBinning& mggBinsEBEE =  obsCat["EBEE"]->getBinning();
+  // // obsCat["EBEE"]->setBinning(mggBinsEBEE);
+  // // RooAbsBinning& mggBinsEBEB =  obsCat["EBEB"]->getBinning();
+  // // obsCat["EBEB"]->setBinning(mggBinsEBEB);
+  // obsCat["EBEB"]->setBinning(*mggRooBinning,"mgg");
+
+  // std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
+  // std::cout<< obsCat["EBEE"]->getBinning().numBins()<< std::endl;
+  // std::cout<< obsCat["EBEB"]->getBinning().numBins()<< std::endl;
+  // std::cout<< obsCat["EBEB"]->hasBinning("mgg")<< std::endl;
+  // std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
+  RooRealVar * obsCat =  new RooRealVar("mgg","mgg", nBinsMass, 500., 6000.);;
+  obsCat->setBins(nBinsMass);
+
+  // RooBinning* mggRooBinning = new RooBinning(nBinsMass, 500., 6000.,"mgg");
+  // obsCat->setBinning(*mggRooBinning);
+  std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
+  // std::cout<< obsCat->getBinning().numBins()<< std::endl;
+  std::cout<< obsCat->getBins()<< std::endl;
+  std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
 
   //This is the uncertainty used on the scale <<<==== CHECK THIS
-  // double unc = 0.01;
-
+  double unc = 0.01;
+  std::map<std::string , RooRealVar * > thetaScale;
+  std::map<std::string , RooRealVar * > deltaScale;
+  std::map<std::string , RooArgList * > rooList;
+  std::map<std::string , RooFormulaVar * > scaledMean;
   //========================================================================
   //========================================================================
   //FIRST PART: Create or read json file with efficiency (e), acceptance (A)
@@ -255,6 +285,10 @@ int main(int argc, char *argv[])
   std::map<std::string,std::vector<eff_reco> > effBB = reduce(effreco, coups, "eBB");
   std::map<std::string, std::vector<eff_reco> > effBE = reduce(effreco, coups, "eBE");
   std::map<std::string, std::vector<eff_reco> > effTotal = reduce(effreco, coups, "eTotal");
+  //acceptance x efficiency per coupling and mass point
+  std::map<std::string,std::vector<eff_reco> > accxeffBB = reduce(effreco, coups, "exABB");
+  std::map<std::string, std::vector<eff_reco> > accxeffBE = reduce(effreco, coups, "exABE");
+  std::map<std::string, std::vector<eff_reco> > accxeffTotal = reduce(effreco, coups, "exATotal");
 
   //========================================================================
   //Eff plots and graphs
@@ -318,6 +352,20 @@ int main(int argc, char *argv[])
   // TCanvas* ccacckMpl02 = new TCanvas("ccacckMpl02", "ccacckMpl02");
   // graphsofacc["kMpl02"] = plot(ccacckMpl02, "kMpl02", accBB, accBE, accTotal, false, "A");
   // ccacckMpl02->SaveAs("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/accsVsMass_kMpl02.png");
+
+  //========================================================================
+  //exA plots and graphs
+  std::map<std::string, TCanvas* > ccexAk;
+  std::map<std::string, std::vector<theGraphs> > graphsofexAk;
+
+  for (auto cp : coups){
+  
+    ccexAk[cp] = new TCanvas(Form("ccexAk%s",cp.c_str()), Form("ccexAk%s",cp.c_str()));
+    graphsofexAk[cp] = plot(ccexAk[cp], cp, accxeffBB, accxeffBE, accxeffTotal, false, "#varepsilon #otimes A", insigname);
+    ccexAk[cp]->SaveAs( Form("%s/accxeffsVsMass_%s.png", outplots.c_str(),cp.c_str()) );
+    
+  }
+
 
   //========================================================================
   //Average of the efficiency over all couplings
@@ -475,7 +523,7 @@ int main(int argc, char *argv[])
     acc_p[cat.c_str()][0]->GetYaxis()->SetTitle("p0");
     acc_p[cat.c_str()][0]->GetXaxis()->SetTitle("kMpl");
     if (cat == "EBEB") {acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.20, 0.29);}
-    else if (cat == "EBEE"){acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.230, 0.244);}
+    else if (cat == "EBEE"){acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.20, 0.29);}
     else if (cat == "All") {acc_p[cat.c_str()][0]->GetYaxis()->SetRangeUser(0.46, 0.52);}
     acc_p[cat.c_str()][0]->Draw("APE");
     fit_acc_p[cat][0]->Draw("same");
@@ -496,7 +544,7 @@ int main(int argc, char *argv[])
     acc_p[cat.c_str()][1]->GetYaxis()->SetTitle("p1");
     acc_p[cat.c_str()][1]->GetXaxis()->SetTitle("kMpl");
     if (cat == "EBEB") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(0.11 * pow(10., -3.), 0.17 * pow(10., -3.) );}
-    else if (cat == "EBEE") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(-67. * pow(10., -6.), -58. * pow(10., -6.) );} 
+    else if (cat == "EBEE") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(-70. * pow(10., -6.), -58. * pow(10., -6.) );} 
     else if (cat == "All") {acc_p[cat.c_str()][1]->GetYaxis()->SetRangeUser(60. * pow(10., -6.), 99. * pow(10., -6.) );}
     acc_p[cat.c_str()][1]->Draw("APE");
     fit_acc_p[cat][1]->Draw("same");
@@ -516,8 +564,8 @@ int main(int argc, char *argv[])
     acc_p[cat.c_str()][2]->Fit(Form("fit_acc_%s_p2",cat.c_str()), "R");
     acc_p[cat.c_str()][2]->GetYaxis()->SetTitle("p2");
     acc_p[cat.c_str()][2]->GetXaxis()->SetTitle("kMpl");
-    if (cat == "EBEB") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(-15. * pow(10., -9.), -7. * pow(10., -9.) );}
-    else if (cat == "EBEE") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(3.8 * pow(10., -9.), 5. * pow(10., -9.) );}
+    if (cat == "EBEB") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(-16. * pow(10., -9.), -7. * pow(10., -9.) );}
+    else if (cat == "EBEE") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(3.8 * pow(10., -9.), 5.5 * pow(10., -9.) );}
     else if (cat == "All") {acc_p[cat.c_str()][2]->GetYaxis()->SetRangeUser(1. * pow(10., -10.), -8. * pow(10., -9.) );}
     
     acc_p[cat.c_str()][2]->Draw("APE");
@@ -604,9 +652,15 @@ int main(int argc, char *argv[])
 
     curpdf.pdf = wsin[curpdf.coup]->pdf(curpdf.name.c_str());
     obsIn =  wsin[curpdf.coup]->var("mgg");
+    obsIn->setBins(nBinsMass);
+    // RooAbsBinning& mggBins =  obsIn->getBinning();
+    // obsIn->setBinning(mggBins);
+    
+
     //Clone the current pdf
     custom = new RooCustomizer(*curpdf.pdf,"");
-    custom->replaceArg(*obsIn,*obsCat[curpdf.cat]);
+    // custom->replaceArg(*obsIn,*obsCat[curpdf.cat]);
+    custom->replaceArg(*obsIn,*obsCat);
 
     for (auto par: reparamVars){
       RooRealVar* srcVar = wsin[curpdf.coup]->var(par.first.c_str());
@@ -614,6 +668,24 @@ int main(int argc, char *argv[])
       //par.first is the existing in workspace, while the reparam name is the par.second 
       custom->replaceArg( *srcVar  , *par.second );
     }
+
+    //----------------------------------------------------------------------
+    //Energy scale
+    RooAbsArg * mean_formula = wsin[curpdf.coup]->arg( Form("mean_%s", curpdf.cat.c_str() ) ) ;
+    rooList[curpdf.cat] = new RooArgList( *mean_formula );
+
+    thetaScale[curpdf.cat] = new RooRealVar(Form("thetaScale%s_13TeV", curpdf.cat.c_str() ), Form("thetaScale%s_13TeV", curpdf.cat.c_str() ), 0., -4, 4);
+    thetaScale[curpdf.cat]->setConstant(true);
+    deltaScale[curpdf.cat] = new RooRealVar(Form("deltaScale%s_13TeV", curpdf.cat.c_str() ), Form("deltaScale%s_13TeV", curpdf.cat.c_str() ), 1.*unc);
+    deltaScale[curpdf.cat]->setConstant(true);
+
+    rooList[curpdf.cat]->add(*thetaScale[curpdf.cat]);
+    rooList[curpdf.cat]->add(*deltaScale[curpdf.cat]);
+
+    scaledMean[curpdf.cat] = new RooFormulaVar(Form("scaled_mean_%s",curpdf.cat.c_str() ), Form("scaled_mean_%s",curpdf.cat.c_str() ), "@0*(1.+@0*@1)", *rooList[curpdf.cat] );
+
+    custom->replaceArg( *mean_formula ,*scaledMean[curpdf.cat] );
+
     curpdf.pdf = (RooAbsPdf*) custom->build(true);
 
     //----------------------------------------------------------------------
@@ -636,15 +708,10 @@ int main(int argc, char *argv[])
     ws_out[curpdf.coup]->import(*fwhm_rooformula[curpdf.cat], RooFit::RecycleConflictNodes());
     
     //----------------------------------------------------------------------
-    //Energy scale
-
-    //THIS PART NEEDS WORK
-
-    //----------------------------------------------------------------------
     //Signal normalization and naming is here
 
     //Remember that in the creation of the json file with e and A values we have 
-    //used the weightAll cut to normalize the signal samples to 1/fb luminosity. 
+    //used the weightAll cut to normalize the signal samples to 1000/pb luminosity. 
     //So, here we will multiply with luminosity to get to the correct norm pdf. 
     //No need for the spline aka Hgg creation below. 
 

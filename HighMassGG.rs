@@ -30,12 +30,12 @@ reducedmass_sig_nneg_cat2[5.,0,20];
 mgen_sig_frac_cat0[0.,1];
 mgen_sig_frac_cat1[0.,1];
 mgen_sig_frac_cat2[0.,1];
-mgen_sig_mean_cat0[750.,0,6000];
-mgen_sig_mean_cat1[750.,0,6000];
-mgen_sig_mean_cat2[750.,0,6000];
-mgen_sig_sigma_cat0[0.6,0,5];
-mgen_sig_sigma_cat1[0.6,0,5];
-mgen_sig_sigma_cat2[0.6,0,5];
+mgen_sig_mean_cat0[750.,0,10000];
+mgen_sig_mean_cat1[750.,0,10000];
+mgen_sig_mean_cat2[750.,0,10000];
+mgen_sig_sigma_cat0[5.,0,500];
+mgen_sig_sigma_cat1[5.,0,500];
+mgen_sig_sigma_cat2[5.,0,500];
 mgen_sig_alphacbpos_cat0[-2.,-10,0];
 mgen_sig_alphacbpos_cat1[-2.,-10,0];
 mgen_sig_alphacbpos_cat2[-2.,-10,0];
@@ -43,13 +43,21 @@ mgen_sig_alphacbneg_cat0[2.,0,10];
 mgen_sig_alphacbneg_cat1[2.,0,10];
 mgen_sig_alphacbneg_cat2[2.,0,10];
 
-mgen_sig_npos_cat0[5.,0,20];
-mgen_sig_npos_cat1[5.,0,20];
-mgen_sig_npos_cat2[5.,0,10];
-mgen_sig_nneg_cat0[5.,0,10];
-mgen_sig_nneg_cat1[5.,0,10];
-mgen_sig_nneg_cat2[5.,0,10];
+mgen_sig_npos_cat0[1.,0,20];
+mgen_sig_npos_cat1[1.,0,20];
+mgen_sig_npos_cat2[1.,0,20];
+mgen_sig_nneg_cat0[1.,0,10];
+mgen_sig_nneg_cat1[1.,0,10];
+mgen_sig_nneg_cat2[1.,0,20];
 
+mgen_sig_expolambda_cat0[-2.,-10,0];
+mgen_sig_expolambda_cat1[-2.,-10,0];
+mgen_sig_expolambda_cat2[-2.,-10,0];
+
+
+mgen_width_sig_cat0[0.1,0.,1.];
+mgen_width_sig_cat1[0.1,0.,1.];
+mgen_width_sig_cat2[0.1,0.,1.];
 
 Neg_negma_catEBHighR9[9.1148e+00];
 Neg_alpha1_catEBHighR9[9.0817e-01];

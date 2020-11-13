@@ -53,10 +53,10 @@ struct theFitResult {
 
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
-void runAllFits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir);
-void runfits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &isample, FILE *resFileasimovfit);
-theFitResult theFit(RooAbsPdf *pdf, RooDataHist *data, double *NLL, int *stat_t, int MaxTries);
-void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, const std::string &ws_outdir, const std::string &samplename, bool doPlot);
+void runAllFits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &checksample);
+void runfits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &isample, FILE *resFileasimovfit, FILE *resFilerecofit);
+theFitResult theFit(RooAbsPdf *pdf, RooDataHist *data, double *NLL, int *stat_t, int MaxTries, double minMassFit, double maxMassFit);
+void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, const std::string &ws_outdir, const std::string &samplename, bool doPlot, FILE *resFilerecofit);
 void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &ws_outdir, const std::string &samplename, FILE *resFileasimovfit);
 RooDataHist* throwAsimov( double nexp, RooAbsPdf *pdf, RooRealVar *x, RooDataHist *asimov );
 std::string getBase(const std::string & sampleName);
@@ -69,9 +69,9 @@ float widthtonum(std::string coupling);
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-  std::string year, inputsamples, inputworkspaces, outputworkspaces;
+  std::string year, inputsamples, inputworkspaces, outputworkspaces, checksample;
 
-  if(argc!=5) {
+  if(argc!=6) {
     std::cout << "Syntax: prepareShapes.exe [2016/2017/2018] [inputsamples] [inputworkspaces] [outputworkspaces]" << std::endl;
       return -1;
   }
@@ -84,6 +84,7 @@ int main(int argc, char *argv[])
     inputsamples = argv[2];
     inputworkspaces = argv[3];
     outputworkspaces = argv[4];
+    checksample = argv[5];
 
  }
 
@@ -92,14 +93,14 @@ int main(int argc, char *argv[])
   initForFit(inputsamples);
   //========================================================================
   //Run the fits
-  runAllFits(year, inputworkspaces, outputworkspaces);
+  runAllFits(year, inputworkspaces, outputworkspaces,checksample);
 
 }
 
 //-----------------------------------------------------------------------------------
 //Definitions
 //-----------------------------------------------------------------------------------
-void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, const std::string &ws_outdir, const std::string &samplename, bool doPlot) {
+void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, const std::string &ws_outdir, const std::string &samplename, bool doPlot, FILE *resFilerecofit) {
   int ncat = NCAT;
   RooDataSet* signalK;
   RooDCBShape* reducedmass[NCAT+1];
@@ -111,6 +112,19 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
   // TPaveText* label_cms = get_labelcms(0, "2016", true);
   // TPaveText* label_sqrt = get_labelsqrt(0);
   
+  double massMin = 0.; 
+  double massMax = 0.;
+  if(coupling=="001" || coupling == "0p014"){
+    massMin=0.8*mass;
+    massMax=1.2*mass;
+  }else if(coupling=="01" || coupling == "1p4"){
+    massMin=0.6*mass;
+    massMax=1.4*mass;
+  }else if(coupling=="02" || coupling == "5p6"){
+    massMin=0.4*mass;
+    massMax=1.6*mass;
+  }
+
   for(int c = 0; c<ncat+1; c++){
     std::cout << "FINAL SHAPE FIT FOR CATEGORY " << c<< std::endl; 
     TLatex *lat  = new TLatex(0.6,0.9,TString::Format("cat: %d", c));  
@@ -121,18 +135,6 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     TString myCut;
       
     //pickup the functions from the ws
-    double massMin = 0.; 
-    double massMax = 0.;
-    if(coupling=="001" || coupling == "0p014"){
-      massMin=0.8*mass;
-      massMax=1.2*mass;
-    }else if(coupling=="01" || coupling == "1p4"){
-      massMin=0.6*mass;
-      massMax=1.4*mass;
-    }else if(coupling=="02" || coupling == "5p6"){
-      massMin=0.4*mass;
-      massMax=1.6*mass;
-    }
     RooRealVar* var = new RooRealVar("var", "var", massMin, massMax);
     RooRealVar* MH = new RooRealVar("MH", "MH",mass);
     w->import(*MH);
@@ -148,6 +150,16 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     //cb neg
     RooFormulaVar cbneg_n_mgen("cbneg_sig_n_cat2_mgen","", "@0", *w->var( "mgen_sig_nneg_cat2"));
     RooFormulaVar cbneg_alphacb_mgen("cbneg_sig_alphacb_cat2_mgen","", "@0", *w->var( "mgen_sig_alphacbneg_cat2"));
+
+    // RooFormulaVar cbpos_mean_mgen(Form("cbpos_sig_mean_cat%d_mgen",c),"", "@0", *w->var(Form("mgen_sig_mean_cat%d",c)));
+    // RooFormulaVar cbpos_sigma_mgen(Form("cbpos_sig_sigma_cat%d_mgen",c), "", "sqrt(@0*@0)", *w->var(Form("mgen_sig_sigma_cat%d",c)));
+    // RooFormulaVar cbpos_alphacb_mgen(Form("cbpos_sig_alphacb_cat%d_mgen",c),"", "@0", *w->var( Form("mgen_sig_alphacbpos_cat%d",c)));
+    // RooFormulaVar cbpos_n_mgen(Form("cbpos_sig_n_cat%d_mgen",c),"", "@0", *w->var( Form("mgen_sig_npos_cat%d",c)));
+    // //cb neg
+    // RooFormulaVar cbneg_n_mgen(Form("cbneg_sig_n_cat%d_mgen",c),"", "@0", *w->var( Form("mgen_sig_nneg_cat%d",c)));
+    // RooFormulaVar cbneg_alphacb_mgen(Form("cbneg_sig_alphacb_cat%d_mgen",c),"", "@0", *w->var( Form("mgen_sig_alphacbneg_cat%d",c)));
+
+
     mgen[c]= new  RooDCBShape(TString::Format("mgen_cat%d",c),TString::Format("mgen_cat%d",c) , *var, cbpos_mean_mgen, cbpos_sigma_mgen,  cbneg_alphacb_mgen, cbpos_alphacb_mgen,  cbneg_n_mgen,cbpos_n_mgen) ;
     //response shape
     //cb pos                                  
@@ -184,8 +196,8 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
       
     //  RooDataHist* datahist_asimov; //= mgen[c]->generateBinned(RooArgSet(*var),RooFit::NumEvents(signal->numEntries()), RooFit::Asimov());
     //datahist_asimov = signal->binnedClone();
-    throwAsimov(10000, conv[c], var,datahist_asimov); 
-   
+    throwAsimov(20000, conv[c], var,datahist_asimov); 
+
     if(c<2)    datahist_asimov->SetName(TString::Format("signal_asimov_cat%d",c));
     if(c==2)    datahist_asimov->SetName("signal_asimov");
     std::cout<<"--------------------------------------------------- "<<datahist_asimov->sumEntries()<<std::endl;
@@ -197,17 +209,32 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
       if(c==2)signalK = (RooDataSet*)w->data("SigWeight");
  
       w->Print("v");
- 
-      RooPlot* plotgg = (w->var("mgg"))->frame(Range(massMin,massMax),Title("mass generated"),Bins(160));
+      
+      int nBinsForMassreco = 160;
+      RooPlot* plotgg = (w->var("mgg"))->frame(Range(massMin,massMax),Title("mass generated"),Bins(nBinsForMassreco));
       signalK->Print("v");
-      signalK->plotOn(plotgg);
+      signalK->plotOn(plotgg,Name("signalreco"));
       std::cout<<"flag3"<<std::endl;
-      RooPlot* plotg = var->frame(Range(massMin,massMax),Title("mass generated"),Bins(160));
+      RooPlot* plotg = var->frame(Range(massMin,massMax),Title("mass generated"),Bins(nBinsForMassreco));
       RooDataSet* fakedata= conv[c]->generate(*var, signalK ->sumEntries());
       fakedata->plotOn(plotg, RooFit::Invisible());
       // reducedmass[c]->plotOn(plotg, LineColor(kRed));
       mgen[c]->plotOn(plotg, LineColor(kGreen));
-      conv[c]->plotOn(plotg, LineColor(kBlue));
+      conv[c]->plotOn(plotg, LineColor(kBlue), Name("convpdf"));
+
+      double prob;
+      RooRealVar norm("norm","norm",signalK->sumEntries(),0,10E6);
+      //norm.removeRange();
+      RooExtendPdf *convpdf = new RooExtendPdf("ext","ext",*conv[c],norm);
+      int np = convpdf->getParameters(*signalK)->selectByAttrib("Constant",kFALSE)->getSize();
+ 
+      double chi2 = plotg->chiSquare("convpdf","signalreco",np);
+       std::cout << "[INFO] Calculating GOF for pdf " << conv[c]->GetName() << ", using " <<np << " fitted parameters" <<std::endl;
+      prob = TMath::Prob(chi2*(nBinsForMassreco-np),nBinsForMassreco-np);
+      //chi2/ndof is chi2
+      std::cout << "[INFO] Chi2 in Observed =  " << chi2*(nBinsForMassreco-np) << std::endl;
+      std::cout << "[INFO] p-value  =  " << prob << std::endl;
+ 
       // datahist_asimov->plotOn(plotg, MarkerColor(kRed), MarkerSize(0.5));
       //check parameters 
       RooArgSet* model_params = conv[c]->getParameters(*w->var("mgg")) ;
@@ -249,15 +276,22 @@ void sigModelShapeFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     					        
       canv1->SaveAs(TString::Format("%s/../FinalConvShapes/%s_mreco_cat%d_M%d_k_%s_log.png", ws_outdir.c_str(), samplename.c_str(), c, iMass,coupling.c_str())); 
 
-      canv1->SetLogy(0);  
-    }
+      canv1->SetLogy(0);
+
+      //Let's save the results to file
+      float coup = widthtonum(coupling);
+      fprintf(resFilerecofit,"%s & %10.0f & %10.1e & %d & %10.2f & %10.2f  \\\\\n", samplename.c_str() , mass, coup, c, chi2, prob);
+
+
+      
+    }//end of doPlot
     
-  }
+  }//end of loop over categories
  
 }
 
 //-----------------------------------------------------------------------------------
-void runAllFits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir){
+void runAllFits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &checksample){
 
   std::vector<std::string> samples = getSampleListForFit();
 
@@ -269,19 +303,32 @@ void runAllFits(const std::string &year, const std::string &ws_indir, const std:
   fprintf(resFileasimovfit,"Sample & Mass & Width & Category & gof$(\\chi^{2}/ndof)$ & gof(prob) & (minim,hesse,minos) \\\\\n");
   fprintf(resFileasimovfit,"\\hline\n");
 
+  FILE *resFilerecofit;
+
+  resFilerecofit = fopen(Form("%s/../FinalConvShapes/reco_fits_%s.txt", ws_outdir.c_str(), year.c_str()),"w");
+  fprintf(resFilerecofit,"\\hline\n");
+  fprintf(resFilerecofit,"\\hline\n");
+  fprintf(resFilerecofit,"Sample & Mass & Width & Category & gof$(\\chi^{2}/ndof)$ & gof(prob) \\\\\n");
+  fprintf(resFilerecofit,"\\hline\n");
+
+  
   for(auto isample : samples) {
     //We will process one year each time
     if ( isample.find(year) == std::string::npos ) continue; 
+    if ( isample.find(checksample) == std::string::npos && checksample!="all") continue;
+    if (isample.find("RSGraviton") == std::string::npos) { continue; }
+
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
-    runfits(year, ws_indir, ws_outdir, isample, resFileasimovfit);
+    runfits(year, ws_indir, ws_outdir, isample, resFileasimovfit, resFilerecofit);
   }
 
   fclose(resFileasimovfit);
+  fclose(resFilerecofit);
 
 }
 
 //-----------------------------------------------------------------------------------
-void runfits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &isample, FILE *resFileasimovfit){
+void runfits(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &isample, FILE *resFileasimovfit, FILE *resFilerecofit){
 
   std::string coupling= ""; 
   if (isample.find("RSGraviton") != std::string::npos) {
@@ -299,9 +346,9 @@ void runfits(const std::string &year, const std::string &ws_indir, const std::st
 
   RooWorkspace* ws = (RooWorkspace*) fresandgen->Get("HLFactory_ws"); 
   //========================================================================
-  std::cout << "Make and fit the convolution of the response and the gen level shape" <<std::endl;
+  std::cout << "Make convolution of the response and the gen level shape" <<std::endl;
   bool doPlot = true; //For the final plot
-  sigModelShapeFcnFit(ws, stof(M_bins), coupling, year, ws_outdir, samplename, doPlot);
+  sigModelShapeFcnFit(ws, stof(M_bins), coupling, year, ws_outdir, samplename, doPlot, resFilerecofit);
   //========================================================================
   std::cout << "Throw an asimov dataset from the DCB and fit it" <<std::endl;
   asimovDatasetFcnFit(ws, stof(M_bins), coupling, ws_outdir, samplename, resFileasimovfit);
@@ -318,7 +365,7 @@ void runfits(const std::string &year, const std::string &ws_indir, const std::st
 }
 
 //-----------------------------------------------------------------------------------
-theFitResult theFit(RooAbsPdf *pdf, RooDataHist *data, double *NLL, int *stat_t, int MaxTries){
+theFitResult theFit(RooAbsPdf *pdf, RooDataHist *data, double *NLL, int *stat_t, int MaxTries, double minMassFit, double maxMassFit){
 
   int ntries=0;
   RooArgSet *params_test = pdf->getParameters((const RooArgSet*)(0));
@@ -339,11 +386,11 @@ theFitResult theFit(RooAbsPdf *pdf, RooDataHist *data, double *NLL, int *stat_t,
     //std::cout << "current try " << ntries << " stat=" << stat << " minnll=" << minnll << std::endl;
     std::cout << "--------------------- FITTING-------------------------------" << std::endl;
     // fitTest = pdf->fitTo(*data, RooFit::Minimizer("Minuit2","minimize"), RooFit::Offset(kTRUE), RooFit::Strategy(2), RooFit::PrintLevel(3), RooFit::Warnings(false), RooFit::SumW2Error(kTRUE), RooFit::Range(minMassFit,maxMassFit), RooFit::Save(kTRUE));
-    // fitTest = pdf->fitTo(*data, RooFit::Minimizer("Minuit2","minimize"), RooFit::Offset(kTRUE), RooFit::Strategy(2), RooFit::PrintLevel(3), RooFit::Warnings(false), RooFit::SumW2Error(kTRUE), RooFit::Save(kTRUE));
+    // fitTest = pdf->fitTo(*data, RooFit::Minimizer("Minuit2","minimize"), RooFit::Strategy(2), RooFit::PrintLevel(3), RooFit::Warnings(false), RooFit::SumW2Error(kTRUE), RooFit::Save(kTRUE), RooFit::Range(minMassFit,maxMassFit));
     // RooFitResult *fitTest = pdf->fitTo(*data,RooFit::Save(1),RooFit::Minimizer("Minuit2","minimize"),RooFit::Offset(kTRUE),RooFit::Strategy(2));   
 
     //-------------------
-    RooNLLVar *nll=new RooNLLVar("nll","nll",*pdf,*data);
+    RooNLLVar *nll=new RooNLLVar("nll","nll",*pdf,*data, RooFit::Range(minMassFit,maxMassFit));
     RooMinimizer *minuit_fitTest = new RooMinimizer(*nll);
     // minuit_fitTest->setOffsetting(kTRUE);
     minuit_fitTest->setStrategy(1);
@@ -353,6 +400,7 @@ theFitResult theFit(RooAbsPdf *pdf, RooDataHist *data, double *NLL, int *stat_t,
     hessestatus = minuit_fitTest->hesse();
     std::cout << "Running minos" << std::endl;
     minosstatus = minuit_fitTest->minos();
+    //-------------------
     fitTest = minuit_fitTest->save("fitTest","fitTest");
     // offset= nll->offset();
     // std::cout << nll->isOffsetting() << std::endl;
@@ -453,23 +501,12 @@ void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     //if(mass>3200&&c==1)cb_nL->setRange(3,4.5);
     //cb_nR->setConstant();
     //cb_nL->setConstant();
+
+    // if (iMass==750){cb_alphaL->setVal(0.5);cb_alphaR->setVal(0.5);cb_nL->setVal(1);cb_nR->setVal(1.);}
+    
     cb[c] =  new RooDCBShape(TString::Format("cbshape_cat%d",c),TString::Format("cbshape_cat%d",c) , *w->var("var"), *cb_mean, *cb_sigma,  *cb_alphaL, *cb_alphaR,  *cb_nL,*cb_nR) ;
     w->import(*cb[c]);
    
-    //fitting
-    std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
-    // RooFitResult* fitresults = (RooFitResult* ) cb[c]->fitTo(*signal,SumW2Error(kTRUE), Range(mass*0.7,mass*1.3), RooFit::Save(kTRUE));
-    // fitresults->Print("V");
-
-    int fitStatus = 0;
-    double thisNll = 0.;
-    theFitResult fitresults = theFit(cb[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3) ;
-
-    std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
-
-    fitresults.fitres->Print("V");
-  
-    //plotting...
     double massMin = 0.; 
     double massMax = 0.;
     if(coupling=="001" || coupling == "0p014"){
@@ -481,9 +518,27 @@ void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     }else if(coupling=="02" || coupling == "5p6"){
       massMin=0.4*mass;
       massMax=1.6*mass;
+      // massMin=0.8*mass;
+      // massMax=1.2*mass;
     }
     if(massMin<300)massMin=300;
     if(massMax>9000)massMax=9000;
+    // if (iMass==750){massMin=600;massMax=850;}
+
+    //fitting
+    std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
+    // RooFitResult* fitresults = (RooFitResult* ) cb[c]->fitTo(*signal,SumW2Error(kTRUE), Range(massMin,massMax), RooFit::Save(kTRUE));
+    // fitresults->Print("V");
+
+    int fitStatus = 0;
+    double thisNll = 0.;
+    theFitResult fitresults = theFit(cb[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3, massMin, massMax) ;
+
+    std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
+
+    // fitresults.fitres->Print("V");
+  
+    //plotting...
     double prob = 0.;
     double chi2 = 0.;
     int nBinsForMass = 160;
@@ -500,6 +555,7 @@ void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     // RooArgSet* model_params = voigt[c]->getParameters(*w->var("mgg")) ;
     //model_params->Print("v") ;
     RooArgList model_params = fitresults.fitres->floatParsFinal();
+    // RooArgList model_params = fitresults->floatParsFinal();
     model_params.Print("v") ;
     //save a new function in the ws as vittorio said
 
@@ -576,6 +632,7 @@ void asimovDatasetFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, co
     float coup = widthtonum(coupling);
     fprintf(resFileasimovfit,"%s & %d & %10.1e & %d & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", samplename.c_str() , iMass, coup, c, chi2, prob, fitresults.minimizestatus ,fitresults.hessestatus ,fitresults.minosstatus);
 
+    // fprintf(resFileasimovfit,"%s & %d & %10.1e & %d & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", samplename.c_str() , iMass, coup, c, chi2, prob, -1 , -1 , -1);
 
   }
 		 

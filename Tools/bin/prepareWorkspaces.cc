@@ -1,6 +1,7 @@
 #include "diphoton-analysis/Tools/interface/sampleList.hh"
 #include "diphoton-analysis/Tools/interface/utilities.hh"
 #include "diphoton-analysis/RooUtils/interface/RooDCBShape.h"
+// #include "HiggsAnalysis/CombinedLimit/interface/RooDoubleCBFast.h"
 
 //RooFit
 #include "RooWorkspace.h"
@@ -13,6 +14,11 @@
 #include "RooExtendPdf.h"
 #include "RooNLLVar.h"
 #include "RooMinimizer.h"
+#include "RooVoigtian.h"
+#include "RooAddPdf.h"
+#include "RooGaussian.h"
+#include "RooFFTConvPdf.h"
+#include "RooExponential.h"
 
 //ROOT
 #include "TCanvas.h"
@@ -54,7 +60,7 @@ RooRealVar* buildRooVar(std::string name, std::string title, int nBins, double x
 void runAllFits(const std::string &year, const std::string &ws_dir, const std::string &checksample);
 void runfits(const std::string &year, const std::string &ws_dir, const std::string &isample, FILE *resFilegen, FILE *resFileresp);
 void AddSigData(RooWorkspace* w, Float_t mass, std::string coupling, const std::string &year, const std::string &isample);
-theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries);
+theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries, double minMassFit, double maxMassFit, std::string thefitrange);
 void sigModelResponseFcnFit(RooWorkspace* w,Float_t mass, std::string coupling, const std::string &year, const std::string &ws_dir, const std::string &samplename, FILE *resFileresp);
 void sigModelGenFcnFit(RooWorkspace* w,Float_t mass,std::string coupling, const std::string &year, const std::string &ws_dir, const std::string &samplename, FILE *resFilegen);
 std::string getSampleBase(const std::string & sampleName, const std::string & year);
@@ -64,6 +70,7 @@ void SetConstantParams(const RooArgSet* params) ;
 TPaveText* get_labelsqrt( int legendquadrant );
 TPaveText* get_labelcms( int legendquadrant, std::string year, bool sim);
 float widthtonum(std::string coupling);
+double computeHistFHWM(TH1F*  hist);
 
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -101,28 +108,25 @@ void runAllFits(const std::string &year, const std::string &ws_dir, const std::s
 
   std::vector<std::string> samples = getSampleListForFit();
   FILE *resFilegen;
-  resFilegen = fopen(Form("%s/%s/gen_fits_%s.txt", ws_dir.c_str(), year.c_str(), year.c_str()),"w");
-  fprintf(resFilegen,"\\hline\n");
-  fprintf(resFilegen,"\\hline\n");
-  fprintf(resFilegen,"Sample & Mass & Width & Category & gof$(\\chi^{2}/ndof)$ & gof(prob) & (minim,hesse,minos) \\\\\n");
-  fprintf(resFilegen,"\\hline\n");
+  resFilegen = fopen(Form("%s/%s/gen_fits_%s_%s.txt", ws_dir.c_str(), year.c_str(), year.c_str(), checksample.c_str() ),"w");
+  // fprintf(resFilegen,"\\hline\n");
+  // fprintf(resFilegen,"\\hline\n");
+  // fprintf(resFilegen,"Sample & Mass & Width & Category & gof$(\\chi^{2}/ndof)$ & gof(prob) & (minim,hesse,minos) \\\\\n");
+  // fprintf(resFilegen,"\\hline\n");
   FILE *resFileresp;
-  resFileresp = fopen(Form("%s/%s/resp_fits_%s.txt", ws_dir.c_str(), year.c_str(), year.c_str()),"w");
-  fprintf(resFileresp,"\\hline\n");
-  fprintf(resFileresp,"\\hline\n");
-  fprintf(resFileresp,"Sample & Mass & Width & Category & gof$(\\chi^{2}/ndof)$ & gof(prob) & (minim,hesse,minos) \\\\\n");
-  fprintf(resFileresp,"\\hline\n");
-  // int count = 0;
+  resFileresp = fopen(Form("%s/%s/resp_fits_%s_%s.txt", ws_dir.c_str(), year.c_str(), year.c_str(), checksample.c_str() ),"w");
+  // fprintf(resFileresp,"\\hline\n");
+  // fprintf(resFileresp,"\\hline\n");
+  // fprintf(resFileresp,"Sample & Mass & Width & Category & gof$(\\chi^{2}/ndof)$ & gof(prob) & (minim,hesse,minos) \\\\\n");
+  // fprintf(resFileresp,"\\hline\n");
+
   for(auto isample : samples) {
     //We will process one year each time
     if ( isample.find(year) == std::string::npos ) continue; 
-    //Will check the problematic fits one by one
-    //2017 problems were on
     if ( isample.find(checksample) == std::string::npos && checksample!="all") continue;    
+    // if ( checksample!="all" ) continue;    
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
     runfits(year, ws_dir, isample, resFilegen, resFileresp);
-    // count++;
-    // if (count>2) {break;}
   }
 
   fclose(resFilegen);
@@ -272,7 +276,7 @@ void AddSigData(RooWorkspace* w, Float_t mass, std::string coupling, const std::
 
 }
 //-----------------------------------------------------------------------------------
-theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries){
+theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, int MaxTries, double minMassFit, double maxMassFit,std::string thefitrange){
 
   int ntries=0;
   RooArgSet *params_test = pdf->getParameters((const RooArgSet*)(0));
@@ -297,7 +301,12 @@ theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, 
     // RooFitResult *fitTest = pdf->fitTo(*data,RooFit::Save(1),RooFit::Minimizer("Minuit2","minimize"),RooFit::Offset(kTRUE),RooFit::Strategy(2));   
 
     //-------------------
-    RooNLLVar *nll=new RooNLLVar("nll","nll",*pdf,*data);
+    RooNLLVar *nll;
+    if (thefitrange == "nofitrange"){  
+      nll=new RooNLLVar("nll","nll",*pdf,*data);
+    } else{
+      nll=new RooNLLVar("nll","nll",*pdf,*data, RooFit::Range(thefitrange.c_str()));
+    }
     RooMinimizer *minuit_fitTest = new RooMinimizer(*nll);
     // minuit_fitTest->setOffsetting(kTRUE);
     minuit_fitTest->setStrategy(1);
@@ -362,6 +371,30 @@ void sigModelResponseFcnFit(RooWorkspace* w, Float_t mass, std::string coupling,
   // TPaveText* label_cms = get_labelcms(0, year , true);
   // TPaveText* label_sqrt = get_labelsqrt(0);
 
+  double massMin = -600.; 
+  double massMax = 600.;
+  std::string thefitrange = "nofitrange";
+  if (coupling == "1p4" || coupling == "5p6"){
+    massMin = -100.;
+    massMax = 100.;
+    thefitrange = "fitrange";
+  }
+  // if(coupling=="001" || coupling == "0p014"){
+  //   massMin=0.8*mass;
+  //   massMax=1.2*mass;
+  // }else if(coupling=="01" || coupling == "1p4"){
+  //   massMin=0.6*mass;
+  //   massMax=1.4*mass;
+  // }else if(coupling=="02" || coupling == "5p6"){
+  //   massMin=0.4*mass;
+  //   massMax=1.6*mass;
+  //   // massMin=0.8*mass;
+  //   // massMax=1.2*mass;
+  // }
+  // if(massMin<300)massMin=300;
+  // if(massMax>9000)massMax=9000;
+  // if (iMass==750){massMin=600;massMax=850;}
+  
   for(int c = 0; c<ncat+1; c++){
     std::cout << "RESPONSE FUNCTION FIT FOR CATEGORY " << c<< std::endl; 
     
@@ -375,6 +408,27 @@ void sigModelResponseFcnFit(RooWorkspace* w, Float_t mass, std::string coupling,
     TString myCut;
     if(c==0||c==1)signal = (RooDataSet*)w->data(TString::Format("SigWeightReduced_cat%d",c));
     if(c==2)signal = (RooDataSet*)w->data("SigWeightReduced");
+
+    //We will fit each distribution of the larger couplings up to 2*FWHM.
+    // TH1F* hist = (TH1F*) signal->createHistogram( Form("reducedmass_sigHist_cat%d",c), *w->var("massReduced"), RooFit::Binning(120, massMin,massMax) );
+    // // int lastnotoverflow = hist->GetXaxis()->GetNbins();
+    // int bin1 = hist->FindFirstBinAbove(hist->GetMaximum()/2);
+    // int bin2 = hist->FindLastBinAbove(hist->GetMaximum()/2);
+    // double fwhm = hist->GetBinCenter(bin2) - hist->GetBinCenter(bin1);
+    // std::cout << "FWHM for cat " << c << " is "
+    // 	      << fwhm << " = " << hist->GetBinCenter(bin2) << " - " << hist->GetBinCenter(bin1)
+    // 	      << " with bin2 " << bin2 << " with bin1 " << bin1
+    // 	      << " and maximum at bin " << hist->GetMaximum()
+    // 	      << " with maximum value " << hist->GetBinCenter(hist->GetMaximum()) << std::endl;
+
+    // fwhm = computeHistFHWM(hist);
+    // std::cout << "FWHM for cat " << c << " is " << fwhm << std::endl;
+    // //In case of large couplings for spin 0 samples don't trust events above 2*FWHM. 
+    // if(coupling == "5p6" || coupling == "1p4"){
+    //   massMin = hist->GetBinCenter(hist->GetMaximum()) - 2.*fwhm;
+    //   massMax = hist->GetBinCenter(hist->GetMaximum()) + 2.*fwhm;
+    // }
+
     //cb pos                                                                                                                     
     RooFormulaVar cbpos_mean(TString::Format("reducedmass_cbpos_sig_mean_cat%d",c),"", "@0", *w->var(TString::Format("reducedmass_sig_mean_cat%d",c)));
     RooFormulaVar cbpos_sigma(TString::Format("reducedmass_cbpos_sig_sigma_cat%d",c), "", "sqrt(@0*@0)", *w->var(TString::Format("reducedmass_sig_sigma_cat%d",c)));
@@ -387,26 +441,29 @@ void sigModelResponseFcnFit(RooWorkspace* w, Float_t mass, std::string coupling,
     responseadd[c]= new  RooDCBShape(TString::Format("responseaddpdf_cat%d",c),TString::Format("responseaddpdf_cat%d",c) , *w->var("massReduced"), cbpos_mean, cbpos_sigma,  cbneg_alphacb, cbpos_alphacb,  cbneg_n,cbpos_n) ;
 
     w->import(*responseadd[c], RooFit::RecycleConflictNodes() );
-    bool fixPar = false;
-    if(mass==2000 && fixPar){
-      w->var(TString::Format("reducedmass_sig_mean_cat%d",c))->setVal(-3.);
-      w->var(TString::Format("reducedmass_sig_sigma_cat%d",c))->setVal(25);
-      w->var(TString::Format("reducedmass_sig_alphacbpos_cat%d",c))->setVal(1);
-      w->var(TString::Format("reducedmass_sig_alphacbneg_cat%d",c))->setVal(1);
+    bool fixPar = true;
+    if(mass==4000 && c==0 && samplename == "GluGluSpin0" && fixPar){
+      w->var(TString::Format("reducedmass_sig_mean_cat%d",c))->setVal(-18.);
+      w->var(TString::Format("reducedmass_sig_sigma_cat%d",c))->setVal(38.);
+      w->var(TString::Format("reducedmass_sig_alphacbpos_cat%d",c))->setVal(-1.);
+      w->var(TString::Format("reducedmass_sig_alphacbneg_cat%d",c))->setVal(1.);
       w->var(TString::Format("reducedmass_sig_npos_cat%d",c))->setVal(5);
       w->var(TString::Format("reducedmass_sig_nneg_cat%d",c))->setVal(5);
-    }else if(mass==1500 && fixPar){
-      w->var(TString::Format("reducedmass_sig_mean_cat%d",c))->setVal(-12.);
-      w->var(TString::Format("reducedmass_sig_sigma_cat%d",c))->setVal(25);
-      w->var(TString::Format("reducedmass_sig_alphacbpos_cat%d",c))->setVal(-2);
-      w->var(TString::Format("reducedmass_sig_alphacbneg_cat%d",c))->setVal(1);
-      w->var(TString::Format("reducedmass_sig_npos_cat%d",c))->setVal(3);
-      w->var(TString::Format("reducedmass_sig_nneg_cat%d",c))->setVal(7);
-    }
+    }// else if(mass==1500 && fixPar){
+    //   w->var(TString::Format("reducedmass_sig_mean_cat%d",c))->setVal(-12.);
+    //   w->var(TString::Format("reducedmass_sig_sigma_cat%d",c))->setVal(25);
+    //   w->var(TString::Format("reducedmass_sig_alphacbpos_cat%d",c))->setVal(-2);
+    //   w->var(TString::Format("reducedmass_sig_alphacbneg_cat%d",c))->setVal(1);
+    //   w->var(TString::Format("reducedmass_sig_npos_cat%d",c))->setVal(3);
+    //   w->var(TString::Format("reducedmass_sig_nneg_cat%d",c))->setVal(7);
+    // }
     
     int fitStatus = 0;
     double thisNll = 0.;
-    theFitResult fitresults = theFit(responseadd[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3) ;
+    if (coupling == "1p4" || coupling == "5p6"){
+      w->var("massReduced")->setRange("fitrange",massMin, massMax);
+    }
+    theFitResult fitresults = theFit(responseadd[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3, massMin, massMax, thefitrange) ;//"nofitrange" for normal range
 
     // RooFitResult* fitresults = (RooFitResult* ) responseadd[c]->fitTo(*signal,RooFit::SumW2Error(kTRUE), RooFit::Range(-600, 600), RooFit::Save(kTRUE), RooFit::Minos(kTRUE), RooFit::Strategy(2) );
     std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
@@ -497,15 +554,46 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
   RooDataSet* signal;
   //  RooBreitWigner* bw[NCAT+1];
   // RooGenericPdf* bw[NCAT+1];
+  // RooVoigtian* mgenadd[NCAT+1];
+  // RooDCBShape* mgenadd_dcb[NCAT+1];
+  // RooGaussian* mgenadd_gaus[NCAT+1];
+  // RooExponential* mgenadd_expo[NCAT+1];
+  // RooAddPdf* mgenadd[NCAT+1];
   RooDCBShape* mgenadd[NCAT+1];
+  // RooFFTConvPdf* mgenadd[NCAT+1];
+
   int iMass =  (int) abs(mass);
   TCanvas* canv3 = new TCanvas( Form("Canvas3_M%f_k%s", mass , coupling.c_str()) , Form("Canvas3_M%f_k%s", mass , coupling.c_str()) );
   canv3->cd();
   // TPaveText* label_cms = get_labelcms(0, "2016", true);
   // TPaveText* label_sqrt = get_labelsqrt(0);
+
+  double massMin = 0.; 
+  double massMax = 0.;
+  // double curcoup = 0.;
+  if(coupling=="001" || coupling == "0p014"){
+    massMin=0.8*mass;
+    massMax=1.2*mass;
+    // curcoup = 1.4 * pow(10.,-4);
+  }else if(coupling=="01" || coupling == "1p4"){
+    massMin=0.8*mass;
+    massMax=1.2*mass;
+    // curcoup = 1.4 * pow(10.,-2);
+  }else if(coupling=="02" || coupling == "5p6"){
+    massMin=0.8*mass;
+    massMax=1.2*mass;
+    // curcoup = 5.6 * pow(10.,-2);
+    // massMin=0.8*mass;
+    // massMax=1.2*mass;
+  }
+  if(massMin<300)massMin=300;
+  if(massMax>9000)massMax=9000;
+  // if (iMass==750){massMin=600;massMax=850;}
+
   
   for(int c = 2; c<ncat+1; c++){
-    
+  // for(int c = 0; c<ncat; c++){
+
     TLatex *lat  = new TLatex(0.6,0.9,TString::Format("cat: %d", c));  
     lat->SetTextSize(0.038);
     lat->SetTextAlign(11);
@@ -514,9 +602,91 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
 
     TString myCut;
     signal = (RooDataSet*)w->data("SigWeightGen");
+    //We will fit each distribution of the larger couplings up to 2*FWHM.
+    //Be careful to open a small window and not the whole range because for
+    //spin 0 the distribution rises at the beginning. 
+    TH1F* hist = (TH1F*) signal->createHistogram( Form("mgen_sigHist_cat%d",c), *w->var("mggGen"), RooFit::Binning(1000, massMin,massMax) );
+    int bin1 = hist->FindFirstBinAbove(hist->GetMaximum()/2);
+    int bin2 = hist->FindLastBinAbove(hist->GetMaximum()/2);
+    double fwhm = hist->GetBinCenter(bin2) - hist->GetBinCenter(bin1);
+    std::cout << "FWHM for cat " << c << " is " << fwhm << " = " << hist->GetBinCenter(bin2) << " - " << hist->GetBinCenter(bin1) <<std::endl;
+    // bool weirdshapelow = false;
+    // bool weirdshapehigh = false;
+    
+    // if (mass - hist->GetBinCenter(bin1) > 500.){weirdshapelow=true;}
+    // while (weirdshapelow){
+    //   std::cout << "YYYYYYYYYYYYYYYYYYYYYY" << std::endl; 
+    //   weirdshapelow = (mass - hist->GetBinCenter(bin1) > 500.);
+    //   ++bin1;
+    // }
+    // if (hist->GetBinCenter(bin2) - mass > 500.){weirdshapehigh=true;}
+    // while (weirdshapehigh){
+    //   weirdshapehigh = (hist->GetBinCenter(bin2) - mass > 500.);
+    //   --bin2;
+    // }
+    // if (weirdshapelow || weirdshapehigh) {fwhm = hist->GetBinCenter(bin2) - hist->GetBinCenter(bin1);}
+    // if (weirdshapelow){
+    //   fwhm = 2*(mass - hist->GetBinCenter(bin2));
+    // } else if (weirdshapehigh){
+    //   fwhm = 2*hist->GetBinCenter(bin1);
+    // }
+
     w->var(TString::Format("mgen_sig_mean_cat%d",c))->setVal(mass);
-    w->var(TString::Format("mgen_sig_mean_cat%d",c))->setRange(mass*0.8, mass*1.2);
-    //cb pos                                                                                                                     
+    // w->var(TString::Format("mgen_sig_mean_cat%d",c))->setRange(mass*0.8, mass*1.2);
+    std::cout << coupling << " "  << year << " " << mass << std::endl;
+    //------------------------------------------------------------
+    //Some tweaking first for RS samples
+    if (coupling == "02" && year == "2017"){
+      if (mass == 2000. || mass == 2250.){
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(15.);
+      } else if (mass == 5250. || mass == 6500.){
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(30.);
+      } else if (mass == 8000.){
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(150.);
+      }
+    }//end of if over RS 2017 with 02 coup
+    //------------------------------------------------------------
+    //Now to GluGlu
+    if (coupling == "1p4" ){
+      if (mass >= 1000.){
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(50.);
+      }
+      if(mass == 4000. && year == "2017"){
+	w->var(TString::Format("mgen_sig_nneg_cat%d",c))->setVal(1e-05);
+      }
+      if( (mass == 4750. || mass == 4250.) && year == "2018" ) {
+	w->var(TString::Format("mgen_sig_nneg_cat%d",c))->setVal(1e-03);
+	w->var(TString::Format("mgen_sig_alphacbneg_cat%d",c))->setVal(0.2);
+      }
+    }//end of if over GluGlu 1p4
+    if (coupling == "5p6"){
+      // if (mass >= 2000. && mass <= 2500. ){
+      if (mass == 2000.){
+	w->var(TString::Format("mgen_sig_nneg_cat%d",c))->setVal(1e-03);
+      } else if (mass >= 1000. && mass < 3500. ){
+	// w->var(TString::Format("mgen_sig_nneg_cat%d",c))->setVal(1e-03);
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(50.);
+	// w->var(TString::Format("mgen_sig_alphacbneg_cat%d",c))->setVal(10.);
+      } else if (mass == 3500. ){
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(100.);
+	// w->var(TString::Format("mgen_sig_alphacbneg_cat%d",c))->setVal(10.);
+      }
+    }//end of if over GluGlu 5p6 
+    if (coupling == "0p014"){
+      if (mass >= 2000.){
+	// w->var(TString::Format("mgen_sig_nneg_cat%d",c))->setVal(1e-03);
+	w->var(TString::Format("mgen_sig_sigma_cat%d",c))->setVal(50.);
+      }
+    }//end of if over GluGlu 0p014
+
+    //In case of large couplings for spin 0 samples don't trust events above 2*FWHM. 
+    if(coupling == "5p6" || coupling == "1p4"){
+      massMin = mass - 2.*fwhm;
+      massMax = mass + 2.*fwhm;
+    }
+    
+    //Below are the DCB parameters, but will use the same with voigtian where possible
+    //cb pos                                                                                                                   
     RooFormulaVar cbpos_mean(TString::Format("mgen_cbpos_sig_mean_cat%d",c),"", "@0", *w->var(TString::Format("mgen_sig_mean_cat%d",c)));
     RooFormulaVar cbpos_sigma(TString::Format("mgen_cbpos_sig_sigma_cat%d",c), "", "sqrt(@0*@0)", *w->var(TString::Format("mgen_sig_sigma_cat%d",c)));
     RooFormulaVar cbpos_alphacb(TString::Format("mgen_cbpos_sig_alphacb_cat%d",c),"", "@0", *w->var( TString::Format("mgen_sig_alphacbpos_cat%d",c)));
@@ -524,26 +694,63 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
     //cb neg
     RooFormulaVar cbneg_n(TString::Format("mgen_cbneg_sig_n_cat%d",c),"", "@0", *w->var( TString::Format("mgen_sig_nneg_cat%d",c)));
     RooFormulaVar cbneg_alphacb(TString::Format("mgen_cbneg_sig_alphacb_cat%d",c),"", "@0", *w->var( TString::Format("mgen_sig_alphacbneg_cat%d",c)));    
-    mgenadd[c]=  new  RooDCBShape(TString::Format("mgenaddpdf_cat%d",c),TString::Format("mgenaddpdf_cat%d",c) , *w->var("mggGen"), cbpos_mean, cbpos_sigma,  cbneg_alphacb, cbpos_alphacb,  cbneg_n,cbpos_n) ;
+    mgenadd[c]=  new RooDCBShape(TString::Format("mgenaddpdf_cat%d",c),TString::Format("mgenaddpdf_cat%d",c) , *w->var("mggGen"), cbpos_mean, cbpos_sigma,  cbneg_alphacb, cbpos_alphacb,  cbneg_n,cbpos_n) ;
+    // mgenadd_dcb[c] =  new  RooDCBShape(TString::Format("mgenadd_dcbpdf_cat%d",c),TString::Format("mgenadd_dcbpdf_cat%d",c), *w->var("mggGen"), cbpos_mean, cbpos_sigma,  cbneg_alphacb, cbpos_alphacb,  cbneg_n,cbpos_n) ;
+    // RooRealVar mg("mg","mg", mass - 500., 0. ,  mass + 1000.) ;
+    // RooRealVar sg("sg","sg",100,0.,200.) ;
+    // RooFormulaVar expo_lambda(TString::Format("mgen_expolambda_cat%d",c),"", "@0", *w->var( TString::Format("mgen_sig_expolambda_cat%d",c)));
+    // RooRealVar lambda("lambda", "slope", -2., -10., 0.);
+    // mgenadd_gaus[c] = new RooGaussian(TString::Format("mgenadd_gauspdf_cat%d",c),TString::Format("mgenadd_gauspdf_cat%d",c),*w->var("mggGen"),mg,sg);
+    // mgenadd_expo[c] = new RooExponential(TString::Format("mgenadd_expopdf_cat%d",c),TString::Format("mgenadd_expopdf_cat%d",c),*w->var("mggGen"), expo_lambda);
+    // RooRealVar* var = new RooRealVar("var", "var", massMin, massMax);
+    // w->var("mggGen")->setBins(4000, "cache");
+    //Convolution
+    // mgenadd[c] = new RooFFTConvPdf(TString::Format("mgenaddpdf_cat%d",c),TString::Format("mgenaddpdf_cat%d",c) , *w->var("mggGen"), *mgenadd_dcb[c], *mgenadd_gaus[c]);
+
+    //add the DCB with an exponential
+    // RooArgList *pdfs_holder = new RooArgList();
+    // pdfs_holder->add(*mgenadd_dcb[c]);
+    // pdfs_holder->add(*mgenadd_expo[c]);
+    // RooArgList *coeffs_holder= new RooArgList();
+    // coeffs_holder->add( *w->var(TString::Format("mgen_sig_frac_cat%d",c)) );
+    // mgenadd[c] = new RooAddPdf(TString::Format("mgenaddpdf_cat%d",c),TString::Format("mgenaddpdf_cat%d",c),*pdfs_holder,*coeffs_holder, true);
+    mgenadd[c]->Print("V");
+    
+    // // add the DCB and the Gaussian
+    // RooArgList *pdfs_holder = new RooArgList();
+    // pdfs_holder->add(*mgenadd_dcb[c]);
+    // pdfs_holder->add(*mgenadd_gaus[c]);
+    // RooArgList *coeffs_holder= new RooArgList();
+    // coeffs_holder->add( *w->var(TString::Format("mgen_sig_frac_cat%d",c)) );
+    // mgenadd[c] = new RooAddPdf(TString::Format("mgenaddpdf_cat%d",c),TString::Format("mgenaddpdf_cat%d",c),*pdfs_holder,*coeffs_holder, true);
+    // w->var(TString::Format("mgen_width_sig_cat%d",c))->setVal(curcoup);
+    // RooFormulaVar width(TString::Format("mgen_voiwidth_sig_cat%d",c),"","@0", *w->var( TString::Format("mgen_width_sig_cat%d",c)) );
+    
+    // mgenadd[c]=  new  RooVoigtian(TString::Format("mgenaddpdf_cat%d",c),TString::Format("mgenaddpdf_cat%d",c) , *w->var("mggGen"), cbpos_mean, cbpos_sigma, width );
+    
+    
     w->import(*mgenadd[c]);
     std::cout<<mass<<" "<<signal->sumEntries()<<std::endl;
     std::cout<<TString::Format("******************************** signal fit results cb+cb  mass %f cat %d***********************************", mass, c)<<std::endl;
 
-    // int fitStatus = 0;
-    // double thisNll = 0.;
-    RooFitResult* fitresult = (RooFitResult* ) mgenadd[c]->fitTo(*signal,SumW2Error(kTRUE), Range(mass*0.8, mass*1.2), RooFit::Save(kTRUE));  
-    // theFitResult fitresults = theFit(mgenadd[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3) ;
-    
-    // fitresults.fitres->Print("V");
-    fitresult->Print("V");
+    int fitStatus = 0;
+    double thisNll = 0.;
+    w->var("mggGen")->setRange("fitrange",massMin, massMax) ;
+    // RooFitResult* fitresult = (RooFitResult* ) mgenadd[c]->fitTo(*signal,SumW2Error(kTRUE), RooFit::Range("fitrange"), RooFit::Minos(kTRUE), RooFit::Save(kTRUE));  
+    theFitResult fitresults = theFit(mgenadd[c], signal, &thisNll, &fitStatus, /*max iterations*/ 3, massMin, massMax, "fitrange") ;
+
+    std::cout << "massMin " << massMin << " massMax "<< massMax << std::endl;
+    fitresults.fitres->Print("V");
+    // fitresult->Print("V");
     
     // theFitResult fitresults;
     // fitresults.fitres = fitresult;
 
     int nBinsForMassreduced = 120;
-    RooPlot* plotg = w->var("mggGen")->frame(Range(mass*0.8,mass*1.2),Title("mass generated"),Bins(nBinsForMassreduced));
+    w->var("mggGen")->setRange("plotrange",mass*0.8,mass*1.2) ;
+    RooPlot* plotg = w->var("mggGen")->frame(RooFit::Range("plotrange"),Title("mass generated"),Bins(nBinsForMassreduced));
     signal->plotOn(plotg,Name("signal"));
-    mgenadd[c]->plotOn(plotg, LineColor(kBlue), Name("pdf"));
+    mgenadd[c]->plotOn(plotg, LineColor(kBlue), Name("pdf"), RooFit::Range("plotrange"));
 
     double prob;
     RooRealVar norm("norm","norm",signal->sumEntries(),0,10E6);
@@ -595,17 +802,21 @@ void sigModelGenFcnFit(RooWorkspace* w, Float_t mass, std::string coupling, cons
     canv3->SetLogy(0);  
 	
     w->defineSet(TString::Format("mgenpdfparam_cat%d",c),RooArgSet(*w->var(TString::Format("mgen_sig_sigma_cat%d",c)), 
-								   *w->var(TString::Format("mgen_sig_alphacbpos_cat%d",c)),
-								   *w->var(TString::Format("mgen_sig_alphacbneg_cat%d",c)),
-								   *w->var(TString::Format("mgen_sig_npos_cat%d",c)),
-								   *w->var(TString::Format("mgen_sig_nneg_cat%d",c)),	   
-								   *w->var(TString::Format("mgen_sig_frac_cat%d",c)),  
-								   *w->var(TString::Format("mgen_sig_mean_cat%d",c))));
+    								   *w->var(TString::Format("mgen_sig_alphacbpos_cat%d",c)),
+    								   *w->var(TString::Format("mgen_sig_alphacbneg_cat%d",c)),
+    								   *w->var(TString::Format("mgen_sig_npos_cat%d",c)),
+    								   *w->var(TString::Format("mgen_sig_nneg_cat%d",c)),	   
+    								   *w->var(TString::Format("mgen_sig_frac_cat%d",c)),  
+    								   *w->var(TString::Format("mgen_sig_mean_cat%d",c))));
+    // w->defineSet(TString::Format("mgenpdfparam_cat%d",c),RooArgSet(*w->var(TString::Format("mgen_sig_sigma_cat%d",c)), 
+    // 								   *w->var(TString::Format("mgen_width_sig_cat%d",c)),  
+    // 								   *w->var(TString::Format("mgen_sig_mean_cat%d",c))));
     SetConstantParams(w->set(TString::Format("mgenpdfparam_cat%d",c)));
 
     //Let's save the results to file
-    // float coup = widthtonum(coupling);
-    // fprintf(resFilegen,"%s & %10.0f & %10.1e & %d & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", samplename.c_str() , mass, coup, c, chi2, prob, fitresults.minimizestatus ,fitresults.hessestatus ,fitresults.minosstatus );
+    float coup = widthtonum(coupling);
+    fprintf(resFilegen,"%s & %10.0f & %10.1e & %d & %10.2f & %10.2f & (%d,%d,%d) \\\\\n", samplename.c_str() , mass, coup, c, chi2, prob, fitresults.minimizestatus ,fitresults.hessestatus ,fitresults.minosstatus );
+    // fprintf(resFilegen,"%s & %10.0f & %10.1e & %d & %10.2f & %10.2f & %d \\\\\n", samplename.c_str() , mass, coup, c, chi2, prob, fitresult->status() );
 
 
     
@@ -833,3 +1044,59 @@ float widthtonum(std::string coupling){
 
 }
 
+
+double computeHistFHWM(TH1F*  hist){
+
+  double  halfMaxVal = 0.5*hist->GetMaximum();
+  int  maxBin = hist->GetMaximumBin();
+        
+  int  binLeft = 0; 
+  int  binRight = 0;
+  double xLeft = 0.;
+  double xRight = 0.;
+  double xWidth;
+      
+  int  last = 1;
+  for(int ibin = 1; ibin<=maxBin;ibin++){
+    double   binVal = hist->GetBinContent(ibin);
+    if (binVal >= halfMaxVal){
+      binLeft = last;
+      break;
+    }
+    if (binVal>0) last=ibin;
+  }
+  last = hist->GetXaxis()->GetNbins()+1;
+  for(int ibin = hist->GetXaxis()->GetNbins()+1; ibin>maxBin;ibin--){ 
+    double   binVal = hist->GetBinContent(ibin);
+    if (binVal >= halfMaxVal){
+      binRight = last;
+      break;
+    }
+    if (binVal>0) last=ibin;
+  }
+  for(int ibin = 1; ibin<=maxBin;ibin++){ 
+    double  binVal = hist->GetBinContent(ibin);
+    if (binVal >= halfMaxVal){
+      binLeft = ibin;
+      break;
+    }
+  }
+  for(int ibin = maxBin+1; ibin<=hist->GetXaxis()->GetNbins()+1;ibin++){  
+    double binVal = hist->GetBinContent(ibin);
+    if (binVal < halfMaxVal){
+      binRight = ibin-1;
+      break;
+    }
+  } 
+  xWidth = 0.;
+  if (binLeft > 0 && binRight > 0 ){
+    xLeft = hist->GetXaxis()->GetBinCenter(binLeft);
+    xRight = hist->GetXaxis()->GetBinCenter(binRight);
+    xWidth = xRight-xLeft;
+    std::cout<<TString::Format("FWHM = %f",xWidth)<<std::endl;
+  }  else{
+    std::cout<<"Did not succeed to compute the FWHM"<<std::endl;
+  }
+
+  return xWidth;
+}

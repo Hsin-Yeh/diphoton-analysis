@@ -26,9 +26,12 @@
 #include "TCanvas.h"
 #include "TLegend.h"
 #include "TGraphErrors.h"
+#include "TStyle.h"
 
 using namespace RooFit;
 using namespace RooStats;
+
+int nBinsMass = 1100;//150//1250
 
 //-----------------------------------------------------------------------------------
 struct theTree {
@@ -47,9 +50,10 @@ static const Int_t NCAT = 2; //BB and BE for the moment
 //-----------------------------------------------------------------------------------
 //Declarations here definition after main
 double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot, std::string name);
-void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &couplingIn);
+void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &couplingIn, std::vector<std::string> cats);
 std::string getBase(const std::string & sampleName);
 std::string get_str_between_two_str(const std::string &s, const std::string &start_delim, const std::string &stop_delim);
+std::string widthtonum(std::string coupling);
 
 //-----------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -72,12 +76,18 @@ int main(int argc, char *argv[])
     thecoupling = argv[5];
  }
 
+  //Categories
+  std::vector<std::string> cats; 
+  cats.clear(); 
+  cats.push_back("EBEB");
+  cats.push_back("EBEE");
+
   //========================================================================
   //read the reduced input root trees
   initForFit(inputsamples);
   //========================================================================
   //Run the fits
-  plotAllSignalsAsimov(year,inputworkspaces, outputworkspaces, thecoupling);
+  plotAllSignalsAsimov(year,inputworkspaces, outputworkspaces, thecoupling, cats);
 
 }
 
@@ -159,10 +169,15 @@ double computePdfFHWM(RooDCBShape pdf,RooRealVar roobs, double MH, bool plot, st
 
 
 //-----------------------------------------------------------------------------------
-void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &couplingIn){
+void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, const std::string &ws_outdir, const std::string &couplingIn, std::vector<std::string> cats){
 
   std::vector<std::string> samples = getSampleListForFit();
   bool plot = true;
+  TStyle* m_gStyle = new TStyle();
+  m_gStyle->SetOptStat(1111);
+  m_gStyle->SetOptFit(1);
+
+  std::string coup = widthtonum(couplingIn);
 
   //========================================================================
   std::cout << "Calculate the final parametric shape" <<std::endl;
@@ -171,10 +186,11 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
   std::string coupling = "";
   std::string M_bins = "";
 
-  double upperxmax = 0.; 
-  if ( couplingIn == "kMpl001" || couplingIn == "0p014"){upperxmax = 6000 ;}
-  else if ( couplingIn == "kMpl01" || couplingIn == "1p4"){upperxmax = 9000 ;}
-  else if ( couplingIn == "kMpl02" || couplingIn == "5p6"){upperxmax = 9000 ;}
+  double MassMin = 0.; 
+  double MassMax = 0.; 
+  if ( couplingIn == "kMpl001" || couplingIn == "0p014"){MassMin = 740.; MassMax = 5000. ;}
+  else if ( couplingIn == "kMpl01" || couplingIn == "1p4"){MassMin = 740.; MassMax = 5000. ;}
+  else if ( couplingIn == "kMpl02" || couplingIn == "5p6"){MassMin = 740.; MassMax = 5000. ;}
   else {
     std::cout << "Only 'kMpl001', 'kMpl01', 'kMpl02', '0p014', '1p4' and '5p6' are allowed. " << std::endl;
     exit(1);
@@ -212,26 +228,35 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     theInput.push_back(tmpin);
 
   }
+
+  unsigned int inputsize = 1;
+  for(unsigned int iM =0; iM < theInput.size(); iM++){
+    theTree tmpin = theInput[iM];
+    if ( std::stod(tmpin.M_bins) > 4001. ){continue;}//HARDCODED: Just keep it in mind. 
+    ++inputsize;
+
+  }
+
   
-  double m[theInput.size()];
-  double mErr[theInput.size()];
-  double s[theInput.size()];
-  double sErr[theInput.size()];
-  double aL[theInput.size()];
-  double aLErr[theInput.size()];
-  double aR[theInput.size()];
-  double aRErr[theInput.size()];
-  double nL[theInput.size()];
-  double nLErr[theInput.size()];
-  double nR[theInput.size()];
-  double nRErr[theInput.size()];
-  double masses[theInput.size()];
-  double massesErr[theInput.size()];
+  double m[inputsize];
+  double mErr[inputsize];
+  double s[inputsize];
+  double sErr[inputsize];
+  double aL[inputsize];
+  double aLErr[inputsize];
+  double aR[inputsize];
+  double aRErr[inputsize];
+  double nL[inputsize];
+  double nLErr[inputsize];
+  double nR[inputsize];
+  double nRErr[inputsize];
+  double masses[inputsize];
+  double massesErr[inputsize];
 
   TString svar = "responseaddpdf";
   TString spdf = "responseaddpdf";
   
-  RooRealVar* MH = new RooRealVar("MH", "MH", 300, upperxmax);
+  RooRealVar* MH = new RooRealVar("MH", "MH", 300, 9000);
   MH->setConstant();
   //RooWorkspace* ws_out = new RooWorkspace( Form("%s/model_signal", ws_outdir.c_str()) );
   // RooWorkspace* ws_out = new RooWorkspace( "model_signal" );
@@ -249,12 +274,25 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
 
   for(int c =0; c< NCAT+1; c++){
 
+    FILE *resFile;
+    resFile = fopen(Form("%s/../plots/paramsvsMX_fits_%s_%s_cat%d.txt", ws_outdir.c_str(),year.c_str(),couplingIn.c_str(),c),"w");
+    if (couplingIn=="kMpl001"){
+      fprintf(resFile,"\\hline\n");
+      fprintf(resFile,"\\hline\n");
+      fprintf(resFile,"\\multicolumn{6}{c}{Year: %s } \\\\\n", year.c_str());
+      fprintf(resFile,"\\hline\n");
+      fprintf(resFile,"Parameter (GeV) & Width & $p_{0}$ & $p_{1}$ & $p_{2}$ & $\\chi^{2}/N  $ \\\\\n");
+      fprintf(resFile,"\\hline\n");
+      fprintf(resFile,"\\multicolumn{6}{c}{Category: %s } \\\\\n", cats[c].c_str());
+      fprintf(resFile,"\\hline\n");
+    }
+
     std::map< std::string , RooDCBShape* > res;
     std::map< std::string , TH1F* > h;
     std::map< std::string , RooDataHist* > resdata; 
     std::map< std::string , RooPlot* > pres; 
     std::map< std::string , RooArgSet* > model_params;
-    double fhwm[theInput.size()];
+    double fhwm[inputsize];
 
     TLegend* legmc = new TLegend(0.58, 0.34, 0.85, 0.9, "", "bNDC");
     legmc->SetTextFont(42);
@@ -262,38 +300,45 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     legmc->SetFillStyle(0);
 
     TCanvas* cc1 = new TCanvas(Form("cc1_cat%d", c), Form("cc1_cat%d", c));
-
+    unsigned int iMindex = 0;
+    
     for(unsigned int iM =0; iM < theInput.size(); iM++){
 
       theTree tmpin = theInput[iM];
-      masses[iM] = std::stod(tmpin.M_bins); 
-      massesErr[iM] = 0.;
+
+      if ( std::stod(tmpin.M_bins) > 4001. ){continue;}//HARDCODED: Just keep it in mind. 
+
+      //Should be after the continue to count only the points we want for the
+      //chi^2/ndof table later. 
+      ++iMindex;
+      masses[iMindex] = std::stod(tmpin.M_bins); 
+      massesErr[iMindex] = 0.;
 
       res[tmpin.name] = (RooDCBShape*) tmpin.ws->pdf(TString::Format("dcbshape_cat%d",c));
       //compute FWHM
-      fhwm[iM] = computePdfFHWM(*res[tmpin.name],*tmpin.ws->var("var"), std::stoi(tmpin.M_bins), plot, Form("%s/../plots/test_%d_%d", ws_outdir.c_str(),iM,c));
-      std::cout << "FWHM " << fhwm[iM] <<" for mass " << tmpin.M_bins << std::endl;
+      fhwm[iMindex] = computePdfFHWM(*res[tmpin.name],*tmpin.ws->var("var"), std::stoi(tmpin.M_bins), plot, Form("%s/../plots/test_%d_%d", ws_outdir.c_str(),iMindex,c));
+      std::cout << "FWHM " << fhwm[iMindex] <<" for mass " << tmpin.M_bins << std::endl;
 
       cc1->cd();
-      h[tmpin.name] = new TH1F(Form("h%d_%d",iM,c), Form("h%d_%d",iM,c),460, 300,upperxmax);
+      h[tmpin.name] = new TH1F(Form("h%d_%d",iMindex,c), Form("h%d_%d",iMindex,c),460, 300,MassMax);
 
-      h[tmpin.name]->SetLineColor(iM+1);
-      h[tmpin.name]->SetMarkerColor(iM+1);
+      h[tmpin.name]->SetLineColor(iMindex+1);
+      h[tmpin.name]->SetMarkerColor(iMindex+1);
 
       legmc->AddEntry( h[tmpin.name] , Form("M_{X} = %d GeV", std::stoi(tmpin.M_bins) ),"pl" );
 
       if(c<2){  resdata[tmpin.name] = (RooDataHist*)tmpin.ws->data(TString::Format("signal_asimov_cat%d",c));}
       if(c==2){ resdata[tmpin.name] = (RooDataHist*)tmpin.ws->data("signal_asimov"); }
 
-      pres[tmpin.name] = tmpin.ws->var("var")->frame(Range(300,upperxmax),Title("mass asimov"),Bins(420));
-      resdata[tmpin.name]->plotOn(pres[tmpin.name],MarkerColor(iM+1),LineColor(iM+1));
-      res[tmpin.name]->plotOn(pres[tmpin.name],LineColor(iM+1));
+      pres[tmpin.name] = tmpin.ws->var("var")->frame(Range(300,MassMax+1000.),Title("mass asimov"),Bins(420));
+      resdata[tmpin.name]->plotOn(pres[tmpin.name],MarkerColor(iMindex+1),LineColor(iMindex+1));
+      res[tmpin.name]->plotOn(pres[tmpin.name],LineColor(iMindex+1));
 
       pres[tmpin.name]->GetXaxis()->SetTitle("#Delta m [GeV]");
       pres[tmpin.name]->GetYaxis()->SetTitle("a.u.");
-      // pres[tmpin.name]->GetYaxis()->SetRangeUser(0.001,upperxmax);
+      // pres[tmpin.name]->GetYaxis()->SetRangeUser(0.001,MassMax);
 
-      if (iM == 0){
+      if (iMindex == 0){
 	pres[tmpin.name]->Draw();
       } else{
 	pres[tmpin.name]->Draw("same");
@@ -305,29 +350,29 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
       model_params[tmpin.name] = res[tmpin.name]->getParameters(*tmpin.ws->var("var")) ;
       model_params[tmpin.name]->Print("v") ;
 
-      m[iM] = ((RooRealVar*) tmpin.ws->var(TString::Format("dcb_m_cat%d",c)))->getVal()- ((RooRealVar*)tmpin.ws->var("MH"))->getVal();
-      mErr[iM] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_m_cat%d",c)))->getError() ;
-      std::cout<<m[iM]<<" "<<mErr[iM]<<std::endl;
+      m[iMindex] = ((RooRealVar*) tmpin.ws->var(TString::Format("dcb_m_cat%d",c)))->getVal()- ((RooRealVar*)tmpin.ws->var("MH"))->getVal();
+      mErr[iMindex] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_m_cat%d",c)))->getError() ;
+      std::cout<<m[iMindex]<<" "<<mErr[iMindex]<<std::endl;
       
-      s[iM] = ((RooRealVar*) tmpin.ws->var(TString::Format("dcb_s_cat%d",c)))->getVal();
-      sErr[iM] =((RooRealVar*) tmpin.ws->var(TString::Format("dcb_s_cat%d",c)))->getError() ;
-      std::cout<<s[iM]<<" "<<sErr[iM]<<std::endl;
+      s[iMindex] = ((RooRealVar*) tmpin.ws->var(TString::Format("dcb_s_cat%d",c)))->getVal();
+      sErr[iMindex] =((RooRealVar*) tmpin.ws->var(TString::Format("dcb_s_cat%d",c)))->getError() ;
+      std::cout<<s[iMindex]<<" "<<sErr[iMindex]<<std::endl;
 
-      aL[iM] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aL_cat%d",c)))->getVal();
-      aLErr[iM] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aL_cat%d",c)))->getError() ;
-      std::cout<<aL[iM]<<" "<<aLErr[iM]<<std::endl;
+      aL[iMindex] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aL_cat%d",c)))->getVal();
+      aLErr[iMindex] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aL_cat%d",c)))->getError() ;
+      std::cout<<aL[iMindex]<<" "<<aLErr[iMindex]<<std::endl;
       
-      aR[iM] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aR_cat%d",c)))->getVal();
-      aRErr[iM] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aR_cat%d",c)))->getError() ;
-      std::cout<<aR[iM]<<" "<<aRErr[iM]<<std::endl;
+      aR[iMindex] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aR_cat%d",c)))->getVal();
+      aRErr[iMindex] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_aR_cat%d",c)))->getError() ;
+      std::cout<<aR[iMindex]<<" "<<aRErr[iMindex]<<std::endl;
       
-      nR[iM] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nR_cat%d",c)))->getVal();
-      nRErr[iM] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nR_cat%d",c)))->getError() ;
-      std::cout<<nR[iM]<<" "<<nRErr[iM]<<std::endl;
+      nR[iMindex] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nR_cat%d",c)))->getVal();
+      nRErr[iMindex] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nR_cat%d",c)))->getError() ;
+      std::cout<<nR[iMindex]<<" "<<nRErr[iMindex]<<std::endl;
 
-      nL[iM] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nL_cat%d",c)))->getVal();
-      nLErr[iM] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nL_cat%d",c)))->getError() ;
-      std::cout<<nL[iM]<<" "<<nLErr[iM]<<std::endl;
+      nL[iMindex] = ((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nL_cat%d",c)))->getVal();
+      nLErr[iMindex] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nL_cat%d",c)))->getError() ;
+      std::cout<<nL[iMindex]<<" "<<nLErr[iMindex]<<std::endl;
 
    } //end of loop over signal samples of the same coupling
    
@@ -339,102 +384,166 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
 
    // cc1->SetLogy(0);
  
-   TGraph* gr = new TGraph(theInput.size(),masses,fhwm);
-   TGraphErrors* gm = new TGraphErrors(theInput.size(), masses, m, massesErr, mErr);
-   TGraphErrors* gs = new TGraphErrors(theInput.size(), masses, s, massesErr, sErr);
-   TGraphErrors* gaL = new TGraphErrors(theInput.size(), masses, aL, massesErr, aLErr);
-   TGraphErrors* gaR = new TGraphErrors(theInput.size(), masses, aR, massesErr, aRErr);
-   TGraphErrors* gnR = new TGraphErrors(theInput.size(), masses, nR, massesErr, nRErr);
-   TGraphErrors* gnL = new TGraphErrors(theInput.size(), masses, nL, massesErr, nLErr);
+   TGraph* gr = new TGraph(inputsize,masses,fhwm);
+   TGraphErrors* gm = new TGraphErrors(inputsize, masses, m, massesErr, mErr);
+   TGraphErrors* gs = new TGraphErrors(inputsize, masses, s, massesErr, sErr);
+   TGraphErrors* gaL = new TGraphErrors(inputsize, masses, aL, massesErr, aLErr);
+   TGraphErrors* gaR = new TGraphErrors(inputsize, masses, aR, massesErr, aRErr);
+   TGraphErrors* gnR = new TGraphErrors(inputsize, masses, nR, massesErr, nRErr);
+   TGraphErrors* gnL = new TGraphErrors(inputsize, masses, nL, massesErr, nLErr);
 
-   ffhmw[c] = new TF1(TString::Format("ffhmw_cat%d",c), "pol1", 500,upperxmax);
+   ffhmw[c] = new TF1(TString::Format("ffhmw_cat%d",c), "pol1", MassMin,MassMax);
    gr->Fit(TString::Format("ffhmw_cat%d",c), "R");
-   gr->GetXaxis()->SetTitle("m_X[GeV]");
+   gr->GetXaxis()->SetTitle("m_X [GeV]");
    gr->GetYaxis()->SetTitle("FHWM [GeV]");
-   gr->Draw("AP");   
+   
+   gr->SetMarkerStyle(20);
+   gr->SetTitle(" ");
+   gr->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gr->GetYaxis()->SetTitleSize(0.045);
+   gr->GetXaxis()->SetTitleSize(0.045);
+   gr->GetYaxis()->SetTitleOffset(0.90);
+   gr->GetXaxis()->SetTitleOffset(0.90);
+
+   gr->Draw("AP");
+   ffhmw[c]->Draw("same");
    // cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/FHWM_%s_cat%d.png",couplingIn.c_str(), c));
    cc1->SaveAs(Form("%s/../plots/FHWM_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+   // cc1->SaveAs(Form("%s/../plots/FHWM_%s_cat%d.root", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-   fm[c] = new TF1(TString::Format("fm_cat%d",c), "pol2", 500,upperxmax);
+   fm[c] = new TF1(TString::Format("fm_cat%d",c), "pol2", MassMin,MassMax);
    gm->Fit(TString::Format("fm_cat%d",c), "R");
-   gm->GetYaxis()->SetTitle("#Delta m= m - m_{H} [GeV]");
+   gm->GetYaxis()->SetTitle("#Delta m = m - m_{H} [GeV]");
    gm->GetXaxis()->SetTitle("m_{X}[GeV]");
+   gm->SetMarkerStyle(20);
+   gm->SetTitle(" ");
+   gm->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gm->GetYaxis()->SetTitleSize(0.045);
+   gm->GetXaxis()->SetTitleSize(0.045);
+   gm->GetYaxis()->SetTitleOffset(0.90);
+   gm->GetXaxis()->SetTitleOffset(0.90);
    gm->Draw("APE");
    fm[c]->Draw("same");
    cc1->SaveAs(Form("%s/../plots/meanVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
    
-    gs->GetYaxis()->SetTitle("#sigma [GeV]");
-    gs->GetXaxis()->SetTitle("m_{X}[GeV]");
-    fs[c] = new TF1(TString::Format("fs_cat%d",c), "pol2", 500,upperxmax);
-    gs->Fit(TString::Format("fs_cat%d",c), "R");
-    gs->Draw("APE");
-    fs[c]->Draw("same");
-    cc1->SaveAs(Form("%s/../plots/sigmaVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+   gs->GetYaxis()->SetTitle("#sigma [GeV]");
+   gs->GetXaxis()->SetTitle("m_{X}[GeV]");
+   fs[c] = new TF1(TString::Format("fs_cat%d",c), "pol2", MassMin,MassMax);
+   gs->Fit(TString::Format("fs_cat%d",c), "R");
+   gs->SetMarkerStyle(20);
+   gs->SetTitle(" ");
+   gs->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gs->GetYaxis()->SetTitleSize(0.045);
+   gs->GetXaxis()->SetTitleSize(0.045);
+   gs->GetYaxis()->SetTitleOffset(0.90);
+   gs->GetXaxis()->SetTitleOffset(0.90);
+   gs->Draw("APE");
+   fs[c]->Draw("same");
+   cc1->SaveAs(Form("%s/../plots/sigmaVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
 
-    gaL->GetYaxis()->SetTitle("#alpha_{L} [GeV]");
-    gaL->GetXaxis()->SetTitle("m_{X}[GeV]");
-    faL[c] = new TF1(TString::Format("faL_cat%d",c), "pol2", 500,upperxmax);
-    gaL->Fit(TString::Format("faL_cat%d",c), "R");
-    gaL->Draw("APE");
-    faL[c]->Draw("same");
-    cc1->SaveAs(Form("%s/../plots/aLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+   gaL->GetYaxis()->SetTitle("#alpha_{L} [GeV]");
+   gaL->GetXaxis()->SetTitle("m_{X}[GeV]");
+   faL[c] = new TF1(TString::Format("faL_cat%d",c), "pol2", MassMin,MassMax);
+   gaL->Fit(TString::Format("faL_cat%d",c), "R");
+   gaL->SetMarkerStyle(20);
+   gaL->SetTitle(" ");
+   gaL->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gaL->GetYaxis()->SetTitleSize(0.045);
+   gaL->GetXaxis()->SetTitleSize(0.045);
+   gaL->GetYaxis()->SetTitleOffset(0.90);
+   gaL->GetXaxis()->SetTitleOffset(0.90);
+   gaL->Draw("APE");
+   faL[c]->Draw("same");
+   cc1->SaveAs(Form("%s/../plots/aLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
   
-    gaR->GetYaxis()->SetTitle("#alpha_{R} [GeV]");
-    gaR->GetXaxis()->SetTitle("m_{#gamma#gamma} [GeV]");
-    faR[c] = new TF1(TString::Format("faR_cat%d",c), "pol2", 500,upperxmax);
-    gaR->Fit(TString::Format("faR_cat%d",c), "R");
-    gaR->Draw("APE");
-    faR[c]->Draw("same");
-    cc1->SaveAs(Form("%s/../plots/aRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+   gaR->GetYaxis()->SetTitle("#alpha_{R} [GeV]");
+   gaR->GetXaxis()->SetTitle("m_{#gamma#gamma} [GeV]");
+   faR[c] = new TF1(TString::Format("faR_cat%d",c), "pol2", MassMin,MassMax);
+   gaR->Fit(TString::Format("faR_cat%d",c), "R");
+   gaR->SetMarkerStyle(20);
+   gaR->SetTitle(" ");
+   gaR->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gaR->GetYaxis()->SetTitleSize(0.045);
+   gaR->GetXaxis()->SetTitleSize(0.045);
+   gaR->GetYaxis()->SetTitleOffset(0.90);
+   gaR->GetXaxis()->SetTitleOffset(0.90);
+   gaR->Draw("APE");
+   faR[c]->Draw("same");
+   cc1->SaveAs(Form("%s/../plots/aRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
  
-    gnR->GetYaxis()->SetTitle("n_{R} [GeV]");
-    gnR->GetXaxis()->SetTitle("m_{X}[GeV]");
-    fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", 500,upperxmax);
-    // if (c==0){
-    //   fnR[c]->SetParameter(0,3.4);
-    // } else if (c==1){
+   gnR->GetYaxis()->SetTitle("n_{R} [GeV]");
+   gnR->GetXaxis()->SetTitle("m_{X}[GeV]");
+   fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", MassMin,MassMax);
+   // if (c==0){
+   //   fnR[c]->SetParameter(0,3.4);
+   // } else if (c==1){
 
-    // } else if (c==2){
-    // }
-    gnR->Fit(TString::Format("fnR_cat%d",c), "R");
-    gnR->Draw("APE");
-    fnR[c]->Draw("same");   
-    cc1->SaveAs(Form("%s/../plots/nRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+   // } else if (c==2){
+   // }
+   gnR->Fit(TString::Format("fnR_cat%d",c), "R");
+   gnR->SetMarkerStyle(20);
+   gnR->SetTitle(" ");
+   gnR->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gnR->GetYaxis()->SetTitleSize(0.045);
+   gnR->GetXaxis()->SetTitleSize(0.045);
+   gnR->GetYaxis()->SetTitleOffset(0.90);
+   gnR->GetXaxis()->SetTitleOffset(0.90);
+   gnR->Draw("APE");
+   fnR[c]->Draw("same");   
+   cc1->SaveAs(Form("%s/../plots/nRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-    gnL->GetYaxis()->SetTitle("n_{L} [GeV]");
-    gnL->GetXaxis()->SetTitle("m_{X} [GeV]");
-    fnL[c] = new TF1(TString::Format("fnL_cat%d",c), "pol2", 500,upperxmax);
-    gnL->Fit(TString::Format("fnL_cat%d",c), "R");
-    gnL->Draw("APE");
-    fnL[c]->Draw("same");
-    cc1->SaveAs(Form("%s/../plots/nLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+   gnL->GetYaxis()->SetTitle("n_{L} [GeV]");
+   gnL->GetXaxis()->SetTitle("m_{X} [GeV]");
+   fnL[c] = new TF1(TString::Format("fnL_cat%d",c), "pol2", MassMin,MassMax);
+   gnL->Fit(TString::Format("fnL_cat%d",c), "R");
+   gnL->SetMarkerStyle(20);
+   gnL->SetTitle(" ");
+   gnL->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+   gnL->GetYaxis()->SetTitleSize(0.045);
+   gnL->GetXaxis()->SetTitleSize(0.045);
+   gnL->GetYaxis()->SetTitleOffset(0.90);
+   gnL->GetXaxis()->SetTitleOffset(0.90);
+   gnL->Draw("APE");
+   fnL[c]->Draw("same");
+   cc1->SaveAs(Form("%s/../plots/nLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-    //build parametric model
-    //TF1: p0+p1*x+p2*x*x
+   //Let's make the table
+   fprintf(resFile," $\\Delta m = m - m_{H} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fm[c]->GetParameter(0), fm[c]->GetParError(0), fm[c]->GetParameter(1), fm[c]->GetParError(1), fm[c]->GetParameter(2), fm[c]->GetParError(2), fm[c]->GetChisquare()/fm[c]->GetNDF() );
+   fprintf(resFile," $\\sigma $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fs[c]->GetParameter(0), fs[c]->GetParError(0), fs[c]->GetParameter(1), fs[c]->GetParError(1), fs[c]->GetParameter(2), fs[c]->GetParError(2), fs[c]->GetChisquare()/fs[c]->GetNDF() );
+   fprintf(resFile," $\\alpha_{L} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), faL[c]->GetParameter(0), faL[c]->GetParError(0), faL[c]->GetParameter(1), faL[c]->GetParError(1), faL[c]->GetParameter(2), faL[c]->GetParError(2), faL[c]->GetChisquare()/faL[c]->GetNDF() );
+   fprintf(resFile," $\\alpha_{R} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), faR[c]->GetParameter(0), faR[c]->GetParError(0), faR[c]->GetParameter(1), faR[c]->GetParError(1), faR[c]->GetParameter(2), faR[c]->GetParError(2), faR[c]->GetChisquare()/faR[c]->GetNDF() );
+   fprintf(resFile," $ n_{L} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fnL[c]->GetParameter(0), fnL[c]->GetParError(0), fnL[c]->GetParameter(1), fnL[c]->GetParError(1), fnL[c]->GetParameter(2), fnL[c]->GetParError(2), fnL[c]->GetChisquare()/fnL[c]->GetNDF() );
+   fprintf(resFile," $ n_{R} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fnR[c]->GetParameter(0), fnR[c]->GetParError(0), fnR[c]->GetParameter(1), fnR[c]->GetParError(1), fnR[c]->GetParameter(2), fnR[c]->GetParError(2), fnR[c]->GetChisquare()/fnR[c]->GetNDF() );
+    fprintf(resFile,"\\hline\n");
+
+   fclose(resFile);
+
+   //build parametric model
+   //TF1: p0+p1*x+p2*x*x
     
-    RooRealVar* MH = new RooRealVar("MH", "MH", 300, upperxmax);
-    MH->setConstant();
-    RooRealVar* p0m = new RooRealVar(TString::Format("p0m_cat%d",c), TString::Format("p0m_cat%d",c),fm[c]->GetParameter(0));
-    RooRealVar* p1m = new RooRealVar(TString::Format("p1m_cat%d",c), TString::Format("p1m_cat%d",c),fm[c]->GetParameter(1));
-    RooRealVar* p2m = new RooRealVar(TString::Format("p2m_cat%d",c), TString::Format("p2m_cat%d",c),fm[c]->GetParameter(2));
+   RooRealVar* MH = new RooRealVar("MH", "MH", 300, MassMax);
+   MH->setConstant();
+   RooRealVar* p0m = new RooRealVar(TString::Format("p0m_cat%d",c), TString::Format("p0m_cat%d",c),fm[c]->GetParameter(0));
+   RooRealVar* p1m = new RooRealVar(TString::Format("p1m_cat%d",c), TString::Format("p1m_cat%d",c),fm[c]->GetParameter(1));
+   RooRealVar* p2m = new RooRealVar(TString::Format("p2m_cat%d",c), TString::Format("p2m_cat%d",c),fm[c]->GetParameter(2));
    		    		                     	                    
-    RooRealVar* p0s = new RooRealVar(TString::Format("p0s_cat%d",c), TString::Format("p0s_cat%d",c),fs[c]->GetParameter(0));
-    RooRealVar* p1s = new RooRealVar(TString::Format("p1s_cat%d",c), TString::Format("p1s_cat%d",c),fs[c]->GetParameter(1));
-    RooRealVar* p2s = new RooRealVar(TString::Format("p2s_cat%d",c), TString::Format("p2s_cat%d",c),fs[c]->GetParameter(2));
+   RooRealVar* p0s = new RooRealVar(TString::Format("p0s_cat%d",c), TString::Format("p0s_cat%d",c),fs[c]->GetParameter(0));
+   RooRealVar* p1s = new RooRealVar(TString::Format("p1s_cat%d",c), TString::Format("p1s_cat%d",c),fs[c]->GetParameter(1));
+   RooRealVar* p2s = new RooRealVar(TString::Format("p2s_cat%d",c), TString::Format("p2s_cat%d",c),fs[c]->GetParameter(2));
      		    
-    RooRealVar* p0aL = new RooRealVar(TString::Format("p0aL_cat%d",c), TString::Format("p0aL_cat%d",c),faL[c]->GetParameter(0));
-    RooRealVar* p1aL = new RooRealVar(TString::Format("p1aL_cat%d",c), TString::Format("p1aL_cat%d",c),faL[c]->GetParameter(1));
-    RooRealVar* p2aL = new RooRealVar(TString::Format("p2aL_cat%d",c), TString::Format("p2aL_cat%d",c),faL[c]->GetParameter(2));
+   RooRealVar* p0aL = new RooRealVar(TString::Format("p0aL_cat%d",c), TString::Format("p0aL_cat%d",c),faL[c]->GetParameter(0));
+   RooRealVar* p1aL = new RooRealVar(TString::Format("p1aL_cat%d",c), TString::Format("p1aL_cat%d",c),faL[c]->GetParameter(1));
+   RooRealVar* p2aL = new RooRealVar(TString::Format("p2aL_cat%d",c), TString::Format("p2aL_cat%d",c),faL[c]->GetParameter(2));
      		    					                      
-    RooRealVar* p0aR = new RooRealVar(TString::Format("p0aR_cat%d",c), TString::Format("p0aR_cat%d",c),faR[c]->GetParameter(0));
-    RooRealVar* p1aR = new RooRealVar(TString::Format("p1aR_cat%d",c), TString::Format("p1aR_cat%d",c),faR[c]->GetParameter(1));
-    RooRealVar* p2aR = new RooRealVar(TString::Format("p2aR_cat%d",c), TString::Format("p2aR_cat%d",c),faR[c]->GetParameter(2));  
+   RooRealVar* p0aR = new RooRealVar(TString::Format("p0aR_cat%d",c), TString::Format("p0aR_cat%d",c),faR[c]->GetParameter(0));
+   RooRealVar* p1aR = new RooRealVar(TString::Format("p1aR_cat%d",c), TString::Format("p1aR_cat%d",c),faR[c]->GetParameter(1));
+   RooRealVar* p2aR = new RooRealVar(TString::Format("p2aR_cat%d",c), TString::Format("p2aR_cat%d",c),faR[c]->GetParameter(2));  
     		    
-    RooRealVar* p0nL = new RooRealVar(TString::Format("p0nL_cat%d",c), TString::Format("p0nL_cat%d",c),fnL[c]->GetParameter(0));
-    RooRealVar* p1nL = new RooRealVar(TString::Format("p1nL_cat%d",c), TString::Format("p1nL_cat%d",c),fnL[c]->GetParameter(1));
+   RooRealVar* p0nL = new RooRealVar(TString::Format("p0nL_cat%d",c), TString::Format("p0nL_cat%d",c),fnL[c]->GetParameter(0));
+   RooRealVar* p1nL = new RooRealVar(TString::Format("p1nL_cat%d",c), TString::Format("p1nL_cat%d",c),fnL[c]->GetParameter(1));
     RooRealVar* p2nL = new RooRealVar(TString::Format("p2nL_cat%d",c), TString::Format("p2nL_cat%d",c),fnL[c]->GetParameter(2));
    		    					                      
     RooRealVar* p0nR = new RooRealVar(TString::Format("p0nR_cat%d",c), TString::Format("p0nR_cat%d",c),fnR[c]->GetParameter(0));
@@ -472,7 +581,16 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     std::cout<<"nL: "<<fnL[0]->GetParameter(0)<<" "<<fnL[0]->GetParameter(1)<<" "<<fnL[0]->GetParameter(2)<<fnL[0]->GetParameter(0)+fnL[0]->GetParameter(1)*1750+fnL[0]->GetParameter(2)*1750*1750<<std::endl;
     std::cout<<"nR: "<<fnR[0]->GetParameter(0)<<" "<<fnR[0]->GetParameter(1)<<" "<<fnR[0]->GetParameter(2)<<fnR[0]->GetParameter(0)+fnR[0]->GetParameter(1)*1750+fnR[0]->GetParameter(2)*1750*1750<<std::endl;
   
-    RooRealVar* mgg = new RooRealVar("mgg", "mgg", 300, 6000);
+    RooRealVar* mgg = new RooRealVar("mgg", "mgg", nBinsMass, 500., 6000.);
+    mgg->setBins(nBinsMass);
+
+    // RooBinning* mggRooBinning = new RooBinning(nBinsMass, 500., 6000.,"mgg");
+    // mgg->setBinning(*mggRooBinning);
+    // std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
+    // std::cout<< mgg->getBinning().numBins()<< std::endl;
+    std::cout<< mgg->getBins()<< std::endl;
+    // std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
+    
     RooRealVar* thetaSmearEBEB = new RooRealVar("thetaSmearEBEB", "thetaSmearEBEB", 0., -1, 1);
     RooRealVar* thetaSmearEBEE = new RooRealVar("thetaSmearEBEE", "thetaSmearEBEE", 0., -1, 1);
     RooRealVar* thetaSmearAll = new RooRealVar("thetaSmearAll", "thetaSmearAll", 0., -1, 1);
@@ -491,8 +609,8 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     RooFormulaVar* DeltaSmearEBEB = new RooFormulaVar("DeltaSmearEBEB", "2*@0*@1*@2*@2",  RooArgList(*s0_EBEB,*deltaSmear,*MH));
     RooFormulaVar* DeltaSmearEBEE = new RooFormulaVar("DeltaSmearEBEE", "2*@0*@1*@2*@2",  RooArgList(*s0_EBEE,*deltaSmear,*MH));
     RooFormulaVar* DeltaSmearAll = new RooFormulaVar("DeltaSmearAll", "2*@0*@1*@2*@2",  RooArgList(*s0_All,*deltaSmear,*MH));
-    RooPlot* plot = (RooPlot*)mgg->frame(Range(300, upperxmax));
-    RooDCBShape* fin_shape[theInput.size()];
+    RooPlot* plot = (RooPlot*)mgg->frame(Range(300, MassMax+1000.));
+    RooDCBShape* fin_shape[inputsize];
     RooFormulaVar* mean; 
     RooFormulaVar* sigma0;
     RooFormulaVar* sigma; 
@@ -529,7 +647,7 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
 
     }
 
-    for(unsigned int M =0; M<theInput.size(); M++){
+    for(unsigned int M =0; M<inputsize; M++){
       
       MH->setVal(masses[M]);
       // MH->setConstant();
@@ -621,4 +739,20 @@ std::string getBase(const std::string & sampleName)
   if(sampleName.compare("gg_R2F2_2018") == 0 ) return "gg_2018";
   if(sampleName.compare("gg_R0p5F0p5_2018") == 0 ) return "gg_2018";
   return sampleName;
+}
+
+//-----------------------------------------------------------------------------------
+std::string widthtonum(std::string coupling){
+  std::string coup = ""; 
+ 
+  if ( coupling == "0p014" ){coup = "1.4 \\times 10^{-4}";}
+  else if ( coupling == "1p4" ){coup = "1.4 \\times 10^{-2}";}
+  else if ( coupling == "5p6" ){coup = "5.6 \\times 10^{-2}";}
+  else if ( coupling == "kMpl001" ){coup = "0.01";}
+  else if ( coupling == "kMpl01" ){coup = "0.1";}
+  else if ( coupling == "kMpl02" ){coup = "0.2";}
+
+  return coup;
+
+
 }
