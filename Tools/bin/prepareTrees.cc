@@ -65,7 +65,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
   std::map<std::string, std::string> cuts;
   // photon Minv selection needs to come later
   cuts["BB"] = "isGood*(Diphoton.Minv > 230 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && Photon1.isEB && Photon2.isEB)";
-  cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))"
+  cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))";
 
   std::vector<std::string> samples = getSampleList();
 
