@@ -173,8 +173,13 @@ int main(int argc, char *argv[])
     graph68dn->SetPoint(i,mass[i],expM1s[i]);
     graph95up->SetPoint(i,mass[i],expP2s[i]);
     graph95dn->SetPoint(i,mass[i],expM2s[i]);
+
     
-  }    
+  }
+  TCanvas *c1 = new TCanvas();
+  expGraph_init->Draw("AP");
+  c1->Update();
+  c1->SaveAs("test.png");
   // TGraph* expGraph = new TGraph(mass.size(), &mass[0], &exp);
   // TGraph* obsGraph = new TGraph(mass.size(), &mass[0],&obs);
   // TGraph* exp1SGraph = new TGraph(mass.size(), &mass[0],&expM1s);
@@ -250,9 +255,9 @@ int main(int argc, char *argv[])
    obsGraph->SetLineColor(kBlack);
    obsGraph->SetLineStyle(1);
    // obsGraph->Smooth();
-// obsGraph->Draw("PL");
+   // obsGraph->Draw("PL");
    // obsGraph->Draw("L");
-   //   obsGraph->Draw("LC");
+   // obsGraph->Draw("LC");
 
    // graphmede->Draw("same");
   
@@ -306,7 +311,7 @@ int main(int argc, char *argv[])
    leg->AddEntry(expGraph,"expected Limit","L"); //L_{int}=36.4/pb
    leg->AddEntry(exp1SGraph,"#pm1#sigma","F");
    leg->AddEntry(exp2SGraph,"#pm2#sigma","F");
-   //   leg->AddEntry(obsGraph,"observed Limit (Asymptotic)","L");
+     leg->AddEntry(obsGraph,"observed Limit (Asymptotic)","L");
    leg->AddEntry(grxs_spline[coupling],"G_{RS}#rightarrow#gamma#gamma (LO)","l");
      
    leg->Draw();

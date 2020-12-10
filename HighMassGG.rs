@@ -1,10 +1,7 @@
 mgg[300,10000];
 mggGen[300,10000];
 weight[0, 1000];
-eventClass[0,10];
-
-
-reducedmass_sig_frac_cat0[0.,1];
+eventClass[0,10]; reducedmass_sig_frac_cat0[0.,1];
 reducedmass_sig_frac_cat1[0.,1];
 reducedmass_sig_frac_cat2[0.,1];
 reducedmass_sig_mean_cat0[0.,-100,100];

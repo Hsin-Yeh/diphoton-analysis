@@ -234,8 +234,8 @@ void makeDatacard(const std::string& model, const std::string& coup, const std::
     //bkg shape
     // output << "shapes bkg * bkg_" << model << "_" << "$CHANNEL_" << datacardYear << ".root " << " HLFactory_" << model << "_ws:" << thepdfname << std::endl;
     output << "shapes bkg EBEB bkg_" << model << "_" << "EBEB_" << datacardYear << ".root " << " HLFactory_" << model << "_ws:" << thepdfname[0] << std::endl;
-     output << "shapes bkg EBEE bkg_" << model << "_" << "EBEE_" << datacardYear << ".root " << " HLFactory_" << model << "_ws:" << thepdfname[1] << std::endl;
-   //signal shape
+    output << "shapes bkg EBEE bkg_" << model << "_" << "EBEE_" << datacardYear << ".root " << " HLFactory_" << model << "_ws:" << thepdfname[1] << std::endl;
+    //signal shape
     output << "shapes sig * " << insigname << "_" << coup << "_" << datacardYear << ".root " << " wtemplates:model_signal_" << insigname << "_" << coup  << "_$CHANNEL" << std::endl; 
     output << "------------------------------" << std::endl;
     
@@ -253,7 +253,7 @@ void makeDatacard(const std::string& model, const std::string& coup, const std::
     for(auto inuisance : allNuisances) {
       output << inuisance.m_syst  << "      " << inuisance.m_distribution << "  ";
       for( auto icontrib : inuisance.m_contribution) {
-	output << icontrib << " ";
+        output << icontrib << " ";
       }
       output << "\n";
     }

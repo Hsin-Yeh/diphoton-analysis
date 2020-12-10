@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
   if(argc!=6) {
     std::cout << "Syntax: prepareParametricShape.exe [2016/2017/2018] [inputsamples] [inputworkspaces] [outputworkspaces] [kMplxxx]" << std::endl;
-      return -1;
+    return -1;
   }
   else {
     year = argv[1];
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     inputworkspaces = argv[3];
     outputworkspaces = argv[4];
     thecoupling = argv[5];
- }
+  }
 
   //Categories
   std::vector<std::string> cats; 
@@ -339,9 +339,9 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
       // pres[tmpin.name]->GetYaxis()->SetRangeUser(0.001,MassMax);
 
       if (iMindex == 0){
-	pres[tmpin.name]->Draw();
+        pres[tmpin.name]->Draw();
       } else{
-	pres[tmpin.name]->Draw("same");
+        pres[tmpin.name]->Draw("same");
       }
 
       legmc->Draw("same");
@@ -374,178 +374,178 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
       nLErr[iMindex] =((RooRealVar*)tmpin.ws->var(TString::Format("dcb_nL_cat%d",c)))->getError() ;
       std::cout<<nL[iMindex]<<" "<<nLErr[iMindex]<<std::endl;
 
-   } //end of loop over signal samples of the same coupling
+    } //end of loop over signal samples of the same coupling
    
    
-   cc1->SaveAs(Form("%s/../plots/asimovAllMasses_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
-   cc1->SaveAs(Form("%s/../plots/asimovAllMasses_%s_cat%d.root", ws_outdir.c_str(),couplingIn.c_str(), c));
-   // cc1->SetLogy();
-   // cc1->SaveAs(Form("%s/../plots/asimovAllMasses_%s_cat%d_log.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    cc1->SaveAs(Form("%s/../plots/asimovAllMasses_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    cc1->SaveAs(Form("%s/../plots/asimovAllMasses_%s_cat%d.root", ws_outdir.c_str(),couplingIn.c_str(), c));
+    // cc1->SetLogy();
+    // cc1->SaveAs(Form("%s/../plots/asimovAllMasses_%s_cat%d_log.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-   // cc1->SetLogy(0);
+    // cc1->SetLogy(0);
  
-   TGraph* gr = new TGraph(inputsize,masses,fhwm);
-   TGraphErrors* gm = new TGraphErrors(inputsize, masses, m, massesErr, mErr);
-   TGraphErrors* gs = new TGraphErrors(inputsize, masses, s, massesErr, sErr);
-   TGraphErrors* gaL = new TGraphErrors(inputsize, masses, aL, massesErr, aLErr);
-   TGraphErrors* gaR = new TGraphErrors(inputsize, masses, aR, massesErr, aRErr);
-   TGraphErrors* gnR = new TGraphErrors(inputsize, masses, nR, massesErr, nRErr);
-   TGraphErrors* gnL = new TGraphErrors(inputsize, masses, nL, massesErr, nLErr);
+    TGraph* gr = new TGraph(inputsize,masses,fhwm);
+    TGraphErrors* gm = new TGraphErrors(inputsize, masses, m, massesErr, mErr);
+    TGraphErrors* gs = new TGraphErrors(inputsize, masses, s, massesErr, sErr);
+    TGraphErrors* gaL = new TGraphErrors(inputsize, masses, aL, massesErr, aLErr);
+    TGraphErrors* gaR = new TGraphErrors(inputsize, masses, aR, massesErr, aRErr);
+    TGraphErrors* gnR = new TGraphErrors(inputsize, masses, nR, massesErr, nRErr);
+    TGraphErrors* gnL = new TGraphErrors(inputsize, masses, nL, massesErr, nLErr);
 
-   ffhmw[c] = new TF1(TString::Format("ffhmw_cat%d",c), "pol1", MassMin,MassMax);
-   gr->Fit(TString::Format("ffhmw_cat%d",c), "R");
-   gr->GetXaxis()->SetTitle("m_X [GeV]");
-   gr->GetYaxis()->SetTitle("FHWM [GeV]");
+    ffhmw[c] = new TF1(TString::Format("ffhmw_cat%d",c), "pol1", MassMin,MassMax);
+    gr->Fit(TString::Format("ffhmw_cat%d",c), "R");
+    gr->GetXaxis()->SetTitle("m_X [GeV]");
+    gr->GetYaxis()->SetTitle("FHWM [GeV]");
    
-   gr->SetMarkerStyle(20);
-   gr->SetTitle(" ");
-   gr->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gr->GetYaxis()->SetTitleSize(0.045);
-   gr->GetXaxis()->SetTitleSize(0.045);
-   gr->GetYaxis()->SetTitleOffset(0.90);
-   gr->GetXaxis()->SetTitleOffset(0.90);
+    gr->SetMarkerStyle(20);
+    gr->SetTitle(" ");
+    gr->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gr->GetYaxis()->SetTitleSize(0.045);
+    gr->GetXaxis()->SetTitleSize(0.045);
+    gr->GetYaxis()->SetTitleOffset(0.90);
+    gr->GetXaxis()->SetTitleOffset(0.90);
 
-   gr->Draw("AP");
-   ffhmw[c]->Draw("same");
-   // cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/FHWM_%s_cat%d.png",couplingIn.c_str(), c));
-   cc1->SaveAs(Form("%s/../plots/FHWM_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
-   // cc1->SaveAs(Form("%s/../plots/FHWM_%s_cat%d.root", ws_outdir.c_str(),couplingIn.c_str(), c));
+    gr->Draw("AP");
+    ffhmw[c]->Draw("same");
+    // cc1->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/FinalParametricShape/FHWM_%s_cat%d.png",couplingIn.c_str(), c));
+    cc1->SaveAs(Form("%s/../plots/FHWM_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    // cc1->SaveAs(Form("%s/../plots/FHWM_%s_cat%d.root", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-   fm[c] = new TF1(TString::Format("fm_cat%d",c), "pol2", MassMin,MassMax);
-   gm->Fit(TString::Format("fm_cat%d",c), "R");
-   gm->GetYaxis()->SetTitle("#Delta m = m - m_{H} [GeV]");
-   gm->GetXaxis()->SetTitle("m_{X}[GeV]");
-   gm->SetMarkerStyle(20);
-   gm->SetTitle(" ");
-   gm->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gm->GetYaxis()->SetTitleSize(0.045);
-   gm->GetXaxis()->SetTitleSize(0.045);
-   gm->GetYaxis()->SetTitleOffset(0.90);
-   gm->GetXaxis()->SetTitleOffset(0.90);
-   gm->Draw("APE");
-   fm[c]->Draw("same");
-   cc1->SaveAs(Form("%s/../plots/meanVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    fm[c] = new TF1(TString::Format("fm_cat%d",c), "pol2", MassMin,MassMax);
+    gm->Fit(TString::Format("fm_cat%d",c), "R");
+    gm->GetYaxis()->SetTitle("#Delta m = m - m_{H} [GeV]");
+    gm->GetXaxis()->SetTitle("m_{X}[GeV]");
+    gm->SetMarkerStyle(20);
+    gm->SetTitle(" ");
+    gm->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gm->GetYaxis()->SetTitleSize(0.045);
+    gm->GetXaxis()->SetTitleSize(0.045);
+    gm->GetYaxis()->SetTitleOffset(0.90);
+    gm->GetXaxis()->SetTitleOffset(0.90);
+    gm->Draw("APE");
+    fm[c]->Draw("same");
+    cc1->SaveAs(Form("%s/../plots/meanVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
    
-   gs->GetYaxis()->SetTitle("#sigma [GeV]");
-   gs->GetXaxis()->SetTitle("m_{X}[GeV]");
-   fs[c] = new TF1(TString::Format("fs_cat%d",c), "pol2", MassMin,MassMax);
-   gs->Fit(TString::Format("fs_cat%d",c), "R");
-   gs->SetMarkerStyle(20);
-   gs->SetTitle(" ");
-   gs->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gs->GetYaxis()->SetTitleSize(0.045);
-   gs->GetXaxis()->SetTitleSize(0.045);
-   gs->GetYaxis()->SetTitleOffset(0.90);
-   gs->GetXaxis()->SetTitleOffset(0.90);
-   gs->Draw("APE");
-   fs[c]->Draw("same");
-   cc1->SaveAs(Form("%s/../plots/sigmaVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    gs->GetYaxis()->SetTitle("#sigma [GeV]");
+    gs->GetXaxis()->SetTitle("m_{X}[GeV]");
+    fs[c] = new TF1(TString::Format("fs_cat%d",c), "pol2", MassMin,MassMax);
+    gs->Fit(TString::Format("fs_cat%d",c), "R");
+    gs->SetMarkerStyle(20);
+    gs->SetTitle(" ");
+    gs->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gs->GetYaxis()->SetTitleSize(0.045);
+    gs->GetXaxis()->SetTitleSize(0.045);
+    gs->GetYaxis()->SetTitleOffset(0.90);
+    gs->GetXaxis()->SetTitleOffset(0.90);
+    gs->Draw("APE");
+    fs[c]->Draw("same");
+    cc1->SaveAs(Form("%s/../plots/sigmaVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
 
-   gaL->GetYaxis()->SetTitle("#alpha_{L} [GeV]");
-   gaL->GetXaxis()->SetTitle("m_{X}[GeV]");
-   faL[c] = new TF1(TString::Format("faL_cat%d",c), "pol2", MassMin,MassMax);
-   gaL->Fit(TString::Format("faL_cat%d",c), "R");
-   gaL->SetMarkerStyle(20);
-   gaL->SetTitle(" ");
-   gaL->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gaL->GetYaxis()->SetTitleSize(0.045);
-   gaL->GetXaxis()->SetTitleSize(0.045);
-   gaL->GetYaxis()->SetTitleOffset(0.90);
-   gaL->GetXaxis()->SetTitleOffset(0.90);
-   gaL->Draw("APE");
-   faL[c]->Draw("same");
-   cc1->SaveAs(Form("%s/../plots/aLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    gaL->GetYaxis()->SetTitle("#alpha_{L} [GeV]");
+    gaL->GetXaxis()->SetTitle("m_{X}[GeV]");
+    faL[c] = new TF1(TString::Format("faL_cat%d",c), "pol2", MassMin,MassMax);
+    gaL->Fit(TString::Format("faL_cat%d",c), "R");
+    gaL->SetMarkerStyle(20);
+    gaL->SetTitle(" ");
+    gaL->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gaL->GetYaxis()->SetTitleSize(0.045);
+    gaL->GetXaxis()->SetTitleSize(0.045);
+    gaL->GetYaxis()->SetTitleOffset(0.90);
+    gaL->GetXaxis()->SetTitleOffset(0.90);
+    gaL->Draw("APE");
+    faL[c]->Draw("same");
+    cc1->SaveAs(Form("%s/../plots/aLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
   
-   gaR->GetYaxis()->SetTitle("#alpha_{R} [GeV]");
-   gaR->GetXaxis()->SetTitle("m_{#gamma#gamma} [GeV]");
-   faR[c] = new TF1(TString::Format("faR_cat%d",c), "pol2", MassMin,MassMax);
-   gaR->Fit(TString::Format("faR_cat%d",c), "R");
-   gaR->SetMarkerStyle(20);
-   gaR->SetTitle(" ");
-   gaR->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gaR->GetYaxis()->SetTitleSize(0.045);
-   gaR->GetXaxis()->SetTitleSize(0.045);
-   gaR->GetYaxis()->SetTitleOffset(0.90);
-   gaR->GetXaxis()->SetTitleOffset(0.90);
-   gaR->Draw("APE");
-   faR[c]->Draw("same");
-   cc1->SaveAs(Form("%s/../plots/aRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    gaR->GetYaxis()->SetTitle("#alpha_{R} [GeV]");
+    gaR->GetXaxis()->SetTitle("m_{#gamma#gamma} [GeV]");
+    faR[c] = new TF1(TString::Format("faR_cat%d",c), "pol2", MassMin,MassMax);
+    gaR->Fit(TString::Format("faR_cat%d",c), "R");
+    gaR->SetMarkerStyle(20);
+    gaR->SetTitle(" ");
+    gaR->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gaR->GetYaxis()->SetTitleSize(0.045);
+    gaR->GetXaxis()->SetTitleSize(0.045);
+    gaR->GetYaxis()->SetTitleOffset(0.90);
+    gaR->GetXaxis()->SetTitleOffset(0.90);
+    gaR->Draw("APE");
+    faR[c]->Draw("same");
+    cc1->SaveAs(Form("%s/../plots/aRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
  
-   gnR->GetYaxis()->SetTitle("n_{R} [GeV]");
-   gnR->GetXaxis()->SetTitle("m_{X}[GeV]");
-   fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", MassMin,MassMax);
-   // if (c==0){
-   //   fnR[c]->SetParameter(0,3.4);
-   // } else if (c==1){
+    gnR->GetYaxis()->SetTitle("n_{R} [GeV]");
+    gnR->GetXaxis()->SetTitle("m_{X}[GeV]");
+    fnR[c] = new TF1(TString::Format("fnR_cat%d",c), "pol2", MassMin,MassMax);
+    // if (c==0){
+    //   fnR[c]->SetParameter(0,3.4);
+    // } else if (c==1){
 
-   // } else if (c==2){
-   // }
-   gnR->Fit(TString::Format("fnR_cat%d",c), "R");
-   gnR->SetMarkerStyle(20);
-   gnR->SetTitle(" ");
-   gnR->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gnR->GetYaxis()->SetTitleSize(0.045);
-   gnR->GetXaxis()->SetTitleSize(0.045);
-   gnR->GetYaxis()->SetTitleOffset(0.90);
-   gnR->GetXaxis()->SetTitleOffset(0.90);
-   gnR->Draw("APE");
-   fnR[c]->Draw("same");   
-   cc1->SaveAs(Form("%s/../plots/nRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    // } else if (c==2){
+    // }
+    gnR->Fit(TString::Format("fnR_cat%d",c), "R");
+    gnR->SetMarkerStyle(20);
+    gnR->SetTitle(" ");
+    gnR->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gnR->GetYaxis()->SetTitleSize(0.045);
+    gnR->GetXaxis()->SetTitleSize(0.045);
+    gnR->GetYaxis()->SetTitleOffset(0.90);
+    gnR->GetXaxis()->SetTitleOffset(0.90);
+    gnR->Draw("APE");
+    fnR[c]->Draw("same");
+    cc1->SaveAs(Form("%s/../plots/nRVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-   gnL->GetYaxis()->SetTitle("n_{L} [GeV]");
-   gnL->GetXaxis()->SetTitle("m_{X} [GeV]");
-   fnL[c] = new TF1(TString::Format("fnL_cat%d",c), "pol2", MassMin,MassMax);
-   gnL->Fit(TString::Format("fnL_cat%d",c), "R");
-   gnL->SetMarkerStyle(20);
-   gnL->SetTitle(" ");
-   gnL->GetXaxis()->SetRangeUser(250., MassMax + 100.);
-   gnL->GetYaxis()->SetTitleSize(0.045);
-   gnL->GetXaxis()->SetTitleSize(0.045);
-   gnL->GetYaxis()->SetTitleOffset(0.90);
-   gnL->GetXaxis()->SetTitleOffset(0.90);
-   gnL->Draw("APE");
-   fnL[c]->Draw("same");
-   cc1->SaveAs(Form("%s/../plots/nLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
+    gnL->GetYaxis()->SetTitle("n_{L} [GeV]");
+    gnL->GetXaxis()->SetTitle("m_{X} [GeV]");
+    fnL[c] = new TF1(TString::Format("fnL_cat%d",c), "pol2", MassMin,MassMax);
+    gnL->Fit(TString::Format("fnL_cat%d",c), "R");
+    gnL->SetMarkerStyle(20);
+    gnL->SetTitle(" ");
+    gnL->GetXaxis()->SetRangeUser(250., MassMax + 100.);
+    gnL->GetYaxis()->SetTitleSize(0.045);
+    gnL->GetXaxis()->SetTitleSize(0.045);
+    gnL->GetYaxis()->SetTitleOffset(0.90);
+    gnL->GetXaxis()->SetTitleOffset(0.90);
+    gnL->Draw("APE");
+    fnL[c]->Draw("same");
+    cc1->SaveAs(Form("%s/../plots/nLVsMass_%s_cat%d.png", ws_outdir.c_str(),couplingIn.c_str(), c));
 
-   //Let's make the table
-   fprintf(resFile," $\\Delta m = m - m_{H} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fm[c]->GetParameter(0), fm[c]->GetParError(0), fm[c]->GetParameter(1), fm[c]->GetParError(1), fm[c]->GetParameter(2), fm[c]->GetParError(2), fm[c]->GetChisquare()/fm[c]->GetNDF() );
-   fprintf(resFile," $\\sigma $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fs[c]->GetParameter(0), fs[c]->GetParError(0), fs[c]->GetParameter(1), fs[c]->GetParError(1), fs[c]->GetParameter(2), fs[c]->GetParError(2), fs[c]->GetChisquare()/fs[c]->GetNDF() );
-   fprintf(resFile," $\\alpha_{L} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), faL[c]->GetParameter(0), faL[c]->GetParError(0), faL[c]->GetParameter(1), faL[c]->GetParError(1), faL[c]->GetParameter(2), faL[c]->GetParError(2), faL[c]->GetChisquare()/faL[c]->GetNDF() );
-   fprintf(resFile," $\\alpha_{R} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), faR[c]->GetParameter(0), faR[c]->GetParError(0), faR[c]->GetParameter(1), faR[c]->GetParError(1), faR[c]->GetParameter(2), faR[c]->GetParError(2), faR[c]->GetChisquare()/faR[c]->GetNDF() );
-   fprintf(resFile," $ n_{L} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fnL[c]->GetParameter(0), fnL[c]->GetParError(0), fnL[c]->GetParameter(1), fnL[c]->GetParError(1), fnL[c]->GetParameter(2), fnL[c]->GetParError(2), fnL[c]->GetChisquare()/fnL[c]->GetNDF() );
-   fprintf(resFile," $ n_{R} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fnR[c]->GetParameter(0), fnR[c]->GetParError(0), fnR[c]->GetParameter(1), fnR[c]->GetParError(1), fnR[c]->GetParameter(2), fnR[c]->GetParError(2), fnR[c]->GetChisquare()/fnR[c]->GetNDF() );
+    //Let's make the table
+    fprintf(resFile," $\\Delta m = m - m_{H} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fm[c]->GetParameter(0), fm[c]->GetParError(0), fm[c]->GetParameter(1), fm[c]->GetParError(1), fm[c]->GetParameter(2), fm[c]->GetParError(2), fm[c]->GetChisquare()/fm[c]->GetNDF() );
+    fprintf(resFile," $\\sigma $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fs[c]->GetParameter(0), fs[c]->GetParError(0), fs[c]->GetParameter(1), fs[c]->GetParError(1), fs[c]->GetParameter(2), fs[c]->GetParError(2), fs[c]->GetChisquare()/fs[c]->GetNDF() );
+    fprintf(resFile," $\\alpha_{L} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), faL[c]->GetParameter(0), faL[c]->GetParError(0), faL[c]->GetParameter(1), faL[c]->GetParError(1), faL[c]->GetParameter(2), faL[c]->GetParError(2), faL[c]->GetChisquare()/faL[c]->GetNDF() );
+    fprintf(resFile," $\\alpha_{R} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), faR[c]->GetParameter(0), faR[c]->GetParError(0), faR[c]->GetParameter(1), faR[c]->GetParError(1), faR[c]->GetParameter(2), faR[c]->GetParError(2), faR[c]->GetChisquare()/faR[c]->GetNDF() );
+    fprintf(resFile," $ n_{L} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fnL[c]->GetParameter(0), fnL[c]->GetParError(0), fnL[c]->GetParameter(1), fnL[c]->GetParError(1), fnL[c]->GetParameter(2), fnL[c]->GetParError(2), fnL[c]->GetChisquare()/fnL[c]->GetNDF() );
+    fprintf(resFile," $ n_{R} $ & $ %s $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f \\pm %10.3f $ & $ %10.3f $ \\\\\n", coup.c_str(), fnR[c]->GetParameter(0), fnR[c]->GetParError(0), fnR[c]->GetParameter(1), fnR[c]->GetParError(1), fnR[c]->GetParameter(2), fnR[c]->GetParError(2), fnR[c]->GetChisquare()/fnR[c]->GetNDF() );
     fprintf(resFile,"\\hline\n");
 
-   fclose(resFile);
+    fclose(resFile);
 
-   //build parametric model
-   //TF1: p0+p1*x+p2*x*x
+    //build parametric model
+    //TF1: p0+p1*x+p2*x*x
     
-   RooRealVar* MH = new RooRealVar("MH", "MH", 300, MassMax);
-   MH->setConstant();
-   RooRealVar* p0m = new RooRealVar(TString::Format("p0m_cat%d",c), TString::Format("p0m_cat%d",c),fm[c]->GetParameter(0));
-   RooRealVar* p1m = new RooRealVar(TString::Format("p1m_cat%d",c), TString::Format("p1m_cat%d",c),fm[c]->GetParameter(1));
-   RooRealVar* p2m = new RooRealVar(TString::Format("p2m_cat%d",c), TString::Format("p2m_cat%d",c),fm[c]->GetParameter(2));
-   		    		                     	                    
-   RooRealVar* p0s = new RooRealVar(TString::Format("p0s_cat%d",c), TString::Format("p0s_cat%d",c),fs[c]->GetParameter(0));
-   RooRealVar* p1s = new RooRealVar(TString::Format("p1s_cat%d",c), TString::Format("p1s_cat%d",c),fs[c]->GetParameter(1));
-   RooRealVar* p2s = new RooRealVar(TString::Format("p2s_cat%d",c), TString::Format("p2s_cat%d",c),fs[c]->GetParameter(2));
-     		    
-   RooRealVar* p0aL = new RooRealVar(TString::Format("p0aL_cat%d",c), TString::Format("p0aL_cat%d",c),faL[c]->GetParameter(0));
-   RooRealVar* p1aL = new RooRealVar(TString::Format("p1aL_cat%d",c), TString::Format("p1aL_cat%d",c),faL[c]->GetParameter(1));
-   RooRealVar* p2aL = new RooRealVar(TString::Format("p2aL_cat%d",c), TString::Format("p2aL_cat%d",c),faL[c]->GetParameter(2));
-     		    					                      
-   RooRealVar* p0aR = new RooRealVar(TString::Format("p0aR_cat%d",c), TString::Format("p0aR_cat%d",c),faR[c]->GetParameter(0));
-   RooRealVar* p1aR = new RooRealVar(TString::Format("p1aR_cat%d",c), TString::Format("p1aR_cat%d",c),faR[c]->GetParameter(1));
-   RooRealVar* p2aR = new RooRealVar(TString::Format("p2aR_cat%d",c), TString::Format("p2aR_cat%d",c),faR[c]->GetParameter(2));  
-    		    
-   RooRealVar* p0nL = new RooRealVar(TString::Format("p0nL_cat%d",c), TString::Format("p0nL_cat%d",c),fnL[c]->GetParameter(0));
-   RooRealVar* p1nL = new RooRealVar(TString::Format("p1nL_cat%d",c), TString::Format("p1nL_cat%d",c),fnL[c]->GetParameter(1));
+    RooRealVar* MH = new RooRealVar("MH", "MH", 300, MassMax);
+    MH->setConstant();
+    RooRealVar* p0m = new RooRealVar(TString::Format("p0m_cat%d",c), TString::Format("p0m_cat%d",c),fm[c]->GetParameter(0));
+    RooRealVar* p1m = new RooRealVar(TString::Format("p1m_cat%d",c), TString::Format("p1m_cat%d",c),fm[c]->GetParameter(1));
+    RooRealVar* p2m = new RooRealVar(TString::Format("p2m_cat%d",c), TString::Format("p2m_cat%d",c),fm[c]->GetParameter(2));
+
+    RooRealVar* p0s = new RooRealVar(TString::Format("p0s_cat%d",c), TString::Format("p0s_cat%d",c),fs[c]->GetParameter(0));
+    RooRealVar* p1s = new RooRealVar(TString::Format("p1s_cat%d",c), TString::Format("p1s_cat%d",c),fs[c]->GetParameter(1));
+    RooRealVar* p2s = new RooRealVar(TString::Format("p2s_cat%d",c), TString::Format("p2s_cat%d",c),fs[c]->GetParameter(2));
+
+    RooRealVar* p0aL = new RooRealVar(TString::Format("p0aL_cat%d",c), TString::Format("p0aL_cat%d",c),faL[c]->GetParameter(0));
+    RooRealVar* p1aL = new RooRealVar(TString::Format("p1aL_cat%d",c), TString::Format("p1aL_cat%d",c),faL[c]->GetParameter(1));
+    RooRealVar* p2aL = new RooRealVar(TString::Format("p2aL_cat%d",c), TString::Format("p2aL_cat%d",c),faL[c]->GetParameter(2));
+
+    RooRealVar* p0aR = new RooRealVar(TString::Format("p0aR_cat%d",c), TString::Format("p0aR_cat%d",c),faR[c]->GetParameter(0));
+    RooRealVar* p1aR = new RooRealVar(TString::Format("p1aR_cat%d",c), TString::Format("p1aR_cat%d",c),faR[c]->GetParameter(1));
+    RooRealVar* p2aR = new RooRealVar(TString::Format("p2aR_cat%d",c), TString::Format("p2aR_cat%d",c),faR[c]->GetParameter(2));
+
+    RooRealVar* p0nL = new RooRealVar(TString::Format("p0nL_cat%d",c), TString::Format("p0nL_cat%d",c),fnL[c]->GetParameter(0));
+    RooRealVar* p1nL = new RooRealVar(TString::Format("p1nL_cat%d",c), TString::Format("p1nL_cat%d",c),fnL[c]->GetParameter(1));
     RooRealVar* p2nL = new RooRealVar(TString::Format("p2nL_cat%d",c), TString::Format("p2nL_cat%d",c),fnL[c]->GetParameter(2));
-   		    					                      
+
     RooRealVar* p0nR = new RooRealVar(TString::Format("p0nR_cat%d",c), TString::Format("p0nR_cat%d",c),fnR[c]->GetParameter(0));
     RooRealVar* p1nR = new RooRealVar(TString::Format("p1nR_cat%d",c), TString::Format("p1nR_cat%d",c),fnR[c]->GetParameter(1));
     RooRealVar* p2nR = new RooRealVar(TString::Format("p2nR_cat%d",c), TString::Format("p2nR_cat%d",c),fnR[c]->GetParameter(2));
@@ -684,35 +684,35 @@ void plotAllSignalsAsimov(const std::string &year, const std::string &ws_indir, 
     
   } //end of loop over categories
    
-   RooRealVar* p0_cat0 = new RooRealVar("p0_cat0", "p0_cat0", ffhmw[0]->GetParameter(0) );
-   RooRealVar* p1_cat0 = new RooRealVar("p1_cat0", "p1_cat0", ffhmw[0]->GetParameter(1) );
-   RooRealVar* p0_cat1 = new RooRealVar("p0_cat1", "p0_cat1", ffhmw[1]->GetParameter(0) );
-   RooRealVar* p1_cat1 = new RooRealVar("p1_cat1", "p1_cat1", ffhmw[1]->GetParameter(1) );
-   RooRealVar* p0_cat2 = new RooRealVar("p0_cat2", "p0_cat2", ffhmw[2]->GetParameter(0) );
-   RooRealVar* p1_cat2 = new RooRealVar("p1_cat2", "p1_cat2", ffhmw[2]->GetParameter(1) );
+  RooRealVar* p0_cat0 = new RooRealVar("p0_cat0", "p0_cat0", ffhmw[0]->GetParameter(0) );
+  RooRealVar* p1_cat0 = new RooRealVar("p1_cat0", "p1_cat0", ffhmw[0]->GetParameter(1) );
+  RooRealVar* p0_cat1 = new RooRealVar("p0_cat1", "p0_cat1", ffhmw[1]->GetParameter(0) );
+  RooRealVar* p1_cat1 = new RooRealVar("p1_cat1", "p1_cat1", ffhmw[1]->GetParameter(1) );
+  RooRealVar* p0_cat2 = new RooRealVar("p0_cat2", "p0_cat2", ffhmw[2]->GetParameter(0) );
+  RooRealVar* p1_cat2 = new RooRealVar("p1_cat2", "p1_cat2", ffhmw[2]->GetParameter(1) );
 
-   RooFormulaVar* FHWM_EBEB= new RooFormulaVar("FHWM_EBEB", "(@0+@1*@2)", RooArgList(*p0_cat0,*p1_cat0, *MH));
-   RooFormulaVar* FHWM_EBEE= new RooFormulaVar("FHWM_EBEE", "(@0+@1*@2)", RooArgList(*p0_cat1,*p1_cat1, *MH));
-   RooFormulaVar* FHWM_All= new RooFormulaVar("FHWM_All", "(@0+@1*@2)", RooArgList(*p0_cat2,*p1_cat2, *MH));
-   ws_out->import(*FHWM_EBEB);
-   ws_out->import(*FHWM_EBEE);
-   ws_out->import(*FHWM_All);
+  RooFormulaVar* FHWM_EBEB= new RooFormulaVar("FHWM_EBEB", "(@0+@1*@2)", RooArgList(*p0_cat0,*p1_cat0, *MH));
+  RooFormulaVar* FHWM_EBEE= new RooFormulaVar("FHWM_EBEE", "(@0+@1*@2)", RooArgList(*p0_cat1,*p1_cat1, *MH));
+  RooFormulaVar* FHWM_All= new RooFormulaVar("FHWM_All", "(@0+@1*@2)", RooArgList(*p0_cat2,*p1_cat2, *MH));
+  ws_out->import(*FHWM_EBEB);
+  ws_out->import(*FHWM_EBEE);
+  ws_out->import(*FHWM_All);
 
-   TFile* fout= new TFile(Form("%s/SignalParametricShapes_ws_%s.root", ws_outdir.c_str(), couplingIn.c_str() ) , "RECREATE");
-   fout->cd();
-   fm[0]->Write();       fm[1]->Write(); 
-   fs[0]->Write(); 	 fs[1]->Write(); 
-   faL[0]->Write();	 faL[1]->Write();
-   faR[0]->Write();	 faR[1]->Write();
-   fnL[0]->Write();	 fnL[1]->Write();
-   fnR[0]->Write();	 fnR[1]->Write();
-   ffhmw[0]->Write();	 ffhmw[1]->Write(); ffhmw[2]->Write();
+  TFile* fout= new TFile(Form("%s/SignalParametricShapes_ws_%s.root", ws_outdir.c_str(), couplingIn.c_str() ) , "RECREATE");
+  fout->cd();
+  fm[0]->Write();       fm[1]->Write();
+  fs[0]->Write(); 	 fs[1]->Write();
+  faL[0]->Write();	 faL[1]->Write();
+  faR[0]->Write();	 faR[1]->Write();
+  fnL[0]->Write();	 fnL[1]->Write();
+  fnR[0]->Write();	 fnR[1]->Write();
+  ffhmw[0]->Write();	 ffhmw[1]->Write(); ffhmw[2]->Write();
 
-   ws_out->Print();
+  ws_out->Print();
    
-   ws_out->Write();
-   fout->Write();
-   fout->Close();
+  ws_out->Write();
+  fout->Write();
+  fout->Close();
 }
 
 
@@ -724,7 +724,7 @@ std::string get_str_between_two_str(const std::string &s, const std::string &sta
   unsigned last_delim_pos = s.find(stop_delim);
 
   return s.substr(end_pos_of_first_delim,
-		  last_delim_pos - end_pos_of_first_delim);
+                  last_delim_pos - end_pos_of_first_delim);
 }
 
 

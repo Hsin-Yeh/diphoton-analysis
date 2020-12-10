@@ -278,7 +278,7 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   bool blind = true;
 
   //========================================================================
-  // std::cout << "Adding bkg data" <<std::endl;
+  std::cout << "Adding bkg data" <<std::endl;
   // AddBkgData(w, isample, year, ws_dir, blind, cats);
   //========================================================================
   
@@ -414,10 +414,12 @@ void runfits(const std::string &year, const std::string &ws_dir, const std::stri
   modelorder["dijet"].push_back(1);
 
   // fitresults[order] = BkgModelFitFunc(w, models[4], blind, dobands, year, ws_dir, order, cats); 
-  
+
+  std::cout << "bye" << std::endl;
   std::vector<int> dummy;
   FILE *resFile ;
   resFile = fopen(Form("%s/fTestResults_%s.txt",ws_dir.c_str(),year.c_str()),"w");
+  // resFile = fopen("test.txt","w");
   // fprintf(resFile,"Family label & Functional form & order & $ -2 \\Delta NLL_{N+1}=-2(NLL_{N+1} - NLL_{N}) $ & gof(\\chi^{2}/ndof) & gof(prob) & p-value & (mimin,hesse,minos) \\\\\n");
   fprintf(resFile,"\\hline\n");
   fprintf(resFile,"\\hline\n");

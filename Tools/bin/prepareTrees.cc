@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
   //========================================================================
   prepare(region, year, outputdir);
 
+  std::cout << " end " << std::endl;
 }
 
 //-----------------------------------------------------------------------------------
@@ -64,7 +65,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
   std::map<std::string, std::string> cuts;
   // photon Minv selection needs to come later
   cuts["BB"] = "isGood*(Diphoton.Minv > 230 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && Photon1.isEB && Photon2.isEB)";
-  cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))";
+  cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Diphoton.deltaR > 0.45 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))"
 
   std::vector<std::string> samples = getSampleList();
 
@@ -78,9 +79,11 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     std::string sampleCut = cuts[region];
     if ( isample.find(year) == std::string::npos ) continue; 
     //Run only on RS,HeavyHiggs samples and data
-    //if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
-    if( isample.find("GluGluSpin0ToGammaGamma") == std::string::npos ) continue;
-    // if( isample.find("data_"+year) == std::string::npos ) continue;
+    bool findSample = 0;
+    if( isample.find("RSGravitonToGammaGamma") != std::string::npos ) findSample = 1;
+    if( isample.find("GluGluSpin0ToGammaGamma") != std::string::npos ) findSample = 1;
+    if( isample.find("data_"+year) != std::string::npos ) findSample = 1;
+    if( findSample == 0 ) continue;
     std::cout << "Processing " << isample << std::endl;
     
     // apply weights for all samples except data

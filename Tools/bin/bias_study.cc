@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
   if(argc!=8) {
     std::cout << "Syntax: bias_study.exe [2016/2017/2018] [input] [output] [model] [toystart] [toysend] [Json]" << std::endl;
-      return -1;
+    return -1;
   }
   else {
     year = argv[1];
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
       std::cout << "Only createJson and readJson are allowed " << std::endl;
     }
 
- }
+  }
 
   //========================================================================
   //========================================================================
@@ -220,14 +220,19 @@ int main(int argc, char *argv[])
     //BE CAREFUL: Which one goes first makes a difference. The first one creates the
     //roofit frame from the plot so make some test to see which contains the full
     //range plots. e.g. putting pow first resulted in cutting a large portion of the
-    //pow line, while putting Laurent first was showing all lines ok. 
-    models.push_back("Laurent"); 
-    models.push_back("pow"); 
-    models.push_back("PowerLaw"); 
-    models.push_back("Exponential"); 
-    models.push_back("VVdijet"); 
-    models.push_back("expow"); 
-    models.push_back("dijet");
+    //pow line, while putting Laurent first was showing all lines ok.
+    if(themodel.find("all") != std::string::npos) {
+      models.push_back("Laurent");
+      models.push_back("pow");
+      models.push_back("PowerLaw");
+      models.push_back("Exponential");
+      models.push_back("VVdijet");
+      models.push_back("expow");
+      models.push_back("dijet");
+    }
+    else {
+      models.push_back(themodel);
+    }
 
     //Here we put the exceptions of the models that do not describe the data in certain
     //categories. 
@@ -270,7 +275,7 @@ int main(int argc, char *argv[])
   bool blind = true;
   bool dobands = false;
   bool approxminos = true;
-  bool analyzebiasaftertoys = false; 
+  bool analyzebiasaftertoys = false;
   
   //========================================================================
   //========================================================================
@@ -308,6 +313,7 @@ int main(int argc, char *argv[])
   std::vector<thepdf> thetoys;
   if (!analyzebiasaftertoys){
     thetoys = throwtoys(w, year, inputdir, cats, models, std::stoi(ntoystart), std::stoi(ntoyend), windows, exceptions);
+    std::cout << "Second Part" << std::endl;
   }
 
   //========================================================================
@@ -317,6 +323,7 @@ int main(int argc, char *argv[])
   //========================================================================
   std::vector<biasfitres> thebiasres;
   if (!analyzebiasaftertoys){
+    std::cout << "Third Part" << std::endl;
     thebiasres = fitToys(w, thetoys, themodel, blind, dobands, year, inputdir, outputdir, cats, models, approxminos);
     makebiasrootfile(thebiasres, outputdir, themodel, year, std::stoi(ntoystart), std::stoi(ntoyend));
   }
@@ -328,6 +335,7 @@ int main(int argc, char *argv[])
   //========================================================================
   if (!analyzebiasaftertoys){
     analyzeBias(inputdir, outputdir, models, cats, year, std::stoi(ntoystart), std::stoi(ntoyend), analyzebiasaftertoys);
+    std::cout << "Fourth Part" << std::endl;
   } else {
     //toy number is dummy now. 
     analyzeBias(inputdir, outputdir, models, cats, year, 1, 2, analyzebiasaftertoys);
@@ -514,30 +522,30 @@ std::map<std::string, std::vector<window> > computewindnorm(const std::string &y
       Float_t minMassFit = 0.;
       Float_t maxMassFit = 0.;
       if (c==0){ 
-	minMassFit = MINmass;
-	maxMassFit = MAXmass;
+        minMassFit = MINmass;
+        maxMassFit = MAXmass;
       } else if (c==1){
-	minMassFit = MINmassBE;
-	maxMassFit = MAXmass;    
+        minMassFit = MINmassBE;
+        maxMassFit = MAXmass;
       }
 
       mgg->setRange(minMassFit,maxMassFit);
       RooAbsPdf* thetmppdf;
 
       if (model!="Laurent" && model!="PowerLaw" && model!="Atlas" && model!="Exponential" && 
-	  model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
-	  model!="Expow" && model!="dijet"){
-	thetmppdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
-	nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
+          model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
+          model!="Expow" && model!="dijet"){
+        thetmppdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str()));
+        nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
 
       } else if (model == "dijet") {
 
-	thetmppdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s_%s",model.c_str(), cats[c].c_str())); 
-	nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+        thetmppdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s_%s",model.c_str(), cats[c].c_str()));
+        nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
 
       } else {
-	thetmppdf = (RooAbsPdf*) win[modcatlabel]->pdf( Form("ftest_pdf_%s_%s%d",cats[c].c_str() ,modelnametopdf[model].c_str(), modelorder[model][c] ) ) ;     
-	nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+        thetmppdf = (RooAbsPdf*) win[modcatlabel]->pdf( Form("ftest_pdf_%s_%s%d",cats[c].c_str() ,modelnametopdf[model].c_str(), modelorder[model][c] ) ) ;
+        nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
 
       } 
       
@@ -561,21 +569,21 @@ std::map<std::string, std::vector<window> > computewindnorm(const std::string &y
       
       //Time for the number of events predicted by the alternative true underline distribution in windows
       for (auto wind : windows){
-	window tmpwi;
-	tmpwi.name = wind.name;
-	tmpwi.low = wind.low;
-	tmpwi.high = wind.high;
+        window tmpwi;
+        tmpwi.name = wind.name;
+        tmpwi.low = wind.low;
+        tmpwi.high = wind.high;
 
-	mgg->setRange(wind.name.c_str(), wind.low, wind.high);
-	set_mgg = new RooArgSet(*mgg);
+        mgg->setRange(wind.name.c_str(), wind.low, wind.high);
+        set_mgg = new RooArgSet(*mgg);
 
-       	tmpwi.norm = (thetmppdf->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg) ,RooFit::Range(tmpwi.name.c_str()))->getVal() / renorm  )  ; 
+        tmpwi.norm = (thetmppdf->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg) ,RooFit::Range(tmpwi.name.c_str()))->getVal() / renorm  )  ;
 
-	tmpwi.truemodel = model;
-	
-	std::cout<< " renorm " << renorm << " range " << tmpwi.name << " norm orig " << thetmppdf->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg) ,RooFit::Range("origRange"))->getVal() << " norm region "<< thetmppdf->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg) ,RooFit::Range(tmpwi.name.c_str()))->getVal() << " true norm in window " << tmpwi.norm << std::endl;
+        tmpwi.truemodel = model;
 
-	truenormwinds[cats[c]].push_back( tmpwi );
+        std::cout<< " renorm " << renorm << " range " << tmpwi.name << " norm orig " << thetmppdf->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg) ,RooFit::Range("origRange"))->getVal() << " norm region "<< thetmppdf->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg) ,RooFit::Range(tmpwi.name.c_str()))->getVal() << " true norm in window " << tmpwi.norm << std::endl;
+
+        truenormwinds[cats[c]].push_back( tmpwi );
       }
 
       
@@ -584,7 +592,7 @@ std::map<std::string, std::vector<window> > computewindnorm(const std::string &y
       ctmp[c]->cd();
       nBinsMass=(int) round( (maxMassFit-minMassFit)/nBinsMassperGeV ); //20
       if (countmodels[c] == 0){
-	plotPhotonsMassBkg_allmodels[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
+        plotPhotonsMassBkg_allmodels[c] = mgg->frame(minMassFit, maxMassFit,nBinsMass);
       }
       plotPhotonsMassBkg_allmodels[c]->SetTitle("");
       // plotPhotonsMassBkg_allmodels[c]->GetYaxis()->SetTitleSize(0.09);
@@ -737,6 +745,7 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
       // if ( exceptions == modcatlabel ){ continue; }
       if (std::find(exceptions.begin(), exceptions.end(), modcatlabel) != exceptions.end()){ continue; }
       fin[modcatlabel] = TFile::Open(Form("%s/bkg_%s_%s_%s.root", ws_dir.c_str(), model.c_str(), cats[c].c_str(), year.c_str()));
+      std::cout << Form("%s/bkg_%s_%s_%s.root", ws_dir.c_str(), model.c_str(), cats[c].c_str(), year.c_str()) << std::endl;
       fin[modcatlabel]->cd();
       win[modcatlabel] = (RooWorkspace*) fin[modcatlabel]->Get(Form("HLFactory_%s_ws", model.c_str()));
 
@@ -745,11 +754,11 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
       Float_t minMassFit = 0.;
       Float_t maxMassFit = 0.;
       if (c==0){ 
-	minMassFit = MINmass;
-	maxMassFit = MAXmass;
+        minMassFit = MINmass;
+        maxMassFit = MAXmass;
       } else if (c==1){
-	minMassFit = MINmassBE;
-	maxMassFit = MAXmass;    
+        minMassFit = MINmassBE;
+        maxMassFit = MAXmass;
       }
 
       mgg->setRange(minMassFit,maxMassFit);
@@ -761,24 +770,29 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
       // tmppdf.pdf = (RooGenericPdf*) win[model]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str()));
 
       if (model!="Laurent" && model!="PowerLaw" && model!="Atlas" && model!="Exponential" && 
-	  model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
-	  model!="Expow"){
-	tmppdf.pdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str())); 
-	nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
+          model!="Chebychev" && model!="DijetSimple" && model!="Dijet" && model!="VVdijet" &&
+          model!="Expow" && model!="dijet"){
+        tmppdf.pdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str()));
+        std::cout << TString::Format("PhotonsMassBkg_%s%d_%s",model.c_str(), modelorder[model][c], cats[c].c_str()) << std::endl;
+        nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s%d_%s_norm",model.c_str(), modelorder[model][c], cats[c].c_str()));
 
-      } else {
-	tmppdf.pdf = (RooAbsPdf*) win[modcatlabel]->pdf( Form("ftest_pdf_%s_%s%d",cats[c].c_str() ,modelnametopdf[model].c_str(), modelorder[model][c] ) ) ;     
-	nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+      } else if (model=="dijet"){
+         tmppdf.pdf = (RooGenericPdf*) win[modcatlabel]->pdf(TString::Format("PhotonsMassBkg_%s_%s",model.c_str(), cats[c].c_str()));
+         nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+      }
+      else {
+        tmppdf.pdf = (RooAbsPdf*) win[modcatlabel]->pdf( Form("ftest_pdf_%s_%s%d",cats[c].c_str() ,modelnametopdf[model].c_str(), modelorder[model][c] ) ) ;
+        nBackground[c] = (RooRealVar*) win[modcatlabel]->var(TString::Format("PhotonsMassBkg_%s_%s_norm",model.c_str(), cats[c].c_str()));
+      }
 
-      } 
- 
       tmppdf.order = modelorder[model][c];
+      std::cout << tmppdf.order << std::endl;
       // tmppdf.ws = win[model];
 
       // //Some debugging print out
       // std::cout << << << std::endl; 
       //Parameters loaded should be the one expected. 
-      std::cout << tmppdf.pdf->GetName() << std::endl; 
+      std::cout << tmppdf.pdf->GetName() << std::endl;
 
       RooArgSet* theparams = new RooArgSet();
       theparams = tmppdf.pdf->getParameters(*mgg);
@@ -813,19 +827,19 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
       // fout[model]->cd();
     
       for (int toy = ntoystart; toy < ntoyend; ++toy){
-	// RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , TRandom::Poisson(  nBackground[c]->getVal() ) );
-	gRandom->SetSeed(0);
-	RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , gRandom->Poisson(  nBackground[c]->getVal() ) );
-	// RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) ,   nBackground[c]->getVal() );
-	data->SetName(Form("toy_%s_%s_%d",model.c_str(), cats[c].c_str(), toy));
-	data->SetTitle(Form("toy_%s_%s_%d",model.c_str(), cats[c].c_str(), toy));
-	data_toys.push_back(data);
+        // RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , TRandom::Poisson(  nBackground[c]->getVal() ) );
+        gRandom->SetSeed(0);
+        RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , gRandom->Poisson(  nBackground[c]->getVal() ) );
+        // RooDataSet* data = tmppdf.pdf->generate( RooArgSet(*mgg) , 10000 );
 
-	// data->Write();
+        data->SetName(Form("toy_%s_%s_%d",model.c_str(), cats[c].c_str(), toy));
+        data->SetTitle(Form("toy_%s_%s_%d",model.c_str(), cats[c].c_str(), toy));
+        data_toys.push_back(data);
 
-	w->import(*data);
-	// w->import(*data);
+        // data->Write();
 
+        w->import(*data);
+        // w->import(*data);
       }
 
       //====================================================================
@@ -863,7 +877,7 @@ std::vector<thepdf> throwtoys(RooWorkspace* w, const std::string &year, const st
 
     // delete win[model];
     // fin[model]->Close();
-     // fout[model]->Close();
+    // fout[model]->Close();
  
   }//end of loop over models
 
@@ -932,8 +946,8 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
     w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum))->removeRange();
 
     coefList = new RooArgList(*mgg, 
-    			      *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d", pdf.catnum)), 
-    			      *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum)));
+                              *w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d", pdf.catnum)),
+                              *w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum)));
     
     formula = "TMath::Max(1e-50,pow(@0,@1+@2*log(@0)))";
 
@@ -952,7 +966,7 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
     // ROOT::Math::MinimizerOptions::SetDefaultPrecision(1e-5);
       
     for (auto toy : pdf.toys ){
-    // for (auto toy : pdf.toys ){
+      // for (auto toy : pdf.toys ){
       w->loadSnapshot(Form("initial_fit_params_cat%s", cats[pdf.catnum].c_str() ) );
     
       // toy = (RooDataSet*) w->data(toy->GetName());
@@ -1006,7 +1020,6 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
       //If the fit is not good the windows below hangs.
       // if (gofresult.prob < 0.50 || fitresult.back().minosstatus != 0) {continue;}
       if ( fitresult.back().minosstatus != 0 ) {continue;}
-
       ctmp.back()->SetLogy();
 
       ctmp.back()->SaveAs( Form("%s/Bkg_%s_%s.png", ws_dir.c_str(),toy->GetName(), year.c_str() ) );
@@ -1021,405 +1034,410 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
       RooFitResult *fitTest;
       //And the dataset #events we need to take the percent from the integral of the pdf.
       // dset = (RooDataSet*) toy->reduce(Form("mgg > %f && mgg < %f", minMassFit, maxMassFit) );
-      
+    
       for (auto wind : pdf.truenorms){
 
-	w->loadSnapshot(Form("dijet_fit_params_cat%s", cats[pdf.catnum].c_str() ) );
-	//the parameters should be the same all the time with the one
-	PhotonsMassBkgTmp0->getParameters(*mgg)->printLatex();
+        // std::cout << pdf.truenorms << std::endl;
+        std::cout << "hi" << std::endl;
+        w->loadSnapshot(Form("dijet_fit_params_cat%s", cats[pdf.catnum].c_str() ) );
+        //the parameters should be the same all the time with the one
+        PhotonsMassBkgTmp0->getParameters(*mgg)->printLatex();
 
-	mgg->setRange(wind.name.c_str(), wind.low, wind.high);
-	set_mgg = new RooArgSet(*mgg);
-	RooAbsReal * integral = PhotonsMassBkgTmp0->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg), RooFit::Range(wind.name.c_str()));
-	// double nomnorm = integral->getVal()*dset->sumEntries();
-	double nomnorm = integral->getVal()*toy->sumEntries();
+        mgg->setRange(wind.name.c_str(), wind.low, wind.high);
+        set_mgg = new RooArgSet(*mgg);
+        RooAbsReal * integral = PhotonsMassBkgTmp0->createIntegral(RooArgSet(*mgg), RooFit::NormSet(*set_mgg), RooFit::Range(wind.name.c_str()));
+        // double nomnorm = integral->getVal()*dset->sumEntries();
+        double nomnorm = integral->getVal()*toy->sumEntries();
 
-	std::cout << "BEFORE CONTINUE integral->getVal()" << integral->getVal() << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
-	if (nomnorm == 0.) {continue;}
-	std::cout << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
+        std::cout << "BEFORE CONTINUE integral->getVal()" << integral->getVal() << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
+        if (nomnorm == 0.) {continue;}
+        std::cout << "nomnorm " << nomnorm << " Range " << wind.name << " true norm " << wind.norm << std::endl;
 
-	double largeNum = std::max(0.1,nomnorm*50.); 
-	roonorm =  new RooRealVar(Form("norm_%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(),  wind.name.c_str()), Form("norm_%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(),  wind.name.c_str()) , nomnorm,-largeNum,largeNum);
-	roonorm->removeRange();
-	// w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d", pdf.catnum))->removeRange();
-	// w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum))->removeRange();
-	roonorm->setConstant(false);
-	
-
-	// WRONG --->> We will try to load the succesful fit params of a toy. 
-	// if (suctoynum != -1 ){
-	//   //The fit was succesful so load the relevant toy params. 
-	//   w->loadSnapshot(Form("dijet_fit_params_cat%s_%s_toy%d", cats[pdf.catnum].c_str(), wind.name.c_str(), suctoynum ) );
-	// }
-
-	// mgg->setRange(wind.low - 500., wind.high + 500.);
-	// //Will use roughly the same bins as in the past (20 GeV here) although for the non reso 
-	// //analysis they use 25 GeV.  
-	// nBinsMass = (int) round( (wind.high + 500. - wind.low + 500.)/2. ); //20
-	// mgg->setBins(nBinsMass);
+        double largeNum = std::max(0.1,nomnorm*50.);
+        roonorm =  new RooRealVar(Form("norm_%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(),  wind.name.c_str()), Form("norm_%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(),  wind.name.c_str()) , nomnorm,-largeNum,largeNum);
+        roonorm->removeRange();
+        // w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d", pdf.catnum))->removeRange();
+        // w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum))->removeRange();
+        roonorm->setConstant(false);
 
 
-	RooExtendPdf *epdf = new RooExtendPdf(Form("%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(), wind.name.c_str()), Form("%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(), wind.name.c_str()), *PhotonsMassBkgTmp0, *roonorm, wind.name.c_str());
+        // WRONG --->> We will try to load the succesful fit params of a toy.
+        // if (suctoynum != -1 ){
+        //   //The fit was succesful so load the relevant toy params.
+        //   w->loadSnapshot(Form("dijet_fit_params_cat%s_%s_toy%d", cats[pdf.catnum].c_str(), wind.name.c_str(), suctoynum ) );
+        // }
 
-	edset = (RooDataSet*) toy;
+        // mgg->setRange(wind.low - 500., wind.high + 500.);
+        // //Will use roughly the same bins as in the past (20 GeV here) although for the non reso
+        // //analysis they use 25 GeV.
+        // nBinsMass = (int) round( (wind.high + 500. - wind.low + 500.)/2. ); //20
+        // mgg->setBins(nBinsMass);
 
-	// ======================================================
-	// fitStatus = 0;
-	// thisNll = 0.;
-	// std::cout << "Fitting true underline model " <<  pdf.model.c_str() << " with " << PhotonsMassBkgTmp0->GetName() << std::endl; 
-	// std::cout << "True underline model (toy) sumEntries (full range)" << toy->sumEntries() << std::endl; 
-	// fitresult.push_back( theFit(PhotonsMassBkgTmp0, epdf, edset, &thisNll, &fitStatus, /*max iterations*/ 3, true ) );
+
+        RooExtendPdf *epdf = new RooExtendPdf(Form("%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(), wind.name.c_str()), Form("%s_%s_%s", pdf.model.c_str(), pdf.cat.c_str(), wind.name.c_str()), *PhotonsMassBkgTmp0, *roonorm, wind.name.c_str());
+
+        edset = (RooDataSet*) toy;
+
+        // ======================================================
+        // fitStatus = 0;
+        // thisNll = 0.;
+        // std::cout << "Fitting true underline model " <<  pdf.model.c_str() << " with " << PhotonsMassBkgTmp0->GetName() << std::endl;
+        // std::cout << "True underline model (toy) sumEntries (full range)" << toy->sumEntries() << std::endl;
+        // fitresult.push_back( theFit(PhotonsMassBkgTmp0, epdf, edset, &thisNll, &fitStatus, /*max iterations*/ 3, true ) );
       
-	// std::cout << TString::Format("Background Fit results: Toy from %s cat %s", pdf.model.c_str(), pdf.cat.c_str()) << std::endl;
-	// //I use back because I do not know if pdf.catnum follows the 0 to 1 order for categories. 
-	// fitresult.back().fitres->Print("V");
-	// ======================================================
+        // std::cout << TString::Format("Background Fit results: Toy from %s cat %s", pdf.model.c_str(), pdf.cat.c_str()) << std::endl;
+        // //I use back because I do not know if pdf.catnum follows the 0 to 1 order for categories.
+        // fitresult.back().fitres->Print("V");
+        // ======================================================
 
 
-	// fitTest = new RooFitResult("","");
+        // fitTest = new RooFitResult("","");
 
 
-	RooAbsReal *nll = epdf->createNLL( *edset, Extended() );
-	RooArgSet *eparams_test = epdf->getParameters((const RooArgSet*)(0));
+        RooAbsReal *nll = epdf->createNLL( *edset, Extended() ); //-log(L), extended likelihood term added
+        RooArgSet *eparams_test = epdf->getParameters((const RooArgSet*)(0));
 
-	// CascadeMinimizer minimcs(*nll, CascadeMinimizer::Unconstrained, roonorm);
-	// minimcs.minimize();
-	// minimcs.hesse();
-	// minimcs.minos(RooArgSet(*roonorm), 0);
-	
-	RooMinimizer *minim = new RooMinimizer(*nll);
-	// minim.reset(); // avoid two copies in memory
-	// minim.reset(new RooMinimizer(nll_));
-	// minim = new RooMinimizer(*nll);
+        // CascadeMinimizer minimcs(*nll, CascadeMinimizer::Unconstrained, roonorm);
+        // minimcs.minimize();
+        // minimcs.hesse();
+        // minimcs.minos(RooArgSet(*roonorm), 0);
 
-	// minim->setOffsetting(true);
-	// minim->setMinimizerType("GSLMultiMin");//Minuit2
-	// minim->setPrintLevel(0);
+        RooMinimizer *minim = new RooMinimizer(*nll);
+        // minim.reset(); // avoid two copies in memory
+        // minim.reset(new RooMinimizer(nll_));
+        // minim = new RooMinimizer(*nll);
+
+        // minim->setOffsetting(true);
+        // minim->setMinimizerType("GSLMultiMin");//Minuit2
+        // minim->setPrintLevel(0);
         // //Strategy { Speed =0, Balance =1, Robustness =2 }
-	// minim->setStrategy(0);
-	// std::cout << "Running GSLMultiMin conjugatefr" << std::endl;
-	// minim->minimize("GSLMultiMin","conjugatefr");//minimize
-	// fitTest = minim->save("fitTest","fitTest");
+        // minim->setStrategy(0);
+        // std::cout << "Running GSLMultiMin conjugatefr" << std::endl;
+        // minim->minimize("GSLMultiMin","conjugatefr");//minimize
+        // fitTest = minim->save("fitTest","fitTest");
 
-	//-----------------------------
-	//GSLMultiMin
-	// minim->setPrintLevel( -1 );
-	// minim->setMaxIterations(5);
-	// minim->setStrategy(2);
-	// minim->setEps(1000);
-	// minim->setOffsetting(true);
-	// minim->setMinimizerType("GSLMultiMin");//Minuit2
-	// minim->minimize("GSLMultiMin","conjugatebfgs2");//conjugatefr
-	// fitTest = minim->save("fitTest","fitTest");
-	// int minim_status = fitTest->status();
-	//-----------------------------
+        //-----------------------------
+        //GSLMultiMin
+        // minim->setPrintLevel( -1 );
+        // minim->setMaxIterations(5);
+        // minim->setStrategy(2);
+        // minim->setEps(1000);
+        // minim->setOffsetting(true);
+        // minim->setMinimizerType("GSLMultiMin");//Minuit2
+        // minim->minimize("GSLMultiMin","conjugatebfgs2");//conjugatefr
+        // fitTest = minim->save("fitTest","fitTest");
+        // int minim_status = fitTest->status();
+        //-----------------------------
 
-	// if (minim_status != 0){ continue; }
-	// std::cout << roonorm->getError() << std::endl;
-	
-	std::cout << "Running minimize" << std::endl;
-	// std::cout << "Running fumili2" << std::endl;
-	int ntries = 0;
-	int minim_status = -1;
-	
+        // if (minim_status != 0){ continue; }
+        // std::cout << roonorm->getError() << std::endl;
 
-	while (minim_status!=0){
-	  if (ntries>=3) break;
-	  
-	  minim->setPrintLevel( -1 );
-	  minim->setOffsetting(true);
-	  minim->setStrategy(0);
-	  minim->setEps(1000);
-	  minim->setMaxIterations(15);
-	  minim->setMaxFunctionCalls(30);
-	  minim->setMinimizerType("Minuit2");
-	  minim->minimize("Minuit2","minimize");
-	  minim->hesse();
-	  // minim->minimize("Minuit2","fumili2");
-	  fitTest = minim->save("fitTest","fitTest");
-	  minim_status = fitTest->status();
-	  
-	  if (minim_status!=0) eparams_test->assignValueOnly(fitTest->randomizePars());
-	  ntries++;
+        std::cout << "Running minimize" << std::endl;
+        // std::cout << "Running fumili2" << std::endl;
+        int ntries = 0;
+        int minim_status = -1;
 
-	     
-	}
-	// std::cout << roonorm->getError() << std::endl;
 
-	
-	// minim->setOffsetting(true);
-	// minim->setEps(1000);
-	// minim->setMinimizerType("Minuit2");
-	// minim->setMaxIterations(15);
-	// minim->setMaxFunctionCalls(30);
-	// minim->setPrintLevel(3);
-	// minim->setPrintEvalErrors(10); 
-	// //Strategy { Speed =0, Balance =1, Robustness =2 }
-	// minim->setStrategy(0);
-	// // minim->simplex();
-	// // std::cout << "Running seek" << std::endl;
-	// // int seekstatus = minim->seek();
-	// // minim->minimize("Minuit2","Scan");//minimize
-	// // if (seekstatus != 0){ continue; }
-	// std::cout << "Running minimize" << std::endl;
-	// minim->minimize("Minuit2","minimize");
-	// fitTest = minim->save("fitTest","fitTest");
+        while (minim_status!=0){
+          if (ntries>=3) break;
 
-	// std::cout << "Running migrad" << std::endl;
-	// int migrad = minim->migrad();
-	// std::cout << "int migrad" << migrad << std::endl;
-	// if (migrad != 0){ continue; }
+          minim->setPrintLevel( -1 );
+          minim->setOffsetting(true);
+          minim->setStrategy(0);
+          minim->setEps(1000);
+          minim->setMaxIterations(15);
+          minim->setMaxFunctionCalls(30);
+          minim->setMinimizerType("Minuit2");
+          minim->minimize("Minuit2","minimize");
+          minim->hesse();
+          // minim->minimize("Minuit2","fumili2");
+          fitTest = minim->save("fitTest","fitTest");
+          minim_status = fitTest->status();
 
-	// minim->minos( RooArgSet(*roonorm)  ) ;
-	// fitTest = minim->save("fitTest","fitTest");
-	// std::cout << " MINOS  "<< roonorm->getErrorHi() <<  "  "<< roonorm->getErrorLo()<< std::endl;
-	// minim_status = fitTest->status();
+          if (minim_status!=0) eparams_test->assignValueOnly(fitTest->randomizePars());
+          ntries++;
 
-	// if (minim_status!=0){
-	//   minim->setStrategy(0);
-	//   minim->minimize("Minuit2","minimize");
-	//   fitTest = minim->save("fitTest","fitTest");
-	//   minim_status = fitTest->status();
-	// }
+        }
+        std::cout << roonorm->getError() << std::endl;
+        fitTest->Print("V");
 
-	std::cout << "---------------------------------------------------" << std::endl;
-	std::cout << "int minim_status " << minim_status << std::endl;
-	std::cout << "---------------------------------------------------" << std::endl;
-	if (minim_status != 0){ continue; }
 
-	nomnorm = roonorm->getVal();
+        // minim->setOffsetting(true);
+        // minim->setEps(1000);
+        // minim->setMinimizerType("Minuit2");
+        // minim->setMaxIterations(15);
+        // minim->setMaxFunctionCalls(30);
+        // minim->setPrintLevel(3);
+        // minim->setPrintEvalErrors(10);
+        // //Strategy { Speed =0, Balance =1, Robustness =2 }
+        // minim->setStrategy(0);
+        // // minim->simplex();
+        // // std::cout << "Running seek" << std::endl;
+        // // int seekstatus = minim->seek();
+        // // minim->minimize("Minuit2","Scan");//minimize
+        // // if (seekstatus != 0){ continue; }
+        // std::cout << "Running minimize" << std::endl;
+        // minim->minimize("Minuit2","minimize");
+        // fitTest = minim->save("fitTest","fitTest");
+
+        // std::cout << "Running migrad" << std::endl;
+        // int migrad = minim->migrad();
+        // std::cout << "int migrad" << migrad << std::endl;
+        // if (migrad != 0){ continue; }
+
+        // minim->minos( RooArgSet(*roonorm)  ) ;
+        // fitTest = minim->save("fitTest","fitTest");
+        // std::cout << " MINOS  "<< roonorm->getErrorHi() <<  "  "<< roonorm->getErrorLo()<< std::endl;
+        // minim_status = fitTest->status();
+
+        // if (minim_status!=0){
+        //   minim->setStrategy(0);
+        //   minim->minimize("Minuit2","minimize");
+        //   fitTest = minim->save("fitTest","fitTest");
+        //   minim_status = fitTest->status();
+        // }
+
+        std::cout << "---------------------------------------------------" << std::endl;
+        std::cout << "int minim_status " << minim_status << std::endl;
+        std::cout << "---------------------------------------------------" << std::endl;
+        if (minim_status != 0){ continue; }
+
+        nomnorm = roonorm->getVal();
                         
-	// std::cout << "Now running hesse" << std::endl;
-	// int hes = minim->hesse();
-	// std::cout << "---------------------------------------------------" << std::endl;
-	// std::cout << "int hesse" << hes << std::endl;
-	// std::cout << "---------------------------------------------------" << std::endl;
-	double hesseerr = roonorm->getError();
-	double fiterrh  = roonorm->getErrorHi();//->getErrorHi();
-	double fiterrl  = roonorm->getErrorLo();//getErrorLo();
+        // std::cout << "Now running hesse" << std::endl;
+        // int hes = minim->hesse();
+        // std::cout << "---------------------------------------------------" << std::endl;
+        // std::cout << "int hesse" << hes << std::endl;
+        // std::cout << "---------------------------------------------------" << std::endl;
+        double hesseerr = roonorm->getError();
+        double fiterrh  = roonorm->getErrorHi();//->getErrorHi();
+        double fiterrl  = roonorm->getErrorLo();//getErrorLo();
 
-	// double hesseerr = 0.;
-	// double fiterrh  = 0.;
-	// double fiterrl  = 0.;
-	
-	delete minim;
+        // double hesseerr = 0.;
+        // double fiterrh  = 0.;
+        // double fiterrl  = 0.;
 
-	int minos = -999;
-	if (!approx_minos){
-	  std::cout << "Running minos" << std::endl;
-	  
-	  minim->setMaxFunctionCalls(30);
-	  minos = minim->minos( RooArgSet(*roonorm) ) ;
-	  // minos = minim->minos() ;
-	  if (minos == 0){ 
-	    if (roonorm->getErrorHi() != 0.){ fiterrh = roonorm->getErrorHi();}
-	    if (roonorm->getErrorLo() != 0.){ fiterrl = roonorm->getErrorLo();}
-	    std::cout << " In minos : fiterrh " << fiterrh << " fiterrl " << fiterrl << std::endl;
-	  }
-	  delete minim;	
-	} else {
-	  // w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d", pdf.catnum))->removeRange();
-	  // w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum))->removeRange();
-	  /* RooArgSet *params_test_ini = PhotonsMassBkgTmp0->getParameters((const RooArgSet*)(0)); */
-	  /* params_test_ini->assignValueOnly(fitTest->randomizePars()); */
+        delete minim;
 
-	  std::cout << "Computing approximate minos errors" << std::endl;
-	  double fitval  = roonorm->getVal();
-	  fiterrh = abs(roonorm->getErrorHi()/2.);
-	  fiterrl = abs(roonorm->getErrorLo()/2.);
-	  // fiterrh  = abs(roonorm->getError()/2.);//->getErrorHi();
-	  // fiterrl  = abs(roonorm->getError()/2.);//getErrorLo();
+        int minos = -999;
+        if (!approx_minos){
+          std::cout << "Running minos" << std::endl;
 
-	  std::cout << "fitval " << fitval << " fiterrh " << fiterrh << " fiterrl " << fiterrl << std::endl;
+          minim->setMaxFunctionCalls(30);
+          minos = minim->minos( RooArgSet(*roonorm) ) ;
+          // minos = minim->minos() ;
+          if (minos == 0){
+            if (roonorm->getErrorHi() != 0.){ fiterrh = roonorm->getErrorHi();}
+            if (roonorm->getErrorLo() != 0.){ fiterrl = roonorm->getErrorLo();}
+            std::cout << " In minos : fiterrh " << fiterrh << " fiterrl " << fiterrl << std::endl;
+          }
+          delete minim;
+        } else {
+          // w->var(TString::Format("PhotonsMass_bkg_dijet_linc_cat%d", pdf.catnum))->removeRange();
+          // w->var(TString::Format("PhotonsMass_bkg_dijet_logc_cat%d", pdf.catnum))->removeRange();
+          /* RooArgSet *params_test_ini = PhotonsMassBkgTmp0->getParameters((const RooArgSet*)(0)); */
+          /* params_test_ini->assignValueOnly(fitTest->randomizePars()); */
 
-	  std::cout << "Computing NLL at minimum" << std::endl;
-	  double minll  = nll->getVal();
-	  if (fiterrl < fitval){ roonorm->setVal(fitval-fiterrl);}
-	  else { roonorm->setVal(0.1); fiterrl = fitval - 0.1;}
+          std::cout << "Computing approximate minos errors" << std::endl;
+          double fitval  = roonorm->getVal();
+          fiterrh = abs(roonorm->getErrorHi()/2.);
+          fiterrl = abs(roonorm->getErrorLo()/2.);
+          // fiterrh  = abs(roonorm->getError()/2.);//->getErrorHi();
+          // fiterrl  = abs(roonorm->getError()/2.);//getErrorLo();
 
-	  std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
-	  roonorm->setConstant(true); 
-	  RooMinimizer *minimm = new RooMinimizer(*nll);
-	  // CascadeMinimizer minimm(*nll, CascadeMinimizer::Unconstrained);
-	  
-	  // minimm = new RooMinimizer(*nll);
-	  //-----------------------------
-	  //GSLMultiMin
-	  minimm->setPrintLevel( -1 );
-	  minimm->setMaxIterations(8);
-	  minimm->setStrategy(1);
-	  minimm->setEps(1000);
-	  minimm->setOffsetting(true);
-	  minimm->setMinimizerType("GSLMultiMin");//Minuit2
-	  minimm->minimize("GSLMultiMin","conjugatebfgs2");//conjugatefr
-	  //-----------------------------
+          std::cout << "fitval " << fitval << " fiterrh " << fiterrh << " fiterrl " << fiterrl << std::endl;
 
-	  //-----------------------------
-	  //Minuit2
-	  // minimm->setPrintLevel( -1 );
-	  // minimm->setMaxIterations(15);
-	  // minimm->setMaxFunctionCalls(100);                            
-	  // minimm->setPrintEvalErrors(10); 
-	  // minimm->setStrategy(1);
-	  // minimm->setEps(1000);//1000
-	  // minimm->setOffsetting(true);
-	  // minimm->minimize("Minuit2","minimize");//minimize
-	  //-----------------------------
+          std::cout << "Computing NLL at minimum" << std::endl;
+          double minll  = nll->getVal();
+          if (fiterrl < fitval){ roonorm->setVal(fitval-fiterrl);}
+          else { roonorm->setVal(0.1); fiterrl = fitval - 0.1;}
 
-	  //-----------------------------
-	  //CascadeMinimizer
-	  // minimm.setStrategy(0);
-	  // minimm.minimize();
-	  //-----------------------------
+          std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
+          roonorm->setConstant(true);
+          RooMinimizer *minimm = new RooMinimizer(*nll);
+          // CascadeMinimizer minimm(*nll, CascadeMinimizer::Unconstrained);
 
-	  // minimm->optimizeConst(true);
-	  // seekstatus = minimm->seek();
-	  // minimm->simplex();
-	  // minimm->migrad();
-	  // minimm->minimize("Minuit2","Scan");//minimize
-	  // if (seekstatus == 0){  
-	  //   minimm->minimize("Minuit2","minimize");//minimize
-	  // }
-	  
-	  RooFitResult *fitTestm = minimm->save("fitTestm","fitTestm");
-	  // RooFitResult *fitTestm = minimm.save();
-	  int minim_m_status = fitTestm->status();
-	  /* int ntries = 0; */
-	  /* int MaxTries = 3; */
-	  /* while (minim_m_status!=0){ */
-	  /*   if (ntries>=MaxTries) break; */
-	  /*   RooArgSet *params_test = PhotonsMassBkgTmp0->getParameters((const RooArgSet*)(0)); */
-	  /*   params_test->assignValueOnly(fitTestm->randomizePars()); */
-	  /*   minimm->minimize("Minuit2","minimize"); */
-	  /*   minim_m_status = fitTestm->status(); */
-	  /*   ntries++;  */
-	  /* } */
-	  double nllm = nll->getVal();
-	  delete minimm;
-	  // int minim_p_status = -1;
-	  // double nllp = -999999999999.;
-	  // if (minim_m_status==0){
-	  roonorm->setVal(fitval+fiterrh);
-	  roonorm->setConstant(true); 
-	
-	  std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
-	  RooMinimizer *minimp = new RooMinimizer(*nll);
-	  // CascadeMinimizer minimp(*nll, CascadeMinimizer::Unconstrained);
-	  // minimp = new RooMinimizer(*nll);
-	  //-----------------------------
-	  //GSLMultiMin
-	  minimp->setPrintLevel( -1 );
-	  minimp->setMaxIterations(8);
-	  minimp->setStrategy(1);
-	  minimp->setEps(1000);
-	  minimp->setOffsetting(true);
-	  minimp->setMinimizerType("GSLMultiMin");//Minuit2
-	  minimp->minimize("GSLMultiMin","conjugatebfgs2");//conjugatefr
-	  //-----------------------------
+          // minimm = new RooMinimizer(*nll);
+          //-----------------------------
+          //GSLMultiMin
+          minimm->setPrintLevel( -1 );
+          minimm->setMaxIterations(8);
+          minimm->setStrategy(1);
+          minimm->setEps(1000);
+          minimm->setOffsetting(true);
+          minimm->setMinimizerType("GSLMultiMin");//Minuit2
+          minimm->minimize("GSLMultiMin","conjugatebfgs2");//conjugatefr
+          //-----------------------------
 
-	  //-----------------------------
-	  //Minuit2
-	  // minimp->setPrintLevel( -1 );
-	  // minimp->setMaxIterations(15);
-	  // minimp->setMaxFunctionCalls(100);                            
-	  // minimp->setPrintEvalErrors(10); 
-	  // minimp->setStrategy(1);
-	  // minimp->setEps(1000);//1000
-	  // minimp->setOffsetting(true);
-	  // minimp->minimize("Minuit2","minimize");//minimize
-	  //-----------------------------
+          //-----------------------------
+          //Minuit2
+          // minimm->setPrintLevel( -1 );
+          // minimm->setMaxIterations(15);
+          // minimm->setMaxFunctionCalls(100);
+          // minimm->setPrintEvalErrors(10);
+          // minimm->setStrategy(1);
+          // minimm->setEps(1000);//1000
+          // minimm->setOffsetting(true);
+          // minimm->minimize("Minuit2","minimize");//minimize
+          //-----------------------------
 
-	  //-----------------------------
-	  //CascadeMinimizer
-	  // minimp.setStrategy(0);
-	  // minimp.minimize();
-	  //-----------------------------
+          //-----------------------------
+          //CascadeMinimizer
+          // minimm.setStrategy(0);
+          // minimm.minimize();
+          //-----------------------------
 
-	  // minimp->optimizeConst(true);
-	  // seekstatus = minimp->seek();
-	  // minimp->simplex();
-	  // minimp->migrad();
-	  // minimp->minimize("Minuit2","Scan");//minimize
-	  // if (seekstatus == 0){  
-	  //   minimp->minimize("Minuit2","minimize");//minimize
-	  // }
+          // minimm->optimizeConst(true);
+          // seekstatus = minimm->seek();
+          // minimm->simplex();
+          // minimm->migrad();
+          // minimm->minimize("Minuit2","Scan");//minimize
+          // if (seekstatus == 0){
+          //   minimm->minimize("Minuit2","minimize");//minimize
+          // }
 
-	  RooFitResult *fitTestp = minimp->save("fitTestp","fitTestp");
-	  // RooFitResult *fitTestp = minimp.save();
-	  int minim_p_status = fitTestp->status();
-	  /* ntries = 0; */
-	  /* MaxTries = 3; */
-	  /* while (minim_p_status!=0){ */
-	  /*   if (ntries>=MaxTries) break; */
-	  /*   RooArgSet *params_test = PhotonsMassBkgTmp0->getParameters((const RooArgSet*)(0)); */
-	  /*   params_test->assignValueOnly(fitTestp->randomizePars()); */
-	  /*   minimp->minimize("Minuit2","minimize"); */
-	  /*   minim_p_status = fitTestp->status(); */
-	  /*   ntries++;  */
-	  /* } */
-	  double nllp = nll->getVal();
+          RooFitResult *fitTestm = minimm->save("fitTestm","fitTestm");
+          // RooFitResult *fitTestm = minimm.save();
+          int minim_m_status = fitTestm->status();
+          /* int ntries = 0; */
+          /* int MaxTries = 3; */
+          /* while (minim_m_status!=0){ */
+          /*   if (ntries>=MaxTries) break; */
+          /*   RooArgSet *params_test = PhotonsMassBkgTmp0->getParameters((const RooArgSet*)(0)); */
+          /*   params_test->assignValueOnly(fitTestm->randomizePars()); */
+          /*   minimm->minimize("Minuit2","minimize"); */
+          /*   minim_m_status = fitTestm->status(); */
+          /*   ntries++;  */
+          /* } */
+          double nllm = nll->getVal();
+          delete minimm;
+          // int minim_p_status = -1;
+          // double nllp = -999999999999.;
+          // if (minim_m_status==0){
+          roonorm->setVal(fitval+fiterrh);
+          roonorm->setConstant(true);
 
-	  delete minimp;
-	  // minimp->Clear();
-	  // }
-	  // minimm->Clear();
+          std::cout << "evaluating NLL at " << roonorm->getVal() << std::endl;
+          RooMinimizer *minimp = new RooMinimizer(*nll);
+          // CascadeMinimizer minimp(*nll, CascadeMinimizer::Unconstrained);
+          // minimp = new RooMinimizer(*nll);
+          //-----------------------------
+          //GSLMultiMin
+          minimp->setPrintLevel( -1 );
+          minimp->setMaxIterations(8);
+          minimp->setStrategy(1);
+          minimp->setEps(1000);
+          minimp->setOffsetting(true);
+          minimp->setMinimizerType("GSLMultiMin");//Minuit2
+          minimp->minimize("GSLMultiMin","conjugatebfgs2");//conjugatefr
+          //-----------------------------
+
+          //-----------------------------
+          //Minuit2
+          // minimp->setPrintLevel( -1 );
+          // minimp->setMaxIterations(15);
+          // minimp->setMaxFunctionCalls(100);
+          // minimp->setPrintEvalErrors(10);
+          // minimp->setStrategy(1);
+          // minimp->setEps(1000);//1000
+          // minimp->setOffsetting(true);
+          // minimp->minimize("Minuit2","minimize");//minimize
+          //-----------------------------
+
+          //-----------------------------
+          //CascadeMinimizer
+          // minimp.setStrategy(0);
+          // minimp.minimize();
+          //-----------------------------
+
+          // minimp->optimizeConst(true);
+          // seekstatus = minimp->seek();
+          // minimp->simplex();
+          // minimp->migrad();
+          // minimp->minimize("Minuit2","Scan");//minimize
+          // if (seekstatus == 0){
+          //   minimp->minimize("Minuit2","minimize");//minimize
+          // }
+
+          RooFitResult *fitTestp = minimp->save("fitTestp","fitTestp");
+          // RooFitResult *fitTestp = minimp.save();
+          int minim_p_status = fitTestp->status();
+          /* ntries = 0; */
+          /* MaxTries = 3; */
+          /* while (minim_p_status!=0){ */
+          /*   if (ntries>=MaxTries) break; */
+          /*   RooArgSet *params_test = PhotonsMassBkgTmp0->getParameters((const RooArgSet*)(0)); */
+          /*   params_test->assignValueOnly(fitTestp->randomizePars()); */
+          /*   minimp->minimize("Minuit2","minimize"); */
+          /*   minim_p_status = fitTestp->status(); */
+          /*   ntries++;  */
+          /* } */
+          double nllp = nll->getVal();
+
+          delete minimp;
+          // minimp->Clear();
+          // }
+          // minimm->Clear();
                 
-	  // if ( (nllm-minll > 0.) && (nllp-minll > 0.) && (seekstatus == 0) ){
-	  // if ( (nllm-minll > 0.) && (nllp-minll > 0.) ){
-	  if ( (nllm-minll > 0.) && (nllp-minll > 0.) && (minim_p_status == 0) && (minim_m_status == 0)){
-	    fiterrh = std::max(hesseerr,fiterrh / sqrt(2.*(nllp-minll))); 
-	    fiterrl = std::max(hesseerr,fiterrl / sqrt(2.*(nllm-minll)));
-	    minos = 0;
-	  } else {
-	    minos = 1;
-	  }
+          // if ( (nllm-minll > 0.) && (nllp-minll > 0.) && (seekstatus == 0) ){
+          // if ( (nllm-minll > 0.) && (nllp-minll > 0.) ){
+          if ( (nllm-minll > 0.) && (nllp-minll > 0.) && (minim_p_status == 0) && (minim_m_status == 0)){
+            fiterrh = std::max(hesseerr,fiterrh / sqrt(2.*(nllp-minll)));
+            fiterrl = std::max(hesseerr,fiterrl / sqrt(2.*(nllm-minll)));
+            minos = 0;
+          } else {
+            minos = 1;
+          }
 
-	  std::cout << "approx minos status " << minos << std::endl;
+          std::cout << "approx minos status " << minos << std::endl;
 
-	}//end of approx minos
-	double errh = (fiterrh != 0.) ? fiterrh : hesseerr;
-	double errl = (fiterrl != 0.) ? fiterrl : hesseerr;
-	
-	double bias = 0.;
-	if (nomnorm > wind.norm){                            
-	  bias = (nomnorm-wind.norm)/abs(errl);
-	} else{
-	  bias = (nomnorm-wind.norm)/abs(errh);
-	}
+        }//end of approx minos
+        double errh = (fiterrh != 0.) ? fiterrh : hesseerr;
+        double errl = (fiterrl != 0.) ? fiterrl : hesseerr;
 
-	//Save the snapshot of the succesful toy 
-	if (minos == 0){
-	  //Here the fit in the window was succesful so we should save the suctoynum
-	  std::cout << "MINOS IS 0!!!" <<std::endl;
-	  suctoynum = toynum;
-	  w->saveSnapshot(Form("dijet_fit_params_cat%s_%s_toy%d", cats[pdf.catnum].c_str(), wind.name.c_str(), suctoynum ) , *theparams, kTRUE);
-	  std::cout << "bias " << bias << std::endl;
-	} else {
-	  //If the fit was unsuccesful for this toy then give the suctoynum -1 value 
-	  //so that later we can load at least the full range params. 
-	  suctoynum = -1;
-	}
+        double bias = 0.;
+        if (nomnorm > wind.norm){
+          bias = (nomnorm-wind.norm)/abs(errl);
+        } else{
+          bias = (nomnorm-wind.norm)/abs(errh);
+        }
 
+        std::cout << "minos" << minos << " " << bias << std::endl;
+        //Save the snapshot of the succesful toy
+        if (minos == 0){
+          //Here the fit in the window was succesful so we should save the suctoynum
+          std::cout << "MINOS IS 0!!!" <<std::endl;
+          suctoynum = toynum;
+          w->saveSnapshot(Form("dijet_fit_params_cat%s_%s_toy%d", cats[pdf.catnum].c_str(), wind.name.c_str(), suctoynum ) , *theparams, kTRUE);
+          std::cout << "bias " << bias << std::endl;
+        } else {
+          //If the fit was unsuccesful for this toy then give the suctoynum -1 value
+          //so that later we can load at least the full range params.
+          suctoynum = -1;
+        }
 
-	//Will need to save the info for later processing. 
-	//If the code reached here it means that it didn't stack and 
-	//we can have some output, avoiding corrupted root files. 
+        // std::cout << "haylo" << std::endl;
 
-	tmpbfr.toynum = toynum;
-	tmpbfr.windname = wind.name;
-	tmpbfr.windnorm = wind.norm;
-	tmpbfr.nomnorm = nomnorm;
-	tmpbfr.minos = minos;
-	tmpbfr.hesseerr = hesseerr;
-	tmpbfr.fiterrh = fiterrh;
-	tmpbfr.fiterrl = fiterrl;
-	tmpbfr.bias = bias;
-	tmpbfr.minMassFit = minMassFit;
-	tmpbfr.maxMassFit = maxMassFit;
+        //Will need to save the info for later processing.
+        //If the code reached here it means that it didn't stack and
+        //we can have some output, avoiding corrupted root files.
 
-	thebiasresult.push_back(tmpbfr);
+        tmpbfr.toynum = toynum;
+        tmpbfr.windname = wind.name;
+        tmpbfr.windnorm = wind.norm;
+        tmpbfr.nomnorm = nomnorm;
+        tmpbfr.minos = minos;
+        tmpbfr.hesseerr = hesseerr;
+        tmpbfr.fiterrh = fiterrh;
+        tmpbfr.fiterrl = fiterrl;
+        tmpbfr.bias = bias;
+        tmpbfr.minMassFit = minMassFit;
+        tmpbfr.maxMassFit = maxMassFit;
+        std::cout << tmpbfr.toynum << " " << tmpbfr.minos << " " << tmpbfr.minMassFit << " " << tmpbfr.maxMassFit << std::endl;
 
-	// minim->Clear();
+        thebiasresult.push_back(tmpbfr);
+
+        // minim->Clear();
 
       } //end of loop over windows
 
@@ -1435,6 +1453,8 @@ std::vector<biasfitres> fitToys(RooWorkspace* w,std::vector<thepdf> thepdfwithto
 void makebiasrootfile(std::vector<biasfitres> bfr, const std::string &out_dir, std::string familymodel, std::string year, int ntoystart, int ntoyend){
   
   TFile* biasesfiles = new TFile(Form("%s/%s/tree_bias_%s_%s_%d_%d.root", out_dir.c_str(), familymodel.c_str(), familymodel.c_str(), year.c_str(), ntoystart, ntoyend ), "recreate");
+
+  std::cout << bfr[0].toynum << " " << bfr[0].minos << " " << bfr[0].minMassFit << " " << bfr[0].maxMassFit << std::endl;
  
   //We will create the ntuple to hold the bias results. 
   std::map<std::string, TNtuple* > biases; //[cat+windows][ntuple]
@@ -1478,6 +1498,8 @@ void makebiasrootfile(std::vector<biasfitres> bfr, const std::string &out_dir, s
 
   for (auto res : bfr){
     biases[Form("%s_%s", res.cat.c_str(), res.windname.c_str())]->Fill( res.toynum, res.windnorm, res.nomnorm,  res.minos, res.hesseerr, res.fiterrh, res.fiterrl, res.bias, res.minMassFit, res.maxMassFit );
+    std::cout << "hi " << res.windname << " " << res.toynum << " " << res.windnorm << " " << res.minos << " " << res.hesseerr << " " << res.fiterrh << " " << res.fiterrl << " " << res.bias << " " << res.minMassFit << " " <<  res.maxMassFit << std::endl;
+
   }
 
   biasesfiles->Write();
@@ -1524,7 +1546,7 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     std::cout << "MODEL " << model << std::endl; 
     if (!analyzerbiasaftertoys) {
       fin[model] = TFile::Open(Form("%s/%s/tree_bias_%s_%s_%d_%d.root", out_dir.c_str(), model.c_str(), model.c_str(), year.c_str(), ntoystart, ntoyend));
-     } else {
+    } else {
       fin[model] = TFile::Open(Form("%s/tree_bias_%s_%s.root", out_dir.c_str(), model.c_str(), year.c_str() ));
     }
     fin[model]->cd();
@@ -1548,130 +1570,130 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
       std::cout << name << std::endl;
       if (name.Contains("tree_bias")){
 
-    	//The first 10 characters should be true_bias_
-    	name = name(10,name.Length());
-    	//From the start to the first _ we have the category. 
-    	std::string cat = name(0,name.Index("_"));
-    	//The window is (in the form e.g. 500_550)
-    	window wind; 
-    	wind.name = name(name.Index(model)+model.length()+1,name.Length());
-    	wind.low =  std::stod(wind.name.substr(0, wind.name.find("_")));
-    	wind.high = std::stod(wind.name.substr(wind.name.find("_")+1, wind.name.length()));
-	thewindows.insert(wind.name);
+        //The first 10 characters should be true_bias_
+        name = name(10,name.Length());
+        //From the start to the first _ we have the category.
+        std::string cat = name(0,name.Index("_"));
+        //The window is (in the form e.g. 500_550)
+        window wind;
+        wind.name = name(name.Index(model)+model.length()+1,name.Length());
+        wind.low =  std::stod(wind.name.substr(0, wind.name.find("_")));
+        wind.high = std::stod(wind.name.substr(wind.name.find("_")+1, wind.name.length()));
+        thewindows.insert(wind.name);
 
-    	std::cout << "model " << model << " cat " << cat << " wind.name " << wind.name << " wind.low " << wind.low << " wind.high " << wind.high <<std::endl;
+        std::cout << "model " << model << " cat " << cat << " wind.name " << wind.name << " wind.low " << wind.low << " wind.high " << wind.high <<std::endl;
 
-    	TNtuple *tree = (TNtuple*)key->ReadObj();
-    	TString slabel = Form("%s_%s_%s", cat.c_str(), model.c_str(), wind.name.c_str());
+        TNtuple *tree = (TNtuple*)key->ReadObj();
+        TString slabel = Form("%s_%s_%s", cat.c_str(), model.c_str(), wind.name.c_str());
 
-    	bcan[slabel] = new TCanvas(slabel,slabel);
-    	bcan[slabel]->cd();
+        bcan[slabel] = new TCanvas(slabel,slabel);
+        bcan[slabel]->cd();
 
-    	hb[slabel] = new TH1F(Form("h_bias_%s",slabel.Data()), Form("h_bias_%s",slabel.Data()), 151, -15.005, 15.005);
-	//Maybe in this way the upper low x axis is easier, at least in root prompt it works. 
-	// hb[slabel] = new TH1F();
-	// hb[slabel]->SetName(Form("h_bias_%s",slabel.Data()));
-    	// tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) );
-    	tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) , "minos==0");
-    	hb[slabel]->Fit("gaus","L+Q");
-    	Int_t nentries = hb[slabel]->GetEntries();
+        hb[slabel] = new TH1F(Form("h_bias_%s",slabel.Data()), Form("h_bias_%s",slabel.Data()), 151, -15.005, 15.005);
+        //Maybe in this way the upper low x axis is easier, at least in root prompt it works.
+        // hb[slabel] = new TH1F();
+        // hb[slabel]->SetName(Form("h_bias_%s",slabel.Data()));
+        // tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) );
+        tree->Draw(Form("bias>>%s", hb[slabel]->GetName()) , "minos==0");
+        hb[slabel]->Fit("gaus","L+Q");
+        Int_t nentries = hb[slabel]->GetEntries();
 
-    	std::cout << "hb[slabel] " << nentries << std::endl; 
-    	hb[slabel]->Draw();
+        std::cout << "hb[slabel] " << nentries << std::endl;
+        hb[slabel]->Draw();
 
 
-    	// hb[slabel]->GetListOfFunctions()->Print();
-    	gaus[slabel] = (TF1*) hb[slabel]->GetListOfFunctions()->At(0);
-    	prb[0] = 0.5;
-    	med[0] = 0.;
-    	hb[slabel]->GetQuantiles(nq,med,prb);
+        // hb[slabel]->GetListOfFunctions()->Print();
+        gaus[slabel] = (TF1*) hb[slabel]->GetListOfFunctions()->At(0);
+        prb[0] = 0.5;
+        med[0] = 0.;
+        hb[slabel]->GetQuantiles(nq,med,prb);
 
-	TLatex lat;
-	double latx =  hb[slabel]->GetXaxis()->GetXmin()+(hb[slabel]->GetXaxis()->GetXmax()-hb[slabel]->GetXaxis()->GetXmin())/20.;
-	double laty =  hb[slabel]->GetMaximum();
+        TLatex lat;
+        double latx =  hb[slabel]->GetXaxis()->GetXmin()+(hb[slabel]->GetXaxis()->GetXmax()-hb[slabel]->GetXaxis()->GetXmin())/20.;
+        double laty =  hb[slabel]->GetMaximum();
         lat.DrawLatex(latx,laty*0.9, Form("<bias> = %3.3f +/- %3.3f", gaus[slabel]->GetParameter(1),gaus[slabel]->GetParError(1)) );
         lat.DrawLatex(latx,laty*0.8, Form("RMSfit = %3.3f +/- %3.3f", gaus[slabel]->GetParameter(2),gaus[slabel]->GetParError(2)) );
         lat.DrawLatex(latx,laty*0.7, Form("RMS/<bias> = %3.3f", gaus[slabel]->GetParameter(2)/gaus[slabel]->GetParameter(1)) ) ;
-	lat.DrawLatex(latx,laty*0.6, Form("#chi^{2}/N = %3.3f/%d = %3.3f", gaus[slabel]->GetChisquare(),gaus[slabel]->GetNDF(),gaus[slabel]->GetChisquare()/gaus[slabel]->GetNDF()) );
-	lat.DrawLatex(latx,laty*0.5, Form("median = %3.3f", med[0] ) );
-	
-	bcan[slabel]->Update();
-    	bcan[slabel]->SaveAs( Form("%s/bias_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
-	
-    	hc[slabel] = new TH1F(Form("h_coverage_%s",slabel.Data()), Form("h_coverage_%s",slabel.Data()), 151, 0., 15.01);
-    	// tree->Draw(Form("abs(bias)>>%s", hc[slabel]->GetName()) );
-    	tree->Draw(Form("abs(bias)>>%s", hc[slabel]->GetName()) , "minos==0" );
+        lat.DrawLatex(latx,laty*0.6, Form("#chi^{2}/N = %3.3f/%d = %3.3f", gaus[slabel]->GetChisquare(),gaus[slabel]->GetNDF(),gaus[slabel]->GetChisquare()/gaus[slabel]->GetNDF()) );
+        lat.DrawLatex(latx,laty*0.5, Form("median = %3.3f", med[0] ) );
 
-   	hc[slabel]->Draw();
-    	bcan[slabel]->SaveAs( Form("%s/coverage_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
+        bcan[slabel]->Update();
+        bcan[slabel]->SaveAs( Form("%s/bias_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
 
-    	prb[0] = 0.683;
-    	qtl[0] = 0.;
-    	hc[slabel]->GetQuantiles(nq,qtl,prb);
+        hc[slabel] = new TH1F(Form("h_coverage_%s",slabel.Data()), Form("h_coverage_%s",slabel.Data()), 151, 0., 15.01);
+        // tree->Draw(Form("abs(bias)>>%s", hc[slabel]->GetName()) );
+        tree->Draw(Form("abs(bias)>>%s", hc[slabel]->GetName()) , "minos==0" );
 
-    	hd[slabel] = new TH1F(Form("h_deviation_%s",slabel.Data()), Form("h_deviation_%s",slabel.Data()), 501, -100.2, 100.2 );
-    	// tree->Draw(Form("fit-truth>>%s", hd[slabel]->GetName()) );
-    	tree->Draw(Form("fit-truth>>%s", hd[slabel]->GetName()) , "minos==0" );
-    	hd[slabel]->Fit("gaus","L+Q");
+        hc[slabel]->Draw();
+        bcan[slabel]->SaveAs( Form("%s/coverage_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
 
-    	gausd[slabel] = (TF1*) hd[slabel]->GetListOfFunctions()->At(0);
+        prb[0] = 0.683;
+        qtl[0] = 0.;
+        hc[slabel]->GetQuantiles(nq,qtl,prb);
 
-	hd[slabel]->Draw();
+        hd[slabel] = new TH1F(Form("h_deviation_%s",slabel.Data()), Form("h_deviation_%s",slabel.Data()), 501, -100.2, 100.2 );
+        // tree->Draw(Form("fit-truth>>%s", hd[slabel]->GetName()) );
+        tree->Draw(Form("fit-truth>>%s", hd[slabel]->GetName()) , "minos==0" );
+        hd[slabel]->Fit("gaus","L+Q");
 
-	TLatex latd;
-	latx =  hd[slabel]->GetXaxis()->GetXmin()+(hd[slabel]->GetXaxis()->GetXmax()-hd[slabel]->GetXaxis()->GetXmin())/20.;
-	laty =  hd[slabel]->GetMaximum();
+        gausd[slabel] = (TF1*) hd[slabel]->GetListOfFunctions()->At(0);
+
+        hd[slabel]->Draw();
+
+        TLatex latd;
+        latx =  hd[slabel]->GetXaxis()->GetXmin()+(hd[slabel]->GetXaxis()->GetXmax()-hd[slabel]->GetXaxis()->GetXmin())/20.;
+        laty =  hd[slabel]->GetMaximum();
         latd.DrawLatex(latx,laty*0.9, Form("<deviation> = <N_{fit} - N_{true}> = %3.3f +/- %3.3f", gausd[slabel]->GetParameter(1),gausd[slabel]->GetParError(1)) );
         latd.DrawLatex(latx,laty*0.8, Form("RMSfit = %3.3f +/- %3.3f", gausd[slabel]->GetParameter(2),gausd[slabel]->GetParError(2)) );
         latd.DrawLatex(latx,laty*0.7, Form("RMS/<deviation> = %3.3f", gausd[slabel]->GetParameter(2)/gausd[slabel]->GetParameter(1)) ) ;
-	latd.DrawLatex(latx,laty*0.6, Form("#chi^{2}/N = %3.3f/%d = %3.3f", gausd[slabel]->GetChisquare(),gausd[slabel]->GetNDF(),gausd[slabel]->GetChisquare()/gausd[slabel]->GetNDF()) );
-	latd.DrawLatex(latx,laty*0.5, Form("median = %3.3f", medd[0] ) );
+        latd.DrawLatex(latx,laty*0.6, Form("#chi^{2}/N = %3.3f/%d = %3.3f", gausd[slabel]->GetChisquare(),gausd[slabel]->GetNDF(),gausd[slabel]->GetChisquare()/gausd[slabel]->GetNDF()) );
+        latd.DrawLatex(latx,laty*0.5, Form("median = %3.3f", medd[0] ) );
 
-	bcan[slabel]->Update();
+        bcan[slabel]->Update();
 
-    	bcan[slabel]->SaveAs( Form("%s/deviation_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
+        bcan[slabel]->SaveAs( Form("%s/deviation_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
 
-    	medd[0] = 0.;
-    	hd[slabel]->GetQuantiles(nq,medd,prb);
+        medd[0] = 0.;
+        hd[slabel]->GetQuantiles(nq,medd,prb);
 
-    	xfirst = std::min(wind.low,xfirst);
-    	xlast = std::max(wind.high,xlast);
+        xfirst = std::min(wind.low,xfirst);
+        xlast = std::max(wind.high,xlast);
 
-    	pullvals[model][cat].push_back( fabs(medd[0])/(wind.high-wind.low) );
-    	pullvalsErr[model][cat].push_back( gausd[slabel]->GetParameter(2)/(wind.high-wind.low) );
+        pullvals[model][cat].push_back( fabs(medd[0])/(wind.high-wind.low) );
+        pullvalsErr[model][cat].push_back( gausd[slabel]->GetParameter(2)/(wind.high-wind.low) );
 
-     	bpullvals[model][cat].push_back( med[0] );
-   	// bpullvals[model][cat].push_back( gaus[slabel]->GetParameter(1)/(gaus[slabel]->GetParameter(2)) );
-    	windvals[model][cat].push_back( 0.5*(wind.high+wind.low) );
-    	bpullvalsErr[model][cat].push_back( 0. );
-    	windvalsErr[model][cat].push_back( 0.5*(wind.high-wind.low) );
+        bpullvals[model][cat].push_back( med[0] );
+        // bpullvals[model][cat].push_back( gaus[slabel]->GetParameter(1)/(gaus[slabel]->GetParameter(2)) );
+        windvals[model][cat].push_back( 0.5*(wind.high+wind.low) );
+        bpullvalsErr[model][cat].push_back( 0. );
+        windvalsErr[model][cat].push_back( 0.5*(wind.high-wind.low) );
 
-    	tree->GetEntry(0);
-    	//Corrected bias
-    	TString formulakey = Form("%s_%s", cat.c_str(), wind.name.c_str());
-    	// bias_func[slabel] = new TF1( Form("err_correction_%s", slabel.Data()), bias_formula[formulakey], 0., 2e+6);
-    	std::cout << formulakey << " " << bias_formula[formulakey] << std::endl;
-    	bias_func[slabel] = new TF1( Form("err_correction_%s", slabel.Data()), Form("%s", bias_formula[formulakey].Data()), 0., 2e+6);
+        tree->GetEntry(0);
+        //Corrected bias
+        TString formulakey = Form("%s_%s", cat.c_str(), wind.name.c_str());
+        // bias_func[slabel] = new TF1( Form("err_correction_%s", slabel.Data()), bias_formula[formulakey], 0., 2e+6);
+        std::cout << formulakey << " " << bias_formula[formulakey] << std::endl;
+        bias_func[slabel] = new TF1( Form("err_correction_%s", slabel.Data()), Form("%s", bias_formula[formulakey].Data()), 0., 2e+6);
 
-    	tree->SetAlias("berr",Form("(fit-truth)/bias*%f" , std::max(1.,gaus[slabel]->GetParameter(2))));
-    	tree->SetAlias("corr_bias",Form("(fit-truth)/sqrt(berr^2+%f^2)", (bias_func[slabel]->Integral(wind.low,wind.high)*1.0) ) );
+        tree->SetAlias("berr",Form("(fit-truth)/bias*%f" , std::max(1.,gaus[slabel]->GetParameter(2))));
+        tree->SetAlias("corr_bias",Form("(fit-truth)/sqrt(berr^2+%f^2)", (bias_func[slabel]->Integral(wind.low,wind.high)*1.0) ) );
 
-    	hcb[slabel] = new TH1F(Form("h_corr_bias_%s",slabel.Data()), Form("h_corr_bias_%s",slabel.Data()), 501, -5.005, 5.005);
-    	tree->Draw(Form("corr_bias>>%s", hcb[slabel]->GetName()) );
-    	hcb[slabel]->Fit("gaus","L+Q");
+        hcb[slabel] = new TH1F(Form("h_corr_bias_%s",slabel.Data()), Form("h_corr_bias_%s",slabel.Data()), 501, -5.005, 5.005);
+        tree->Draw(Form("corr_bias>>%s", hcb[slabel]->GetName()) );
+        hcb[slabel]->Fit("gaus","L+Q");
 
-    	gauscb[slabel] = (TF1*) hcb[slabel]->GetListOfFunctions()->At(0);
+        gauscb[slabel] = (TF1*) hcb[slabel]->GetListOfFunctions()->At(0);
 
-	hcb[slabel]->Draw();
-    	bcan[slabel]->SaveAs( Form("%s/corr_bias_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
+        hcb[slabel]->Draw();
+        bcan[slabel]->SaveAs( Form("%s/corr_bias_%s_%s.png", ws_dir.c_str(), slabel.Data() ,year.c_str() ) );
 
-    	medcb[0] = 0.;
-    	hcb[slabel]->GetQuantiles(nq,medcb,prb);
+        medcb[0] = 0.;
+        hcb[slabel]->GetQuantiles(nq,medcb,prb);
 
-    	// bcpullvals[model][cat].push_back( gauscb[slabel]->GetParameter(1) );
-	bcpullvals[model][cat].push_back( medcb[0] );
-    	bcpullvalsErr[model][cat].push_back( 0. );
-	  
+        // bcpullvals[model][cat].push_back( gauscb[slabel]->GetParameter(1) );
+        bcpullvals[model][cat].push_back( medcb[0] );
+        bcpullvalsErr[model][cat].push_back( 0. );
+
 
       } //end of loop through bias ntuples
 
@@ -1821,7 +1843,7 @@ void analyzeBias(const std::string &ws_dir, const std::string &out_dir, std::vec
     // canv[cat]->SaveAs((Form("%s/profile_bias_%s_%s.png", ws_dir.c_str(), cat.c_str(), year.c_str())) );
     canv[cat]->SaveAs((Form("%s/profile_bias_%s_%s_log.png", ws_dir.c_str(), cat.c_str(), year.c_str())) );
 
-   //------------------------------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------------------------------
     //Now with the corrected pull, nfit-ntrue/s+b
     cbcanv[cat] = new TCanvas(Form("profile_corr_pull_%s",cat.c_str()),Form("profile_corr_pull_%s",cat.c_str()));
     cbcanv[cat]->SetLogx();
@@ -1891,16 +1913,16 @@ theFitResult theFit(RooAbsPdf *pdf, RooDataSet *data, double *NLL, int *stat_t, 
     if (ntries>=MaxTries) break;
 
     fitTest = pdf->fitTo(*data,
-			 RooFit::Minimizer("Minuit2","minimize"),//"migrad"
-			 RooFit::Offset(kTRUE),
-			 RooFit::Strategy(2),
-			 RooFit::PrintLevel(-1),
-			 //RooFit::Warnings(false),
-			 RooFit::SumW2Error(kTRUE),
-			 // RooFit::Range(minMassForFitBkg,maxMassForFitBkg),
-			 RooFit::Minos(kTRUE),//RooFit::Hesse(kFALSE)
-			 RooFit::Save(kTRUE)
-			 ); //FIXME
+                         RooFit::Minimizer("Minuit2","minimize"),//"migrad"
+                         RooFit::Offset(kTRUE),
+                         RooFit::Strategy(2),
+                         RooFit::PrintLevel(-1),
+                         //RooFit::Warnings(false),
+                         RooFit::SumW2Error(kTRUE),
+                         // RooFit::Range(minMassForFitBkg,maxMassForFitBkg),
+                         RooFit::Minos(kTRUE),//RooFit::Hesse(kFALSE)
+                         RooFit::Save(kTRUE)
+                         ); //FIXME
 
     stat = fitTest->status();
     minnll = fitTest->minNll();
@@ -2128,35 +2150,35 @@ gof PlotFitResult(RooWorkspace* w, TCanvas* ctmp, int c, RooRealVar* mgg, RooDat
       double lowedge = plotPhotonsMassBkg[c]->GetXaxis()->GetBinLowEdge(i);
       double upedge  = plotPhotonsMassBkg[c]->GetXaxis()->GetBinUpEdge(i);
       double center  = plotPhotonsMassBkg[c]->GetXaxis()->GetBinCenter(i);
-	
+
       double nombkg = nomcurve->interpolate(center);
       nlim->setVal(nombkg);
       mgg->setRange("errRange",lowedge,upedge);
       RooAbsPdf *epdf = 0;
       epdf = new RooExtendPdf("epdf","",*cpdf,*nlim,"errRange");
-	
+
       RooAbsReal *nll = epdf->createNLL(*(data),Extended());
       RooMinimizer minim(*nll);
       minim.setStrategy(0);
       // double clone = 1.0 - 2.0*RooStats::SignificanceToPValue(1.0);
       double cltwo = 1.0 - 2.0*RooStats::SignificanceToPValue(2.0);
-	
+
       minim.migrad();
       minim.minos(*nlim);
       printf("errlo = %5f, errhi = %5f\n",nlim->getErrorLo(),nlim->getErrorHi());
-	
+
       onesigma->SetPoint(i-1,center,nombkg);
       onesigma->SetPointError(i-1,0.,0.,-nlim->getErrorLo(),nlim->getErrorHi());
-	
+
       minim.setErrorLevel(0.5*pow(ROOT::Math::normal_quantile(1-0.5*(1-cltwo),1.0), 2)); // the 0.5 is because qmu is -2*NLL
       // eventually if cl = 0.95 this is the usual 1.92!      
-	
+
       minim.migrad();
       minim.minos(*nlim);
-	
+
       twosigma->SetPoint(i-1,center,nombkg);
       twosigma->SetPointError(i-1,0.,0.,-nlim->getErrorLo(),nlim->getErrorHi());
-	
+
       delete nll;
       delete epdf;
     }
@@ -2300,7 +2322,7 @@ gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::s
   // The first thing is to check if the number of entries in any bin is < 5 
   // if so, we don't rely on asymptotic approximations
  
-    // if ( ((double)data->sumEntries()/nBinsForMass < 5) || gofToys ){ 
+  // if ( ((double)data->sumEntries()/nBinsForMass < 5) || gofToys ){
   if ( gofToys ){ 
 
     std::cout << "[INFO] Running toys for GOF test " << std::endl;
@@ -2313,13 +2335,13 @@ gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::s
     int npass =0;
     std::vector<double> toy_chi2;
     for (int itoy = 0 ; itoy < ntoys ; itoy++){
-    //  std::cout << "[INFO] " <<Form("\t.. %.1f %% complete\r",100*float(itoy)/ntoys) << std::flush;
+      //  std::cout << "[INFO] " <<Form("\t.. %.1f %% complete\r",100*float(itoy)/ntoys) << std::flush;
       if (itoy%10==0){std::cout << "toy " << itoy << std::endl;}
       params->assignValueOnly(preParams);
       int nToyEvents = RandomGen->Poisson(ndata);
       RooDataHist *toy = pdf->generateBinned(RooArgSet(*mass),nToyEvents,0,1);
       //RooDataSet *toy = pdf->generate(RooArgSet(*mass),nToyEvents,0,1);
-   //   pdf->fitTo(*toy,RooFit::Minimizer("Minuit2","minimize"),RooFit::Minos(0),RooFit::Hesse(0),RooFit::PrintLevel(-1),RooFit::Strategy(2),RooFit::Offset(kTRUE)); 
+      //   pdf->fitTo(*toy,RooFit::Minimizer("Minuit2","minimize"),RooFit::Minos(0),RooFit::Hesse(0),RooFit::PrintLevel(-1),RooFit::Strategy(2),RooFit::Offset(kTRUE));
       pdf->fitTo(*toy,RooFit::Minimizer("Minuit2","minimize"),RooFit::PrintLevel(-1),RooFit::Strategy(2),RooFit::Offset(kTRUE));
 
       RooPlot *plot_t = mass->frame();
@@ -2336,7 +2358,7 @@ gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::s
 
     TCanvas *can = new TCanvas();
     can->cd();
-	double medianChi2 = toy_chi2[(int)(((float)ntoys)/2)];
+    double medianChi2 = toy_chi2[(int)(((float)ntoys)/2)];
     double rms = TMath::Sqrt(medianChi2);
 
     TH1F toyhist(Form("gofTest_%s.pdf",pdf->GetName()),";Chi2;",50,medianChi2-5*rms,medianChi2+5*rms);
@@ -2352,8 +2374,8 @@ gof getGoodnessOfFit(RooRealVar *mass, RooAbsPdf *mpdf, RooDataSet *data, std::s
 
     // back to best fit 	
     params->assignValueOnly(preParams);
-	std::cout << "[INFO] Probability from toys " << prob << " Probability from TMath::Prob " << TMath::Prob(chi2*(nBinsForMass-np),nBinsForMass-np)<< std::endl;
-  	} else {  prob = TMath::Prob(chi2*(nBinsForMass-np),nBinsForMass-np); }
+    std::cout << "[INFO] Probability from toys " << prob << " Probability from TMath::Prob " << TMath::Prob(chi2*(nBinsForMass-np),nBinsForMass-np)<< std::endl;
+  } else {  prob = TMath::Prob(chi2*(nBinsForMass-np),nBinsForMass-np); }
   std::cout << "[INFO] Chi2 in Observed =  " << chi2*(nBinsForMass-np) << std::endl;
   std::cout << "[INFO] p-value  =  " << prob << std::endl;
 
@@ -2436,19 +2458,19 @@ std::map<std::string, std::vector<window> > readJson(std::string inputfile, std:
 
       for (ptree::const_iterator kt = jt->second.begin(); kt != jt->second.end(); ++kt) {
 
-	sel_subnode = kt->first;
-	window tmpwin;
+        sel_subnode = kt->first;
+        window tmpwin;
 
 
-	tmpwin.low = std::stod( root.get<std::string>( Form("%s.%s.%s.windlow",modelin.c_str(), sel_node.c_str(), sel_subnode.c_str() ) ) ); 
-	tmpwin.high = std::stod( root.get<std::string>( Form("%s.%s.%s.windhigh",modelin.c_str(), sel_node.c_str(), sel_subnode.c_str() ) ) ); 
-	tmpwin.norm    = std::stod( root.get<std::string>( Form("%s.%s.%s.windnorm",modelin.c_str(), sel_node.c_str(), sel_subnode.c_str() ) ) ) ; 
-	tmpwin.name    = sel_subnode; 
-	tmpwin.truemodel = modelin;
+        tmpwin.low = std::stod( root.get<std::string>( Form("%s.%s.%s.windlow",modelin.c_str(), sel_node.c_str(), sel_subnode.c_str() ) ) );
+        tmpwin.high = std::stod( root.get<std::string>( Form("%s.%s.%s.windhigh",modelin.c_str(), sel_node.c_str(), sel_subnode.c_str() ) ) );
+        tmpwin.norm    = std::stod( root.get<std::string>( Form("%s.%s.%s.windnorm",modelin.c_str(), sel_node.c_str(), sel_subnode.c_str() ) ) ) ;
+        tmpwin.name    = sel_subnode;
+        tmpwin.truemodel = modelin;
     
-	windows[sel_node].push_back( tmpwin  );
-	
-	std::cout << tmpwin.low << " " << tmpwin.high << " " << tmpwin.norm << " "  << tmpwin.name <<  " "  << tmpwin.truemodel << " "  <<sel_node  << std::endl;
+        windows[sel_node].push_back( tmpwin  );
+
+        std::cout << tmpwin.low << " " << tmpwin.high << " " << tmpwin.norm << " "  << tmpwin.name <<  " "  << tmpwin.truemodel << " "  <<sel_node  << std::endl;
       } //end of loop over windows
     }// end of loop over categories
   }//end of loop over models
@@ -2507,27 +2529,27 @@ std::map<TString , TString > buildBiasTerm(std::string year, std::vector<std::st
       TString thekey = Form("%s_%s", cat.c_str(), wind.name.c_str()); 
 
       if (paper == "EXO-17-017"){
-      	if (cat=="EBEB"){
-	  formula[thekey] = Form("x<=650. ? 0.125/%f : pow(x,2.0-0.36*log(x))/%f ", luminosityscale, luminosityscale);
-      	  // //Up to 650 GeV
-      	  // if (wind.high <= 650.){ formula[thekey] = Form("0.125/%f", luminosityscale); } 
-      	  // //Above 650 GeV
-      	  // else{ formula[thekey] = Form("(pow(x,2.0-0.36*log(x)))/%f", luminosityscale);}
-      	} else if (cat=="EBEE"){
-	  formula[thekey] = Form("x<=750. ? 0.2/%f : (pow(x/600.,-3.5-0.2*log(x/600.))/%f) +15e-5", luminosityscale, luminosityscale);
-      	  // //Up to 750 GeV
-      	  // if (wind.high <= 750.){ formula[thekey] = Form("0.2/%f", luminosityscale); } 
-      	  // //Above 750 GeV
-      	  // else{ formula[thekey] = Form("(pow(x/600.,-3.5-0.2*log(x))+15e-5)/%f", luminosityscale);}
-      	}
+        if (cat=="EBEB"){
+          formula[thekey] = Form("x<=650. ? 0.125/%f : pow(x,2.0-0.36*log(x))/%f ", luminosityscale, luminosityscale);
+          // //Up to 650 GeV
+          // if (wind.high <= 650.){ formula[thekey] = Form("0.125/%f", luminosityscale); }
+          // //Above 650 GeV
+          // else{ formula[thekey] = Form("(pow(x,2.0-0.36*log(x)))/%f", luminosityscale);}
+        } else if (cat=="EBEE"){
+          formula[thekey] = Form("x<=750. ? 0.2/%f : (pow(x/600.,-3.5-0.2*log(x/600.))/%f) +15e-5", luminosityscale, luminosityscale);
+          // //Up to 750 GeV
+          // if (wind.high <= 750.){ formula[thekey] = Form("0.2/%f", luminosityscale); }
+          // //Above 750 GeV
+          // else{ formula[thekey] = Form("(pow(x/600.,-3.5-0.2*log(x))+15e-5)/%f", luminosityscale);}
+        }
       } //end of EXO-17-017 choice
       else if (paper == "EXO-16-027"){
-      	if (cat=="EBEB"){ formula[thekey] = Form("pow(x,2.2-0.4*log(x))/%f", luminosityscale);}
-      	else if (cat=="EBEE"){formula[thekey] = Form("((0.1*(x/600.)^(-5))/%f) + 2e-6", luminosityscale);}
+        if (cat=="EBEB"){ formula[thekey] = Form("pow(x,2.2-0.4*log(x))/%f", luminosityscale);}
+        else if (cat=="EBEE"){formula[thekey] = Form("((0.1*(x/600.)^(-5))/%f) + 2e-6", luminosityscale);}
       } //end of EXO-16-027 choice
       else if (paper == "NEW"){
-	if (cat=="EBEB"){formula[thekey] = Form("x<=650. ? 8.3/%f : (pow(x,3.6-0.51*log(x))/%f)", luminosityscale, luminosityscale);} 
-	else if (cat=="EBEE"){ formula[thekey] = Form("x<=650. ? 8.3/%f : (pow(x,3.6-0.51*log(x))/%f)", luminosityscale, luminosityscale);}
+        if (cat=="EBEB"){formula[thekey] = Form("x<=650. ? 8.3/%f : (pow(x,3.6-0.51*log(x))/%f)", luminosityscale, luminosityscale);}
+        else if (cat=="EBEE"){ formula[thekey] = Form("x<=650. ? 8.3/%f : (pow(x,3.6-0.51*log(x))/%f)", luminosityscale, luminosityscale);}
       }//end of new choice
     }//end of loop over windows
   }//end of loop over categories

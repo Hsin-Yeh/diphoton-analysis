@@ -316,7 +316,7 @@ void runAllFits(const std::string &year, const std::string &ws_indir, const std:
     //We will process one year each time
     if ( isample.find(year) == std::string::npos ) continue; 
     if ( isample.find(checksample) == std::string::npos && checksample!="all") continue;
-    if (isample.find("RSGraviton") == std::string::npos) { continue; }
+    // if (isample.find("RSGraviton") == std::string::npos) { continue; }
 
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
     runfits(year, ws_indir, ws_outdir, isample, resFileasimovfit, resFilerecofit);
