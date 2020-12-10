@@ -12,8 +12,8 @@ setenv masslist "550 575 600 625 650 675 700 725 750 775 800 825 850 875 900 925
 #setenv masslist "555 580 605 630"
 
 # Method in this script are: AsymptoticLimits, ExpSignificance, ExpSignificanceWithPval, ObsSignificance, ObsSignificanceWithPval 
-#setenv methods "ObsSignificance"
-setenv methods "ExpSignificance"
+setenv methods "ObsSignificance"
+# setenv methods "AsymptoticLimits"
 
 foreach method ($methods)
 
