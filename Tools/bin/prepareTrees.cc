@@ -78,7 +78,8 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     std::string sampleCut = cuts[region];
     if ( isample.find(year) == std::string::npos ) continue; 
     //Run only on RS,HeavyHiggs samples and data
-    //if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
+    // if( isample.find("RSGravitonToGammaGamma") == std::string::npos &&
+    // 	isample.find("RSGravToGG") == std::string::npos ) continue;
     if( isample.find("GluGluSpin0ToGammaGamma") == std::string::npos ) continue;
     // if( isample.find("data_"+year) == std::string::npos ) continue;
     std::cout << "Processing " << isample << std::endl;
@@ -133,6 +134,8 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     newtree2->SetBranchStatus("Event",1);
     newtree2->SetBranchStatus("Diphoton",1);
     newtree2->SetBranchStatus("GenDiphoton",1);
+    newtree2->SetBranchStatus("Photon1",1);
+    newtree2->SetBranchStatus("Photon2",1);
 
     TTree *finaltree = newtree2->CloneTree(0);
     finaltree->CopyEntries(newtree2);
@@ -159,6 +162,11 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     //GenDiphoton branch
     Double_t mggGen,Genqt,GendeltaPhi,GendeltaEta,GendeltaR,GencosThetaStar,GencosThetaStar_old,GenchiDiphoton;
     Bool_t GenisEBEB,GenisEBEE,GenisEEEB,GenisEEEE;
+    //Photon1 branch
+    Double_t ph1energyScaleStatUp, ph1energyScaleStatDown, ph1energyScaleSystUp, ph1energyScaleSystDown, ph1energyScaleGainUp, ph1energyScaleGainDown, ph1energySigmaUp, ph1energySigmaDown;
+    //Photon2 branch
+    Double_t ph2energyScaleStatUp, ph2energyScaleStatDown, ph2energyScaleSystUp, ph2energyScaleSystDown, ph2energyScaleGainUp, ph2energyScaleGainDown, ph2energySigmaUp, ph2energySigmaDown;
+  
     //One more branch for the category
     // BB: 0 , BE:1
     Int_t eventClass; 
@@ -220,6 +228,25 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     HighMassDiphotonTree->Branch("GenisEBEE",&GenisEBEE,"GenisEBEE/O");
     HighMassDiphotonTree->Branch("GenisEEEB",&GenisEEEB,"GenisEEEB/O");
     HighMassDiphotonTree->Branch("GenisEEEE",&GenisEEEE,"GenisEEEE/O");
+    //Photon1 branch
+    HighMassDiphotonTree->Branch("ph1energyScaleStatUp",&ph1energyScaleStatUp,"ph1energyScaleStatUp/D");
+    HighMassDiphotonTree->Branch("ph1energyScaleStatDown",&ph1energyScaleStatDown,"ph1energyScaleStatDown/D");
+    HighMassDiphotonTree->Branch("ph1energyScaleSystUp",&ph1energyScaleSystUp,"ph1energyScaleSystUp/D");
+    HighMassDiphotonTree->Branch("ph1energyScaleSystDown",&ph1energyScaleSystDown,"ph1energyScaleSystDown/D");
+    HighMassDiphotonTree->Branch("ph1energyScaleGainUp",&ph1energyScaleGainUp,"ph1energyScaleGainUp/D");
+    HighMassDiphotonTree->Branch("ph1energyScaleGainDown",&ph1energyScaleGainDown,"ph1energyScaleGainDown/D");
+    HighMassDiphotonTree->Branch("ph1energySigmaUp",&ph1energySigmaUp,"ph1energySigmaUp/D");
+    HighMassDiphotonTree->Branch("ph1energySigmaDown",&ph1energySigmaDown,"ph1energySigmaDown/D");
+    //Photon2 branch
+    HighMassDiphotonTree->Branch("ph2energyScaleStatUp",&ph2energyScaleStatUp,"ph2energyScaleStatUp/D");
+    HighMassDiphotonTree->Branch("ph2energyScaleStatDown",&ph2energyScaleStatDown,"ph2energyScaleStatDown/D");
+    HighMassDiphotonTree->Branch("ph2energyScaleSystUp",&ph2energyScaleSystUp,"ph2energyScaleSystUp/D");
+    HighMassDiphotonTree->Branch("ph2energyScaleSystDown",&ph2energyScaleSystDown,"ph2energyScaleSystDown/D");
+    HighMassDiphotonTree->Branch("ph2energyScaleGainUp",&ph2energyScaleGainUp,"ph2energyScaleGainUp/D");
+    HighMassDiphotonTree->Branch("ph2energyScaleGainDown",&ph2energyScaleGainDown,"ph2energyScaleGainDown/D");
+    HighMassDiphotonTree->Branch("ph2energySigmaUp",&ph2energySigmaUp,"ph2energySigmaUp/D");
+    HighMassDiphotonTree->Branch("ph2energySigmaDown",&ph2energySigmaDown,"ph2energySigmaDown/D");
+    
     //Category branch 
     HighMassDiphotonTree->Branch("eventClass",&eventClass,"eventClass/I");
 
@@ -281,6 +308,25 @@ void prepare(const std::string &region, const std::string &year, const std::stri
       GenisEBEE		        = finaltree->GetBranch("GenDiphoton")->GetLeaf("isEBEE")->GetValue(0);
       GenisEEEB		        = finaltree->GetBranch("GenDiphoton")->GetLeaf("isEEEB")->GetValue(0);
       GenisEEEE                 = finaltree->GetBranch("GenDiphoton")->GetLeaf("isEEEE")->GetValue(0);
+      //Photon1 branch
+      ph1energyScaleStatUp      = finaltree->GetBranch("Photon1")->GetLeaf("energyScaleStatUp")->GetValue(0);		
+      ph1energyScaleStatDown    = finaltree->GetBranch("Photon1")->GetLeaf("energyScaleStatDown")->GetValue(0);		  
+      ph1energyScaleSystUp      = finaltree->GetBranch("Photon1")->GetLeaf("energyScaleSystUp")->GetValue(0);	 
+      ph1energyScaleSystDown    = finaltree->GetBranch("Photon1")->GetLeaf("energyScaleSystDown")->GetValue(0);	   
+      ph1energyScaleGainUp      = finaltree->GetBranch("Photon1")->GetLeaf("energyScaleGainUp")->GetValue(0);		  
+      ph1energyScaleGainDown    = finaltree->GetBranch("Photon1")->GetLeaf("energyScaleGainDown")->GetValue(0);	  
+      ph1energySigmaUp          = finaltree->GetBranch("Photon1")->GetLeaf("energySigmaUp")->GetValue(0);
+      ph1energySigmaDown        = finaltree->GetBranch("Photon1")->GetLeaf("energySigmaDown")->GetValue(0);
+      //Photon2 branch      
+      ph2energyScaleStatUp      = finaltree->GetBranch("Photon2")->GetLeaf("energyScaleStatUp")->GetValue(0);		
+      ph2energyScaleStatDown    = finaltree->GetBranch("Photon2")->GetLeaf("energyScaleStatDown")->GetValue(0);		  
+      ph2energyScaleSystUp      = finaltree->GetBranch("Photon2")->GetLeaf("energyScaleSystUp")->GetValue(0);	 
+      ph2energyScaleSystDown    = finaltree->GetBranch("Photon2")->GetLeaf("energyScaleSystDown")->GetValue(0);	   
+      ph2energyScaleGainUp      = finaltree->GetBranch("Photon2")->GetLeaf("energyScaleGainUp")->GetValue(0);		  
+      ph2energyScaleGainDown    = finaltree->GetBranch("Photon2")->GetLeaf("energyScaleGainDown")->GetValue(0);	  
+      ph2energySigmaUp          = finaltree->GetBranch("Photon2")->GetLeaf("energySigmaUp")->GetValue(0);
+      ph2energySigmaDown        = finaltree->GetBranch("Photon2")->GetLeaf("energySigmaDown")->GetValue(0);
+	
       //Event category
       if (region == "BB"){
 	eventClass = 0;

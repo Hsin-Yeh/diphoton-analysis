@@ -63,7 +63,8 @@ struct theGraphs{
   double funp0;
   double funp1;
   double funp2;
-  
+  double funp3;
+
 };
 
 //-----------------------------------------------------------------------------------
@@ -95,6 +96,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 void plotefficiency(TCanvas* cc, std::map<std::string, std::vector<eff_reco> > coup_eff_reco, bool doave);
 TGraphErrors* graph(std::string coup, std::map<std::string, std::vector<eff_reco> > quant);
 void plotexAs(std::map<std::string, RooProduct *> exAs, RooRealVar* MH, RooRealVar* kmpl, std::vector<std::string> cats, std::vector<std::string> coups, std::string insigname, std::string outplots);
+void plotexAs(std::map<std::string, std::map<std::string, RooProduct *> > exAs, RooRealVar* MH, RooRealVar* kmpl, std::vector<std::string> cats, std::vector<std::string> coups, std::string insigname, std::string outplots);
 std::vector<theGraphs> plot(TCanvas* cc, std::string coup, std::map<std::string, std::vector<eff_reco> > quantBB, std::map<std::string, std::vector<eff_reco> > quantBE , std::map<std::string, std::vector<eff_reco> > quantTotal, bool doave, std::string label, std::string insigname);
 std::map<std::string, std::vector<eff_reco> > reduce(std::map<std::string, std::vector<eff_reco> > coup_eff_reco, std::vector<std::string>coups, std::string cut);
 void plotallcoups(TCanvas* ccallcoup, std::vector<theGraphs> graphsofeff001, std::vector<theGraphs> graphsofeff01, std::vector<theGraphs> graphsofeff02, std::string insigname);
@@ -179,15 +181,15 @@ int main(int argc, char *argv[])
   cats.push_back("EBEE");
   cats.push_back("All");
 
-  for (auto cp : coups){
+  // for (auto cp : coups){
     //Input
-    fin[cp] = TFile::Open( Form("%s/SignalParametricShapes_ws_%s.root", inputworkspaces.c_str(), cp.c_str()) );
-    wsin[cp] = (RooWorkspace*) fin[cp]->Get("ws_inputs");
-    std::cout<< wsin[cp]->var("mgg")->getBinning().numBins()<< std::endl;
+    // fin[cp] = TFile::Open( Form("%s/SignalParametricShapes_ws_%s.root", inputworkspaces.c_str(), cp.c_str()) );
+    // wsin[cp] = (RooWorkspace*) fin[cp]->Get("ws_inputs");
+    // std::cout<< wsin[cp]->var("mgg")->getBinning().numBins()<< std::endl;
     //Output
-    fout[cp] = new TFile(Form("%s/%s_%s_%s.root", outputworkspaces.c_str(), insigname.c_str(),cp.c_str(),year.c_str()), "RECREATE");
-    ws_out[cp] = new RooWorkspace("wtemplates","wtemplates");
-  }
+  //   fout[cp] = new TFile(Form("%s/%s_%s_%s.root", outputworkspaces.c_str(), insigname.c_str(),cp.c_str(),year.c_str()), "RECREATE");
+  //   ws_out[cp] = new RooWorkspace("wtemplates","wtemplates");
+  // }
   
   //Here we take note of the pdfs we are going to read
   std::vector<pdfs> thepdfs;  
@@ -206,14 +208,14 @@ int main(int argc, char *argv[])
   }
 
   //Parameters in the input workspace. 
-  std::map<std::string , std::vector<std::string> > params; //[cat][params]
-  std::map<std::string , std::string> reparam_by_cat;
-  for (auto cat : cats){
-    params[cat].push_back( Form("thetaSmear%s",cat.c_str() ) ); 
-    params[cat].push_back( "deltaSmear" ); 
-    reparam_by_cat[ Form("thetaSmear%s",cat.c_str() ) ] = Form("thetaSmear%s_13TeV",cat.c_str() );
-    reparam_by_cat[ "deltaSmear" ] = Form("deltaSmear%s",cat.c_str() );
-  }
+  // std::map<std::string , std::vector<std::string> > params; //[cat][params]
+  // std::map<std::string , std::string> reparam_by_cat;
+  // for (auto cat : cats){
+  //   params[cat].push_back( Form("thetaSmear%s",cat.c_str() ) ); 
+  //   params[cat].push_back( "deltaSmear" ); 
+  //   reparam_by_cat[ Form("thetaSmear%s",cat.c_str() ) ] = Form("thetaSmear%s_13TeV",cat.c_str() );
+  //   reparam_by_cat[ "deltaSmear" ] = Form("deltaSmear%s",cat.c_str() );
+  // }
 
   //Observables
   // std::map<std::string , RooRealVar * > obsCat;
@@ -247,11 +249,11 @@ int main(int argc, char *argv[])
   std::cout<< "++++++++++++++++++++++++++++++++"<< std::endl; 
 
   //This is the uncertainty used on the scale <<<==== CHECK THIS
-  double unc = 0.01;
-  std::map<std::string , RooRealVar * > thetaScale;
-  std::map<std::string , RooRealVar * > deltaScale;
-  std::map<std::string , RooArgList * > rooList;
-  std::map<std::string , RooFormulaVar * > scaledMean;
+  // double unc = 0.01;
+  // std::map<std::string , RooRealVar * > thetaScale;
+  // std::map<std::string , RooRealVar * > deltaScale;
+  // std::map<std::string , RooArgList * > rooList;
+  // std::map<std::string , RooFormulaVar * > scaledMean;
   //========================================================================
   //========================================================================
   //FIRST PART: Create or read json file with efficiency (e), acceptance (A)
@@ -387,6 +389,7 @@ int main(int argc, char *argv[])
 
   //Ready to create the RooPolyVar for the different categories
   std::map<std::string, RooPolyVar *> effMX; //[cat][ RooPolyVar *]
+  std::map<std::string , RooSpline1D *> effMXSplines;//[cat][RooSpline1D  *]
   std::map<std::string, TF1 *> ff; 
   RooArgList *eff_coef;
 
@@ -417,6 +420,9 @@ int main(int argc, char *argv[])
     ave_graphs[ct]->Draw("APE");
     ff[mname]->Draw("same");
 
+    RooSpline1D *effMXSpline = graphToSpline(Form("eff_%s",ct.c_str()), ave_graphs[ct] , MH , xmin, upperxmax);
+    effMXSplines[ct] = effMXSpline;
+
     TPaveText *pt2 = new TPaveText(.6,.65,.9,0.8,"NDC");
     pt2->AddText(Form("%s GeV Eff(mX) Polynomial",mname.c_str()));
     pt2->Draw();
@@ -434,8 +440,22 @@ int main(int argc, char *argv[])
 
     can[mname]->SaveAs(Form("%s/EFF_MX_%s_%s.png",outplots.c_str(), insigname.c_str(), mname.c_str()));
 
+
     // can[mname]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/EFF_MX_%s.png",mname.c_str()));
 
+    // mname += "spline";
+    // can[mname] = new TCanvas(Form("can_cat_%s_spline", ct.c_str()),Form("can_cat_%s_spline", ct.c_str()));
+    // can[mname]->cd();
+
+    // //For debugging to see what this spline looks like
+    // plotsplines(can[mname], exASplines[ct],  MH ,xmin, upperxmax, plabel);
+    // plotsplines( TCanvas* cs, RooSpline1D * Spline, RooRealVar* MH, double xmin, double upperxmax, ){
+
+    // can[mname]->SaveAs(Form("%s/EFF_MX_%s_%s.png",outplots.c_str(), insigname.c_str(), mname.c_str()));
+
+  //     cans[Form("%s_%s", gr.coup.c_str(), gr.cat.c_str())]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/out
+
+    
   }
     
   //========================================================================
@@ -451,9 +471,10 @@ int main(int argc, char *argv[])
   //category, so it is [cat][0] is p0 and so on. 
   std::map<std::string , std::vector<TGraphErrors*> > acc_p; 
   std::map<std::string , std::vector<TF1*> > fit_acc_p; 
+  std::map<std::string , std::map<std::string , RooSpline1D *> >accSplines;//[coup][cat][RooSpline1D  *]
 
   std::string plabel;
-  std::map<std::string , std::vector<double> > p0vals, p1vals, p2vals, p0valsErr, p1valsErr, p2valsErr, xvals, xvalsErr;
+  std::map<std::string , std::vector<double> > p0vals, p1vals, p2vals, p3vals, p0valsErr, p1valsErr, p2valsErr, p3valsErr, xvals, xvalsErr;
   
   //remap names to match the ones in the signal pdf
   std::map<std::string , std::string > remapnames; 
@@ -471,10 +492,10 @@ int main(int argc, char *argv[])
     for(auto gr : grs.second) {
 
       double curcoup = 0.;
-
-      if ( gr.coup == "kMpl001" || gr.coup == "0p014"){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}"; curcoup = 1.4 * pow(10.,-4);}
-      else if ( gr.coup == "kMpl01" || gr.coup == "1p4"){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}"; curcoup = 1.4 * pow(10.,-2);}
-      else if ( gr.coup == "kMpl02" || gr.coup == "5p6"){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}"; curcoup = 5.6 * pow(10.,-2);}
+      //6000,9000,9000 for 17/18
+      if ( gr.coup == "kMpl001" || gr.coup == "0p014"){upperxmax = 3500 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}"; curcoup = 1.4 * pow(10.,-4);}
+      else if ( gr.coup == "kMpl01" || gr.coup == "1p4"){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}"; curcoup = 1.4 * pow(10.,-2);}
+      else if ( gr.coup == "kMpl02" || gr.coup == "5p6"){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}"; curcoup = 5.6 * pow(10.,-2);}
       else {
 	std::cout << "Only 'kMpl001', 'kMpl01', 'kMpl02', '0p014', '1p4' and '5p6' are allowed. " << std::endl;
 	exit(1);
@@ -485,11 +506,15 @@ int main(int argc, char *argv[])
       p0vals[remapnames[gr.cat]].push_back( gr.funp0 );
       p1vals[remapnames[gr.cat]].push_back( gr.funp1 );
       p2vals[remapnames[gr.cat]].push_back( gr.funp2 );
+      p3vals[remapnames[gr.cat]].push_back( gr.funp3 );
       xvals[remapnames[gr.cat]].push_back( curcoup );
       p0valsErr[remapnames[gr.cat]].push_back( 0. );
       p1valsErr[remapnames[gr.cat]].push_back( 0. );
       p2valsErr[remapnames[gr.cat]].push_back( 0. );
+      p3valsErr[remapnames[gr.cat]].push_back( 0. );
       xvalsErr[remapnames[gr.cat]].push_back( 0. );
+
+      accSplines[gr.coup][remapnames[gr.cat]] = graphToSpline(Form("acc_%s_%s",gr.coup.c_str(),remapnames[gr.cat].c_str()), gr.thegraph , MH , xmin, upperxmax);
 
     }
   }
@@ -500,6 +525,7 @@ int main(int argc, char *argv[])
     acc_p[cat].push_back( new TGraphErrors( p0vals[cat].size(), &xvals[cat][0], &p0vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
     acc_p[cat].push_back( new TGraphErrors( p1vals[cat].size(), &xvals[cat][0], &p1vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
     acc_p[cat].push_back( new TGraphErrors( p2vals[cat].size(), &xvals[cat][0], &p2vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
+    acc_p[cat].push_back( new TGraphErrors( p3vals[cat].size(), &xvals[cat][0], &p3vals[cat][0], &xvalsErr[cat][0], &p0valsErr[cat][0] ) ); 
 
   }
   
@@ -579,6 +605,26 @@ int main(int argc, char *argv[])
 
     acckMpl[cat].push_back( new RooPolyVar( Form("acc_%s_2",cat.c_str()), Form("acc_%s_2",cat.c_str()), *kmpl, *coeff_coeffs[cat][2], 0) );
 
+    //p3
+    // cans[Form("%s_p3",cat.c_str())] = new TCanvas(Form("%s_p3",cat.c_str()), Form("%s_p3",cat.c_str()) );
+    // cans[Form("%s_p3",cat.c_str())]->cd();
+    // fit_acc_p[cat].push_back( new TF1(Form("fit_acc_%s_p3",cat.c_str()), "pol2", xmin, upperxmax ) );
+    // acc_p[cat.c_str()][3]->Fit(Form("fit_acc_%s_p3",cat.c_str()), "R");
+    // acc_p[cat.c_str()][3]->GetYaxis()->SetTitle("p3");
+    // acc_p[cat.c_str()][3]->GetXaxis()->SetTitle("kMpl");
+    // if (cat == "EBEB") {acc_p[cat.c_str()][3]->GetYaxis()->SetRangeUser(-16. * pow(10., -9.), -7. * pow(10., -9.) );}
+    // else if (cat == "EBEE") {acc_p[cat.c_str()][3]->GetYaxis()->SetRangeUser(3.8 * pow(10., -9.), 5.5 * pow(10., -9.) );}
+    // else if (cat == "All") {acc_p[cat.c_str()][3]->GetYaxis()->SetRangeUser(1. * pow(10., -10.), -8. * pow(10., -9.) );}
+    
+    // acc_p[cat.c_str()][3]->Draw("APE");
+    // fit_acc_p[cat][3]->Draw("same");
+
+    // cans[Form("%s_p3",cat.c_str())]->SaveAs(Form("%s/acc_%s_%s_p3.png",outplots.c_str(),insigname.c_str(),cat.c_str()));
+
+    // coeff_coeffs[cat].push_back( new RooArgList( RooFit::RooConst(fit_acc_p[cat][3]->GetParameter(0)) , RooFit::RooConst(fit_acc_p[cat][3]->GetParameter(1)) , RooFit::RooConst(fit_acc_p[cat][3]->GetParameter(2)) ) );
+
+    // acckMpl[cat].push_back( new RooPolyVar( Form("acc_%s_3",cat.c_str()), Form("acc_%s_3",cat.c_str()), *kmpl, *coeff_coeffs[cat][3], 0) );
+
     acc_coeffs[cat] =  new RooArgList( *acckMpl[cat][0], *acckMpl[cat][1], *acckMpl[cat][2]);
 
 
@@ -596,6 +642,7 @@ int main(int argc, char *argv[])
   //Ready to create the exA RooPolyVar
   std::map<std::string, RooPolyVar *> acceptanceMHandkMpl; //[cat][ RooPolyVar *]
   std::map<std::string, RooProduct *> exAs; 
+  std::map<std::string, std::map<std::string, RooProduct *> > exAsSplines; 
 
   for (auto cat : cats){
 
@@ -603,10 +650,18 @@ int main(int argc, char *argv[])
     
     exAs[cat] = new RooProduct( Form("eff_acc_%s", cat.c_str()), Form("eff_acc_%s", cat.c_str()) , RooArgList(*effMX[cat],*acceptanceMHandkMpl[cat]) );
 
+    for (auto coup : coups){
+      effMXSplines[cat]->Print();
+      accSplines[coup][cat]->Print();
+      exAsSplines[coup][cat] = new RooProduct( Form("eff_acc_%s_%s_splines", coup.c_str(), cat.c_str()), Form("eff_acc_%s_%s_splines", coup.c_str(), cat.c_str()) , RooArgList(*effMXSplines[cat],*accSplines[coup][cat]) );
+    }
+
   }
   
   //Let's see if what we build makes sense
   plotexAs(exAs, MH, kmpl, cats, coups, insigname, outplots);
+  plotexAs(exAsSplines, MH, kmpl, cats, coups, insigname, outplots);
+
 
   //========================================================================
   //========================================================================
@@ -616,15 +671,20 @@ int main(int argc, char *argv[])
   //========================================================================
   //========================================================================
   std::map<std::string, RooRealVar* > reparamVars;
-  RooRealVar* obsIn;
-  RooCustomizer* custom;
+  // RooRealVar* obsIn;
+  // RooCustomizer* custom;
   std::map<std::string, RooFormulaVar* > fwhm_rooformula; //[cat][formula]
 
+  //Save the normalization for later
+  std::ofstream myfileNorm;
+  //Will save on top directory everything and not per year
+  myfileNorm.open( "SignalNorm.txt", std::ios::out | std::ios::app );
+    
   for (auto curpdf : thepdfs){
 
     std::cout << " Cat and Coup " << curpdf.cat << " " << curpdf.coup << std::endl;
     
-    fin[curpdf.coup]->cd();
+    // fin[curpdf.coup]->cd();
 
     std::string signame = insigname + "_" + curpdf.coup; 
 
@@ -643,69 +703,69 @@ int main(int argc, char *argv[])
 
     //----------------------------------------------------------------------
     //Read variables and rename them 
-    for (auto par : params[curpdf.cat]){
-      RooRealVar* dst = new RooRealVar(reparam_by_cat[par].c_str(), reparam_by_cat[par].c_str(), 0.);
-      dst->setConstant(true);
-      reparamVars[par] = dst;
-      ws_out[curpdf.coup]->import(*dst, RooFit::RecycleConflictNodes());
-    }
+    // for (auto par : params[curpdf.cat]){
+    //   RooRealVar* dst = new RooRealVar(reparam_by_cat[par].c_str(), reparam_by_cat[par].c_str(), 0.);
+    //   dst->setConstant(true);
+    //   reparamVars[par] = dst;
+    //   ws_out[curpdf.coup]->import(*dst, RooFit::RecycleConflictNodes());
+    // }
 
-    curpdf.pdf = wsin[curpdf.coup]->pdf(curpdf.name.c_str());
-    obsIn =  wsin[curpdf.coup]->var("mgg");
-    obsIn->setBins(nBinsMass);
+    // curpdf.pdf = wsin[curpdf.coup]->pdf(curpdf.name.c_str());
+    // obsIn =  wsin[curpdf.coup]->var("mgg");
+    // obsIn->setBins(nBinsMass);
     // RooAbsBinning& mggBins =  obsIn->getBinning();
     // obsIn->setBinning(mggBins);
     
 
     //Clone the current pdf
-    custom = new RooCustomizer(*curpdf.pdf,"");
-    // custom->replaceArg(*obsIn,*obsCat[curpdf.cat]);
-    custom->replaceArg(*obsIn,*obsCat);
+    // custom = new RooCustomizer(*curpdf.pdf,"");
+    // // custom->replaceArg(*obsIn,*obsCat[curpdf.cat]);
+    // custom->replaceArg(*obsIn,*obsCat);
 
-    for (auto par: reparamVars){
-      RooRealVar* srcVar = wsin[curpdf.coup]->var(par.first.c_str());
-      par.second->setVal( srcVar->getVal() );
-      //par.first is the existing in workspace, while the reparam name is the par.second 
-      custom->replaceArg( *srcVar  , *par.second );
-    }
+    // for (auto par: reparamVars){
+    //   RooRealVar* srcVar = wsin[curpdf.coup]->var(par.first.c_str());
+    //   par.second->setVal( srcVar->getVal() );
+    //   //par.first is the existing in workspace, while the reparam name is the par.second 
+    //   custom->replaceArg( *srcVar  , *par.second );
+    // }
 
     //----------------------------------------------------------------------
     //Energy scale
-    RooAbsArg * mean_formula = wsin[curpdf.coup]->arg( Form("mean_%s", curpdf.cat.c_str() ) ) ;
-    rooList[curpdf.cat] = new RooArgList( *mean_formula );
+    // RooAbsArg * mean_formula = wsin[curpdf.coup]->arg( Form("mean_%s", curpdf.cat.c_str() ) ) ;
+    // rooList[curpdf.cat] = new RooArgList( *mean_formula );
 
-    thetaScale[curpdf.cat] = new RooRealVar(Form("thetaScale%s_13TeV", curpdf.cat.c_str() ), Form("thetaScale%s_13TeV", curpdf.cat.c_str() ), 0., -4, 4);
-    thetaScale[curpdf.cat]->setConstant(true);
-    deltaScale[curpdf.cat] = new RooRealVar(Form("deltaScale%s_13TeV", curpdf.cat.c_str() ), Form("deltaScale%s_13TeV", curpdf.cat.c_str() ), 1.*unc);
-    deltaScale[curpdf.cat]->setConstant(true);
+    // thetaScale[curpdf.cat] = new RooRealVar(Form("thetaScale%s_13TeV", curpdf.cat.c_str() ), Form("thetaScale%s_13TeV", curpdf.cat.c_str() ), 0., -4, 4);
+    // thetaScale[curpdf.cat]->setConstant(true);
+    // deltaScale[curpdf.cat] = new RooRealVar(Form("deltaScale%s_13TeV", curpdf.cat.c_str() ), Form("deltaScale%s_13TeV", curpdf.cat.c_str() ), 1.*unc);
+    // deltaScale[curpdf.cat]->setConstant(true);
 
-    rooList[curpdf.cat]->add(*thetaScale[curpdf.cat]);
-    rooList[curpdf.cat]->add(*deltaScale[curpdf.cat]);
+    // rooList[curpdf.cat]->add(*thetaScale[curpdf.cat]);
+    // rooList[curpdf.cat]->add(*deltaScale[curpdf.cat]);
 
-    scaledMean[curpdf.cat] = new RooFormulaVar(Form("scaled_mean_%s",curpdf.cat.c_str() ), Form("scaled_mean_%s",curpdf.cat.c_str() ), "@0*(1.+@0*@1)", *rooList[curpdf.cat] );
+    // scaledMean[curpdf.cat] = new RooFormulaVar(Form("scaled_mean_%s",curpdf.cat.c_str() ), Form("scaled_mean_%s",curpdf.cat.c_str() ), "@0*(1.+@0*@1)", *rooList[curpdf.cat] );
 
-    custom->replaceArg( *mean_formula ,*scaledMean[curpdf.cat] );
+    // custom->replaceArg( *mean_formula ,*scaledMean[curpdf.cat] );
 
-    curpdf.pdf = (RooAbsPdf*) custom->build(true);
+    // curpdf.pdf = (RooAbsPdf*) custom->build(true);
 
-    //----------------------------------------------------------------------
-    //Saving fhwm parametrization
-    int cc = 0; 
-    if (curpdf.cat == "EBEB"){cc=0;}
-    else if (curpdf.cat == "EBEE"){cc=1;}
-    else if (curpdf.cat == "All"){cc=2;}
-    RooAbsArg * fhwm_formula = wsin[curpdf.coup]->arg( Form("FHWM_%s",curpdf.cat.c_str()) );
-    fhwm_formula->Print();
-    RooRealVar* pp0 = dynamic_cast<RooRealVar*>( wsin[curpdf.coup]->arg( Form("p0_cat%d", cc) )  );
-    RooRealVar* pp1 = dynamic_cast<RooRealVar*>( wsin[curpdf.coup]->arg( Form("p1_cat%d", cc) )  );
-    double p0 = pp0->getVal();
-    double p1 = pp1->getVal();
+    // //----------------------------------------------------------------------
+    // //Saving fhwm parametrization
+    // int cc = 0; 
+    // if (curpdf.cat == "EBEB"){cc=0;}
+    // else if (curpdf.cat == "EBEE"){cc=1;}
+    // else if (curpdf.cat == "All"){cc=2;}
+    // RooAbsArg * fhwm_formula = wsin[curpdf.coup]->arg( Form("FHWM_%s",curpdf.cat.c_str()) );
+    // fhwm_formula->Print();
+    // RooRealVar* pp0 = dynamic_cast<RooRealVar*>( wsin[curpdf.coup]->arg( Form("p0_cat%d", cc) )  );
+    // RooRealVar* pp1 = dynamic_cast<RooRealVar*>( wsin[curpdf.coup]->arg( Form("p1_cat%d", cc) )  );
+    // double p0 = pp0->getVal();
+    // double p1 = pp1->getVal();
     
-    // fhwm parametrized vs MH
-    fwhm_rooformula[curpdf.cat] = new RooFormulaVar(Form("fwhm_rooformula_%s",curpdf.cat.c_str()), Form("fwhm_rooformula_%s",curpdf.cat.c_str()), Form("%f + %f*@0", p0, p1), RooArgList(*MH) );
+    // // fhwm parametrized vs MH
+    // fwhm_rooformula[curpdf.cat] = new RooFormulaVar(Form("fwhm_rooformula_%s",curpdf.cat.c_str()), Form("fwhm_rooformula_%s",curpdf.cat.c_str()), Form("%f + %f*@0", p0, p1), RooArgList(*MH) );
 
-    fwhm_rooformula[curpdf.cat]->Print();
-    ws_out[curpdf.coup]->import(*fwhm_rooformula[curpdf.cat], RooFit::RecycleConflictNodes());
+    // fwhm_rooformula[curpdf.cat]->Print();
+    // ws_out[curpdf.coup]->import(*fwhm_rooformula[curpdf.cat], RooFit::RecycleConflictNodes());
     
     //----------------------------------------------------------------------
     //Signal normalization and naming is here
@@ -715,11 +775,11 @@ int main(int argc, char *argv[])
     //So, here we will multiply with luminosity to get to the correct norm pdf. 
     //No need for the spline aka Hgg creation below. 
 
-    curpdf.pdf->SetName( Form("model_signal_%s_%s",signame.c_str(), curpdf.cat.c_str()) );
-    RooProduct *norm = new RooProduct(Form("model_signal_%s_%s_norm", signame.c_str(), curpdf.cat.c_str()), Form("model_signal_%s_%s_norm", signame.c_str(), curpdf.cat.c_str()), RooArgList( *exAs[curpdf.cat], RooFit::RooConst(luminosity[year]) ) );
+    // curpdf.pdf->SetName( Form("model_signal_%s_%s",signame.c_str(), curpdf.cat.c_str()) );
+    // RooProduct *norm = new RooProduct(Form("model_signal_%s_%s_norm", signame.c_str(), curpdf.cat.c_str()), Form("model_signal_%s_%s_norm", signame.c_str(), curpdf.cat.c_str()), RooArgList( *exAs[curpdf.cat], RooFit::RooConst(luminosity[year]) ) );
 
-    ws_out[curpdf.coup]->import(*norm, RooFit::RecycleConflictNodes());
-    ws_out[curpdf.coup]->import(*curpdf.pdf, RooFit::RecycleConflictNodes());
+    // ws_out[curpdf.coup]->import(*norm, RooFit::RecycleConflictNodes());
+    // ws_out[curpdf.coup]->import(*curpdf.pdf, RooFit::RecycleConflictNodes());
 
     // make some debug checks
     for (int m =500; m<5000; m=m+500) {
@@ -727,22 +787,32 @@ int main(int argc, char *argv[])
       std::cout << "---------------------------------------------------------" << std::endl;
       std::cout << "[INFO] MH " << m <<  " kmpl " << curcoup << " - exA "  <<  (exAs[curpdf.cat]->getVal()) 
 		<< " intL = " << luminosity[year]
-		<< " predicted events " <<  exAs[curpdf.cat]->getVal() * luminosity[year] <<  std::endl;
+		<< " predicted events " <<  exAs[curpdf.cat]->getVal() * luminosity[year] 
+		<< " predicted events " <<  exAsSplines[curpdf.coup][curpdf.cat]->getVal() * luminosity[year] << std::endl;
     }
 
+    for (double mh=500.; mh<(6000.+0.25); mh+=50.){
+      MH->setVal(mh); 
+      //Year Coupling MassPoint Category Norm
+      myfileNorm << Form("%s %s %i %s %f\n", year.c_str(), curpdf.coup.c_str(), int(mh), curpdf.cat.c_str(), exAs[curpdf.cat]->getVal() * luminosity[year] ) ;
+    }
+
+
   }
 
-  for (auto cp : coups){
+  myfileNorm.close();
+
+  // for (auto cp : coups){
  
-    fout[cp]->cd();
+  //   fout[cp]->cd();
 
-    ws_out[cp]->Write();
-    // ws_out[cp]->Print();
+  //   ws_out[cp]->Write();
+  //   // ws_out[cp]->Print();
    
-    fout[cp]->Write();
-    fout[cp]->Close();
+  //   fout[cp]->Write();
+  //   fout[cp]->Close();
     
-  }
+  // }
 
 
   //========================================================================
@@ -765,22 +835,42 @@ int main(int argc, char *argv[])
   // for(auto cp : coups) {
 
   //   can[cp] = new TCanvas(Form("can_coup_%s", cp.c_str()),Form("can_coup_%s", cp.c_str()));
-
-  //   if ( cp == "001" ){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}";}
-  //   else if ( cp == "01" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}";}
-  //   else if ( cp == "02" ){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}";}
+    
+  //   if ( cp == "kMpl001" || cp == "0p014"){upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}"; }
+  //   else if ( cp == "kMpl01" || cp == "1p4"){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}"; }
+  //   else if ( cp == "kMpl02" || cp == "5p6"){upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}"; }
   //   else {
-  //     std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
+  //     std::cout << "Only 'kMpl001', 'kMpl01', 'kMpl02', '0p014', '1p4' and '5p6' are allowed. " << std::endl;
   //     exit(1);
   //   }
-    
+
   //   grxs[cp] = getXsecGraph(xsections[cp], true);
+
+  //   std::ofstream myfile;
+  //   myfile.open( Form("%s/XS_%s.txt", outplots.c_str(), cp.c_str()) , std::ios::out );
+    
+  //   for (double mh=500.; mh<(upperxmax+0.25); mh+=50.){
+  //     std::cout << std::scientific << std::setprecision(5) << grxs[cp]->Eval(mh) << std::endl;
+  //     myfile << Form("%f %.5e \n", mh, grxs[cp]->Eval(mh) ) ;
+      
+  //   }
+     
   //   RooSpline1D *xsSpline = graphToSpline(Form("fxs_%s",cp.c_str()), grxs[cp], MH , xmin, upperxmax);
+
+  //   // for (double mh=500.; mh<(upperxmax+0.25); mh+=100.){
+  //   //   MH->setVal(mh);
+  //   //   std::cout << xsSpline->getVal() << std::endl;
+  //   //   myfile << std::setprecision(12) << Form("%f %f \n", mh, xsSpline->getVal() ) ;
+  //   // }
+    
+  //   myfile.close();
+
   //   xsSplines[cp] = xsSpline;
 
+  //   std::cout << outplots.c_str() << std::endl;
   //   //For debugging to see what this spline looks like
   //   plotsplines(can[cp], xsSplines[cp],  MH ,xmin, upperxmax, plabel);
-  //   can[cp]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/xsSplines_%s.png",cp.c_str()));
+  //   can[cp]->SaveAs(Form("%s/xsSplines_%s.png", outplots.c_str(), cp.c_str()));
 
   // }
 
@@ -909,7 +999,23 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
   cuts["ABE"] = "(Diphoton.Minv > 330 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))*weightAll";
   cuts["ATotal"] = "((Diphoton.Minv > 230 && Photon1.pt>125 && Photon2.pt>125) && ( (Photon1.isEB && Photon2.isEB) || (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE ) ) )*weightAll";
   // std::cout << cuts["ATotal"] << std::endl;
-  //Selection efficiency cuts. 
+  //Selection efficiency cuts.
+  if ( year == "2016"){
+
+    cuts["eBB"] = "(Photon1.isEB && Photon2.isEB)*isGood*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)*weightAll";
+    cuts["eBE"] = "( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE ))*isGood*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)*weightAll";
+    cuts["eTotal"] = "( (Photon1.isEB && Photon2.isEB) || (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE ) )*isGood*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)*weightAll";
+    // std::cout << cuts["eTotal"] << std::endl;
+    //Acceptance times efficiency
+    cuts["exABB"] = cuts["ABB"] + "*isGood*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)";
+    cuts["exABE"] = cuts["ABE"] + "*isGood*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)";
+    cuts["exATotal"] = "(" + cuts["ATotal"] + ")" + "*isGood*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)";
+    // std::cout << cuts["exATotal"] << std::endl;
+
+    // cuts["BB"] = "isGood*(Diphoton.Minv > 230 && Photon1.pt>125 && Photon2.pt>125 && Photon1.isEB && Photon2.isEB)*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)";
+    // cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))*(HLT_DoublePhoton60>0 || HLT_ECALHT800>0)";
+
+  } else{
   cuts["eBB"] = "(Photon1.isEB && Photon2.isEB)*isGood*(HLT_DoublePhoton70>0 || HLT_ECALHT800>0)*weightAll";
   cuts["eBE"] = "( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE ))*isGood*(HLT_DoublePhoton70>0 || HLT_ECALHT800>0)*weightAll";
   cuts["eTotal"] = "( (Photon1.isEB && Photon2.isEB) || (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE ) )*isGood*(HLT_DoublePhoton70>0 || HLT_ECALHT800>0)*weightAll";
@@ -922,6 +1028,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 
   // cuts["BB"] = "isGood*(Diphoton.Minv > 230 && Photon1.pt>125 && Photon2.pt>125 && Photon1.isEB && Photon2.isEB)*(HLT_DoublePhoton70>0 || HLT_ECALHT800>0)";
   // cuts["BE"] = "isGood*(Diphoton.Minv > 330 && Photon1.pt>125 && Photon2.pt>125 && ( (Photon1.isEB && Photon2.isEE) || (Photon2.isEB &&  Photon1.isEE )))*(HLT_DoublePhoton70>0 || HLT_ECALHT800>0)";
+  }
 
   std::vector<std::string> samples = getSampleList();
 
@@ -942,8 +1049,15 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
     // if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
 
     std::cout << "Prosessing sample " << isample << " for year " << year << std::endl;
-    std::cout << "xsec " << ExoDiPhotons::crossSection(getSampleBase(isample,year)) << std::endl;
-
+    double xsecvalue = 0.;
+    if (year == "2016"){
+      xsecvalue = ExoDiPhotons::crossSection(getSampleBase(isample,year)+"_"+year);
+      std::cout << "!!!!! 2016 xsec value!!!!!"<< std::endl;
+    } else {
+      xsecvalue = ExoDiPhotons::crossSection(getSampleBase(isample,year));
+    }
+    std::cout << "xsec " << xsecvalue << std::endl;
+    
     if (isample.find("RSGraviton") != std::string::npos) {
       coupling = get_str_between_two_str(getBase(isample), "kMpl", "_M_");
     } else if ( isample.find("GluGluSpin0") != std::string::npos ){
@@ -965,6 +1079,11 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
       std::cout << "Only 'kMpl001', 'kMpl01', 'kMpl02', '0p014', '1p4' and '5p6' are allowed. " << std::endl;
       exit(1);
     }
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //2016 upper cut
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (coupling == "kMpl001" && year == "2016" && std::stof(M_bins) > 3900. ){continue;} 
 
     eff_reco tmpeffreco;
 
@@ -995,7 +1114,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
     std::cout << "-----------------------------------------------------------------" << std::endl;
     histo_name = baseName + "_ABB";
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, cuts["ABB"]);
-    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * ExoDiPhotons::crossSection(getSampleBase(isample,year)) );
+    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * xsecvalue );
     //Apart from the acceptance, we also want the denominator for the efficiency below
     NacBB = histograms[histo_name]->Integral();
 
@@ -1011,7 +1130,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 
     histo_name = baseName + "_ABE";
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, cuts["ABE"]);
-    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * ExoDiPhotons::crossSection(getSampleBase(isample,year)) );
+    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * xsecvalue );
     //Apart from the acceptance, we also want the denominator for the efficiency below
     NacBE = histograms[histo_name]->Integral();
 
@@ -1025,7 +1144,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 
     histo_name = baseName + "_ATotal";
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, cuts["ATotal"]);
-    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * ExoDiPhotons::crossSection(getSampleBase(isample,year)) );
+    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * xsecvalue );
     //Apart from the acceptance, we also want the denominator for the efficiency below
     NacTotal = histograms[histo_name]->Integral();
 
@@ -1088,7 +1207,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
     std::cout << "-----------------------------------------------------------------" << std::endl;
     histo_name = baseName + "_exABB";
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, cuts["exABB"]);
-    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * ExoDiPhotons::crossSection(getSampleBase(isample,year)) ) ;
+    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * xsecvalue ) ;
 
     the_eff_reco[coupling].push_back(tmpeffreco);   
 
@@ -1102,7 +1221,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 
     histo_name = baseName + "_exABE";
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, cuts["exABE"]);
-    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * ExoDiPhotons::crossSection(getSampleBase(isample,year)) ) ;
+    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * xsecvalue ) ;
 
     the_eff_reco[coupling].push_back(tmpeffreco);   
     std::cout << "exA BE " << tmpeffreco.efforacc << std::endl; 
@@ -1114,7 +1233,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 
     histo_name = baseName + "_exATotal";
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, cuts["exATotal"]);
-    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * ExoDiPhotons::crossSection(getSampleBase(isample,year)) ) ;
+    tmpeffreco.efforacc = histograms[histo_name]->Integral() / (1000. * xsecvalue ) ;
 
     the_eff_reco[coupling].push_back(tmpeffreco);   
     std::cout << "exA Total " << tmpeffreco.efforacc << std::endl; 
@@ -1260,7 +1379,7 @@ void plotexAs( std::map<std::string, RooProduct *> exAs, RooRealVar* MH, RooReal
       graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] = new TGraph();
       int point=0;
       
-      for (double m =xmin; m<upperxmax; m=m+5.){
+      for (double m =xmin; m<upperxmax; m=m+50.){
 	MH->setVal(m);
 	// std::cout << exAs[cat]->getVal() << std::endl;
 	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetPoint(point,m,exAs[cat]->getVal());
@@ -1308,6 +1427,101 @@ void plotexAs( std::map<std::string, RooProduct *> exAs, RooRealVar* MH, RooReal
      
 }
 //-----------------------------------------------------------------------------------
+void plotexAs( std::map<std::string,std::map<std::string, RooProduct *> >exAs, RooRealVar* MH, RooRealVar* kmpl, std::vector<std::string> cats, std::vector<std::string> coups, std::string insigname, std::string outplots){
+    
+  //We need one graph per coupling per category
+  std::map<std::string, TGraph* > graph;
+  std::map<std::string, TCanvas* > cs;
+
+  double upperxmax = 0.;
+  double xmin = 0.;
+  std::string plabel;
+
+  std::map<std::string, TLegend* > legmc;
+
+  for(auto cp : coups) {
+    //A counter for the canvas draw
+    int count = 0; 
+    cs[cp] = new TCanvas(Form("can_%s",cp.c_str()), Form("can_%s",cp.c_str())); 
+    legmc[cp] = new TLegend(0.58, 0.34, 0.85, 0.9, "", "bNDC");
+    legmc[cp]->SetTextFont(42);
+    legmc[cp]->SetBorderSize(0);
+    legmc[cp]->SetFillStyle(0);
+
+    double curcoup = 0.;
+
+    if ( cp == "kMpl001" || cp == "0p014"){
+      upperxmax = 6000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-4}"; curcoup = 1.4 * pow(10.,-4);
+      legmc[cp]->SetHeader("#frac{#Gamma}{m} = 1.4 #times 10^{-4}","C");
+    } else if ( cp == "kMpl01" || cp == "1p4"){
+      upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 1.4 #times 10^{-2}"; curcoup = 1.4 * pow(10.,-2);
+      legmc[cp]->SetHeader("#frac{#Gamma}{m} = 1.4 #times 10^{-2}","C");
+    } else if ( cp == "kMpl02" || cp == "5p6"){
+      upperxmax = 9000 ; plabel = "#frac{#Gamma}{m} = 5.6 #times 10^{-2}"; curcoup = 5.6 * pow(10.,-2);
+      legmc[cp]->SetHeader("#frac{#Gamma}{m} = 5.6 #times 10^{-2}","C");
+    } else {
+      std::cout << "Only 'kMpl001', 'kMpl01', 'kMpl02', '0p014', '1p4' and '5p6' are allowed. " << std::endl;
+      exit(1);
+    }
+      
+    kmpl->setVal(curcoup);
+      
+    for (auto cat : cats){
+      cs[cp]->cd();
+
+      ++count;
+	 
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] = new TGraph();
+      int point=0;
+      
+      for (double m =xmin; m<upperxmax; m=m+5.){
+	MH->setVal(m);
+	// std::cout << exAs[cat]->getVal() << std::endl;
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetPoint(point,m,exAs[cp][cat]->getVal());
+	point++;
+      }
+
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->GetYaxis()->SetRangeUser(0., 1.0);
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->GetYaxis()->SetTitle("#varepsilon #otimes A");
+      graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->GetXaxis()->SetTitle("m_{X} [GeV]");
+      if (cp == "kMpl001" || cp == "0p014") {graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerStyle(kFullDiamond);}
+      else if (cp == "kMpl01" || cp == "1p4") {graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerStyle(kFullTriangleUp);}
+      else if (cp == "kMpl02" || cp == "5p6") {graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerStyle(kFullCircle);}
+
+      int thespin = 10000;
+      if (insigname == "grav") {thespin=2;}
+      else if (insigname == "heavyhiggs") {thespin=0;}
+
+      if ( cat == "EBEB"){ 
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerColor(2);
+	legmc[cp]->AddEntry( graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] , Form("EBEB J=%d",thespin) ,"p" );
+      } else if ( cat == "EBEE"){ 
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerColor(4);
+	legmc[cp]->AddEntry( graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] , Form("EBEE J=%d",thespin) ,"p" );
+      } else if ( cat == "All"){ 
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->SetMarkerColor(8);
+	legmc[cp]->AddEntry( graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())] , Form("Total J=%d",thespin) ,"p" );
+      }
+
+      if (count==1){
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->Draw("AP");
+      } else {
+	graph[Form("exA_%s_%s", cat.c_str(), cp.c_str())]->Draw("PS");
+      }
+      if (count==3){
+	legmc[cp]->Draw("same");
+      }
+
+    }// end of loop over cats
+      
+    cs[cp]->SaveAs(Form("%s/exAs_RooProduct_%s_Splines.png", outplots.c_str(), cp.c_str()));
+
+    // cs[cp]->SaveAs(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/output/signalNorm/exAs_RooProduct_kMpl_%s.png", cp.c_str()));
+   
+  }//end of loops over couplings
+     
+}
+//-----------------------------------------------------------------------------------
 void plotsplines( TCanvas* cs, RooSpline1D * Spline, RooRealVar* MH, double xmin, double upperxmax, std::string label){
 
   cs->cd();
@@ -1321,7 +1535,7 @@ void plotsplines( TCanvas* cs, RooSpline1D * Spline, RooRealVar* MH, double xmin
   }
 
   TPaveText *pt2 = new TPaveText(.6,.85,.9,1.0,"NDC");
-  pt2->AddText(Form("%s XS Spline",label.c_str()));
+  pt2->AddText(Form("%s Spline",label.c_str()));
   graph->Draw("ALP");
   pt2->Draw();
 
@@ -1330,7 +1544,7 @@ void plotsplines( TCanvas* cs, RooSpline1D * Spline, RooRealVar* MH, double xmin
 RooSpline1D* graphToSpline(std::string name, TGraphErrors *graph, RooRealVar* MH, double xmin, double upperxmax){
   
   std::vector<double> xValues, yValues;
-  for (double mh=xmin; mh<(upperxmax+0.25); mh+=5.){
+  for (double mh=xmin; mh<(upperxmax+0.25); mh+=50.){
     xValues.push_back(mh);
     yValues.push_back(graph->Eval(mh));
   }
@@ -1346,10 +1560,10 @@ std::vector<theGraphs> plot(TCanvas* cc, std::string coup, std::map<std::string,
   theGraphs tmpgr; 
   
   std::map<std::string, double> upperxmax;
-  upperxmax["kMpl001"] = 6000.;
-  upperxmax["kMpl01"]  = 9000.;
-  upperxmax["kMpl02"]  = 9000.;
-  upperxmax["0p014"] = 6000.;
+  upperxmax["kMpl001"] = 3500.;//6000 for 2017/18
+  upperxmax["kMpl01"]  = 6000.;//9000 for 2017/18
+  upperxmax["kMpl02"]  = 6000.;//9000 for 2017/18
+  upperxmax["0p014"] = 6000.;//6000 for 2017/18
   upperxmax["1p4"]  = 9000.;
   upperxmax["5p6"]  = 9000.;
   
@@ -1393,6 +1607,7 @@ std::vector<theGraphs> plot(TCanvas* cc, std::string coup, std::map<std::string,
     tmpgr.funp0 = tmpgr.fun->GetParameter(0);
     tmpgr.funp1 = tmpgr.fun->GetParameter(1);
     tmpgr.funp2 = tmpgr.fun->GetParameter(2);
+    // tmpgr.funp3 = tmpgr.fun->GetParameter(3);
 
     graphs.push_back(tmpgr);
 
@@ -1419,6 +1634,7 @@ std::vector<theGraphs> plot(TCanvas* cc, std::string coup, std::map<std::string,
     tmpgr.funp0 = tmpgr.fun->GetParameter(0);
     tmpgr.funp1 = tmpgr.fun->GetParameter(1);
     tmpgr.funp2 = tmpgr.fun->GetParameter(2);
+    // tmpgr.funp3 = tmpgr.fun->GetParameter(3);
 
     graphs.push_back(tmpgr);
 
@@ -1445,6 +1661,7 @@ std::vector<theGraphs> plot(TCanvas* cc, std::string coup, std::map<std::string,
     tmpgr.funp0 = tmpgr.fun->GetParameter(0);
     tmpgr.funp1 = tmpgr.fun->GetParameter(1);
     tmpgr.funp2 = tmpgr.fun->GetParameter(2);
+    // tmpgr.funp2 = tmpgr.fun->GetParameter(3);
 
     graphs.push_back(tmpgr);
 
@@ -1946,22 +2163,48 @@ std::map<std::string , std::vector<xsec> > loadXsections(const std::string & yea
     //Run a single year each time
     if ( isample.find(year) == std::string::npos ) continue; 
     //Run only on RS samples for now. 
-    if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
+    // if( isample.find("RSGravitonToGammaGamma") == std::string::npos ) continue;
 
+    double xsecvalue = 0.;
+    if (year == "2016"){
+      xsecvalue = ExoDiPhotons::crossSection(getSampleBase(isample,year)+"_"+year);
+      std::cout << "!!!!! 2016 xsec value!!!!!"<< std::endl;
+    } else{
+      xsecvalue = ExoDiPhotons::crossSection(getSampleBase(isample,year));
+    }
+    std::cout << "xsec " << xsecvalue << std::endl;
+     
     tmpxsec.name = getSampleBase(isample,year);
-    tmpxsec.val = ExoDiPhotons::crossSection(getSampleBase(isample,year));
+    tmpxsec.val = xsecvalue;
     tmpxsec.error = 0.;
 
-    // std::cout << "xsec " << ExoDiPhotons::crossSection(getSampleBase(isample,year)) << std::endl;
+    // std::cout << "xsec " << xsecvalue << std::endl;
     coup = get_str_between_two_str(getBase(isample), "kMpl", "_M_");
+
+    if (isample.find("RSGraviton") != std::string::npos) {
+      coup = get_str_between_two_str(getBase(isample), "kMpl", "_M_");
+    } else if ( isample.find("GluGluSpin0") != std::string::npos ){
+      coup = get_str_between_two_str(getBase(isample), "GluGluSpin0ToGammaGamma_W_", "_M_");
+    }
+
+    if ( coup == "001" ){ coup = "kMpl001";}
+    else if ( coup == "01" ){ coup = "kMpl01";}
+    else if ( coup == "02" ){ coup = "kMpl02";}
+    //GluGlu coups are ok 
+    else if ( coup == "0p014" || coup == "1p4" || coup == "5p6"){ std::cout << "Coups for GluGlu ok "<<std::endl; }
+    else {
+      std::cout << "Only 'kMpl001', 'kMpl01', 'kMpl02', '0p014', '1p4' and '5p6' are allowed. " << std::endl;
+      exit(1);
+    }
+
     tmpxsec.M_bins = get_str_between_two_str(getBase(isample), "_M_", "_TuneCP2_13TeV_");
 
     if (basedonCoup) { thexsections[coup].push_back(tmpxsec); }
     else { 
       
-      if ( coup == "kMpl001" ){ tmpxsec.coup =  1.4 * pow(10.,-4); }
-      else if ( coup == "kMpl01" ) { tmpxsec.coup =  1.4 * pow(10.,-2); }
-      else if ( coup == "kMpl02" ) { tmpxsec.coup =  5.6 * pow(10.,-2); }
+      if ( coup == "kMpl001" || coup == "0p014" ){ tmpxsec.coup =  1.4 * pow(10.,-4); }
+      else if ( coup == "kMpl01" || coup == "1p4" ) { tmpxsec.coup =  1.4 * pow(10.,-2); }
+      else if ( coup == "kMpl02" || coup == "5p6" ) { tmpxsec.coup =  5.6 * pow(10.,-2); }
       else {
 	std::cout << "Only 'kMpl001', 'kMpl01' and 'kMpl02' are allowed. " << std::endl;
 	exit(1);
