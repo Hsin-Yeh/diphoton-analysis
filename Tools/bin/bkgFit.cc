@@ -210,7 +210,7 @@ void AddBkgData(RooWorkspace* w, const std::string &isample, const std::string &
   std::cout << "data, no split" << std::endl;
   // Create full data set without categorization
   RooDataSet* data = (RooDataSet*) Data.reduce(*w->var("mgg"),mainCut);
-  w->import(*data, Rename("data_obs")); //REVIEW Change the name of the output RooDataSet, try to match the combine significance format
+  w->import(*data, Rename("data_obs")); //FIXME Change the name of the output RooDataSet, try to match the combine significance format
   w->import(*setBins);
     
   data->Print("v");
