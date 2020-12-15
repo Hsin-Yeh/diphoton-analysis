@@ -618,11 +618,8 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   // chGG70_2018->Add(baseDirectory + "/store/user/cawest/diphoton/dbd7b7b/GG_M-1000To2000_Pt70_TuneCP2_13TeV-pythia8/crab_GG_M-1000To2000_Pt70_TuneCP2_13TeV-pythia8__Autumn18-v1__MINIAODSIM/191020_025121/0000/*.root");
   // chGG70_2018->Add(baseDirectory + "/store/user/cawest/diphoton/dbd7b7b/GG_M-2000To4000_Pt70_TuneCP2_13TeV-pythia8/crab_GG_M-2000To4000_Pt70_TuneCP2_13TeV-pythia8__Autumn18-v1__MINIAODSIM/191020_025141/0000/*.root");
   // // 2018 sample not on disk; currently using 2017 sample
-  // chGG70_2018->Add(baseDirectory + "/store/user/cawest/diphoton/dbd7b7b/GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8/crab_GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8__Fall17_PU2017-v1__MINIAODSIM/191020_025751/0000/*.root"
-  // TChain *chData2017 = new TChain(treeType);
-  // TChain *chData2018 = new TChain(treeType);
-  // chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/Data2017/*.root");
-  // chData2018->Add("/eos/cms/store/user/apsallid/exodiphoton/Data2018/*.root");
+  // chGG70_2018->Add(baseDirectory + "/store/user/cawest/diphoton/dbd7b7b/GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8/crab_GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8__Fall17_PU2017-v1__MINIAODSIM/191020_025751/0000/*.root");
+
   std::vector<std::string> sampleNames = {"data", "data_2015", "data_2016", "data_2017", "data_2018", "data_2018_newjson", "data_2017_2018", "gg", "gj", "jj", "vg", "w", "dy", "ttg", "gg70", "gg_2016", "gj_2016"};
   // std::vector<std::string> sampleNames = {"data_2018_newjson", "data_2017_2018",  "gg70"};
   // std::vector<std::string> sampleTypes = {"data", "gg", "gj", "jj", "vg", "w", "dy", "ttg"};
@@ -760,8 +757,8 @@ void initADD2016(const TString & baseDirectory)
 {
   // ADD samples
   std::vector<std::string> MS = {"3000", "3500", "4000", "4500",
-                                 "5000", "5500", "6000", "7000",
-                                 "8000", "9000", "10000", "11000"};
+				 "5000", "5500", "6000", "7000",
+				 "8000", "9000", "10000", "11000"};
   std::vector<std::string> NED = {"2", "4"};
   std::vector<std::string> KK = {"1", "4"};
   std::map<std::string, std::vector<std::string>> MggBins;
@@ -783,32 +780,32 @@ void initADD2016(const TString & baseDirectory)
   for(const auto& iMS : MS) {
     for(const auto& iNED : NED) {
       for(const auto& iKK : KK) {
-        // no samples were generated with KK convention 4
-        // and four extra dimensions
-        if(strcmp(iKK.c_str(), "4")==0 && strcmp(iNED.c_str(), "4")==0) continue;
-        // no samples were generated with negative interference above MS = 6 TeV
-        if(iNED.compare("2")==0 && iKK.compare("4")==0 && std::stoi(iMS)>6000) continue;
-        std::string pointName = "ADDGravToGG_MS-";
-        pointName += iMS;
-        pointName += "_NED-";
-        pointName += iNED;
-        pointName += "_KK-";
-        pointName += iKK;
-        chains[pointName] = new TChain("diphoton/fTree");
-        for(std::string iMgg : MggBins[iMS] ) {
-          // the 200To500 bins are only present for the NED=4 samples
-          if(iNED.compare("2")==0 && iMgg.compare("250To500")==0) continue;
-          // Hewett- convention samples do not extend past Mgg > 6 TeV
-          std::string sampleName(pointName);
-          sampleName += "_M-";
-          sampleName += iMgg;
-          sampleName += "_13TeV-sherpa";
-          // the following line only works for 80X samples
-          //	  chains[pointName]->Add(filestring(sampleName));
-          lineColors[pointName] = kBlack;
-          fillStyles[pointName] = 1001;
-          lineStyles[pointName] = kSolid;
-        }
+	// no samples were generated with KK convention 4
+	// and four extra dimensions
+	if(strcmp(iKK.c_str(), "4")==0 && strcmp(iNED.c_str(), "4")==0) continue;
+	// no samples were generated with negative interference above MS = 6 TeV
+	if(iNED.compare("2")==0 && iKK.compare("4")==0 && std::stoi(iMS)>6000) continue;
+	std::string pointName = "ADDGravToGG_MS-";
+	pointName += iMS;
+	pointName += "_NED-";
+	pointName += iNED;
+	pointName += "_KK-";
+	pointName += iKK;
+	chains[pointName] = new TChain("diphoton/fTree");
+	for(std::string iMgg : MggBins[iMS] ) {
+	  // the 200To500 bins are only present for the NED=4 samples
+	  if(iNED.compare("2")==0 && iMgg.compare("250To500")==0) continue;
+	  // Hewett- convention samples do not extend past Mgg > 6 TeV
+	  std::string sampleName(pointName);
+	  sampleName += "_M-";
+	  sampleName += iMgg;
+	  sampleName += "_13TeV-sherpa";
+	  // the following line only works for 80X samples
+	  //	  chains[pointName]->Add(filestring(sampleName));
+	  lineColors[pointName] = kBlack;
+	  fillStyles[pointName] = 1001;
+	  lineStyles[pointName] = kSolid;
+	}
       }
     }
   }
@@ -947,24 +944,24 @@ void initADD(const TString & baseDirectory)
   std::vector<int> years = {2017, 2018};
   std::vector<std::string> negint_values = {"0", "1"};
   std::vector<int> lambdaTs = {4000, 4500, 5000, 5500, 6000,
-                               6500, 7000, 7500, 8000, 8500,
-                               9000, 10000, 11000, 13000};
+			       6500, 7000, 7500, 8000, 8500,
+			       9000, 10000, 11000, 13000};
 
   for(const auto& year : years) {
     for(const auto& negint_value : negint_values) {
       for(const auto& lambdaT : lambdaTs) {
-        // there is no point with neg_int = "0" and lambdaT == 8500
-        if(negint_value.compare("0") == 0 && lambdaT == 8500 ) continue;
-        std::string pointName = "ADDGravToGG_NegInt-";
-        pointName += negint_value;
-        pointName += "_LambdaT-";
-        pointName += std::to_string(lambdaT);
-        pointName += "_TuneCP2_13TeV-pythia8_";
-        pointName += std::to_string(year);
-        chains[pointName] = new TChain("diphoton/fTree");
-        lineColors[pointName] = kBlack;
-        fillStyles[pointName] = 1001;
-        lineStyles[pointName] = kSolid;
+	// there is no point with neg_int = "0" and lambdaT == 8500
+	if(negint_value.compare("0") == 0 && lambdaT == 8500 ) continue;
+	std::string pointName = "ADDGravToGG_NegInt-";
+	pointName += negint_value;
+	pointName += "_LambdaT-";
+	pointName += std::to_string(lambdaT);
+	pointName += "_TuneCP2_13TeV-pythia8_";
+	pointName += std::to_string(year);
+	chains[pointName] = new TChain("diphoton/fTree");
+	lineColors[pointName] = kBlack;
+	fillStyles[pointName] = 1001;
+	lineStyles[pointName] = kSolid;
       }
     }
   }
@@ -1188,41 +1185,178 @@ void initADD(const TString & baseDirectory)
 
 }
 
+// void initRSG(const TString & baseDirectory)
+// {
+//   std::vector<std::string> years = {"2017", "2018"};
+//   std::vector<std::string> kMpl_values = {"001", "01", "02"};
+//   std::map<std::string, std::vector<int> > M_bins;
+//   M_bins["001"] = {750, 1000, 1250, 1500, 1750,
+// 		   2000, 2250, 2500, 2750, 3000,
+// 		   3250, 3500, 4000, 5000};
+//   M_bins["01"] = {750, 1000, 1250, 1500, 1750,
+// 		  2000, 2250, 2500, 3000, 3500,
+// 		  4000, 4250, 4500, 4750, 5000,
+// 		  5250, 5500, 5750, 6000, 6500,
+// 		  7000, 8000};
+//   M_bins["02"] = {750, 1000, 1250, 1500, 1750,
+// 		  2000, 2250, 2500, 3000, 3500,
+// 		  4000, 4500, 4750, 5000, 5250,
+// 		  5500, 5750, 6000, 6500, 7000,
+// 		  8000};
+
+//   for(const auto& year : years) {
+//     for(const auto& kMpl_value : kMpl_values) {
+//       for(const auto& M_bin : M_bins[kMpl_value]) {
+// 	std::string pointName = "RSGravitonToGammaGamma_kMpl";
+// 	pointName += kMpl_value;
+// 	pointName += "_M_";
+// 	pointName += std::to_string(M_bin);
+// 	pointName += "_TuneCP2_13TeV_pythia8_";
+// 	pointName += year;
+// 	chains[pointName] = new TChain("diphoton/fTree");
+// 	lineColors[pointName] = kBlack;
+// 	fillStyles[pointName] = 1001;
+// 	lineStyles[pointName] = kSolid;
+//       }
+//     }
+//   }
+
 void initRSG(const TString & baseDirectory)
 {
-  std::vector<std::string> years = {"2017", "2018"};
+  std::vector<std::string> years = {"2016", "2017", "2018"};
   std::vector<std::string> kMpl_values = {"001", "01", "02"};
+  std::map<std::string, std::string> pointNameBase;
+  // pointNameBase["2016"] = "RSGravToGG_kMpl-";
+  pointNameBase["2016"] = pointNameBase["2017"] = pointNameBase["2018"] = "RSGravitonToGammaGamma_kMpl";
+  std::map<std::string, std::string> tune;
+  // tune["2016"] = "TuneCUEP8M1";
+  tune["2016"] = tune["2017"] = tune["2018"] = "TuneCP2";
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["001"] = {750, 1000, 1250, 1500, 1750,
-                   2000, 2250, 2500, 2750, 3000,
-                   3250, 3500, 4000, 5000};
+		   2000, 2250, 2500, 2750, 3000,
+		   3250, 3500, 4000, 5000};
   M_bins["01"] = {750, 1000, 1250, 1500, 1750,
-                  2000, 2250, 2500, 3000, 3500,
-                  4000, 4250, 4500, 4750, 5000,
-                  5250, 5500, 5750, 6000, 6500,
-                  7000, 8000};
+		  2000, 2250, 2500, 3000, 3500,
+		  4000, 4250, 4500, 4750, 5000,
+		  5250, 5500, 5750, 6000, 6500,
+		  7000, 8000};
   M_bins["02"] = {750, 1000, 1250, 1500, 1750,
-                  2000, 2250, 2500, 3000, 3500,
-                  4000, 4500, 4750, 5000, 5250,
-                  5500, 5750, 6000, 6500, 7000,
-                  8000};
+		  2000, 2250, 2500, 3000, 3500,
+		  4000, 4500, 4750, 5000, 5250,
+		  5500, 5750, 6000, 6500, 7000,
+		  8000};
 
   for(const auto& year : years) {
     for(const auto& kMpl_value : kMpl_values) {
       for(const auto& M_bin : M_bins[kMpl_value]) {
-        std::string pointName = "RSGravitonToGammaGamma_kMpl";
-        pointName += kMpl_value;
-        pointName += "_M_";
-        pointName += std::to_string(M_bin);
-        pointName += "_TuneCP2_13TeV_pythia8_";
-        pointName += year;
-        chains[pointName] = new TChain("diphoton/fTree");
-        lineColors[pointName] = kBlack;
-        fillStyles[pointName] = 1001;
-        lineStyles[pointName] = kSolid;
+	if( (year == "2016" && M_bin > 7000) ||
+	    (year == "2016" && M_bin == 4250 && kMpl_value == "01") ||
+	    (year == "2016" && M_bin == 4750 && kMpl_value == "01") ||
+	    (year == "2016" && M_bin == 5250 && kMpl_value == "01") ||
+	    (year == "2016" && M_bin == 5750 && kMpl_value == "01") ||
+	    (year == "2016" && (M_bin == 1250 || M_bin == 1750 || M_bin == 2250 || M_bin == 2500 || M_bin == 3500 || M_bin == 4500 || M_bin == 4750 || M_bin == 5250 || M_bin == 5500 || M_bin == 5750 || M_bin == 6500) && kMpl_value == "02")  ) {
+	  continue;
+	}
+	std::string pointName = pointNameBase[year];
+	pointName += kMpl_value;
+	// if(year == "2016") {
+	//   pointName += "_M-";
+	// }
+	// else {
+	//   pointName += "_M_";
+	// }
+	pointName += "_M_";
+	pointName += std::to_string(M_bin);
+	pointName += "_" + tune[year] + "_13TeV";
+	// if(year == "2016") {
+	//   pointName += "-pythia8_";
+	// }
+	// else {
+	//   pointName += "_pythia8_";
+	// }
+	pointName += "_pythia8_";
+	pointName += year;
+	chains[pointName] = new TChain("diphoton/fTree");
+	lineColors[pointName] = kBlack;
+	fillStyles[pointName] = 1001;
+	lineStyles[pointName] = kSolid;
+	std::cout << pointName << std::endl;
       }
     }
   }
+
+  // comment out 2016 samples with no 2017/2018 counterpart
+  // chains["RSGravitonToGammaGamma_kMpl001_M_500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154719/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_740_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-740_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154843/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_745_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-745_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154858/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154914/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_755_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-755_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154930/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_760_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-760_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154944/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_765_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-765_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154959/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_770_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-770_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155014/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_1000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-1000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154335/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_1250_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-1250_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154351/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_1500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-1500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v1__MINIAODSIM/201105_154405/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_1750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-1750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154422/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_2000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-2000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154437/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_2250_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-2250_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154452/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_2500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-2500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154506/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_2750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-2750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154520/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_3000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-3000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154534/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_3250_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-3250_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154549/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_3500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-3500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154603/0000/*.root");
+  //  chains["RSGravitonToGammaGamma_kMpl001_M_3750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-3750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154618/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_4000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-4000_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154634/0000/*.root");
+  //  chains["RSGravitonToGammaGamma_kMpl001_M_4500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-4500_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154649/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl001_M_5000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-5000_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154703/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_5500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-5500_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154733/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_6000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-6000_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154749/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_6500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-6500_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154805/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl001_M_7000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-001_M-7000_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_154824/0000/*.root");
+
+  // chains["RSGravitonToGammaGamma_kMpl01_M_500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-500_TuneCP2_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155351/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl01_M_740_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-740_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v1__MINIAODSIM/201105_155507/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl01_M_745_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-745_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155522/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155538/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl01_M_755_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-755_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155555/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl01_M_760_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-760_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155609/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl01_M_765_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-765_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155628/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl01_M_770_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-770_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155642/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_1000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-1000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155029/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_1250_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-1250_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155043/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_1500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-1500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155058/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_1750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-1750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155113/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_2000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-2000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155129/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_2250_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-2250_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155143/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_2500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-2500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155157/0000/*.root");
+  //  chains["RSGravitonToGammaGamma_kMpl01_M_2750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-2750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155211/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_3000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-3000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155229/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_3500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-3500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155245/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_4000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-4000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v1__MINIAODSIM/201105_155259/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_4500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-4500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155316/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_5000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-5000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155335/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_5500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-5500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155406/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_6000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-6000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155422/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_6500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-6500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155436/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl01_M_7000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-01_M-7000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v1__MINIAODSIM/201105_155452/0000/*.root");
+
+  // chains["RSGravitonToGammaGamma_kMpl02_M_500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155824/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl02_M_740_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-740_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155915/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl02_M_745_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-745_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155932/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_750_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-750_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155950/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl02_M_755_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-755_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_160006/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl02_M_760_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-760_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_160027/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl02_M_765_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-765_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v1__MINIAODSIM/201105_160043/0000/*.root");
+  // chains["RSGravitonToGammaGamma_kMpl02_M_770_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-770_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_160057/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_1000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-1000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v1__MINIAODSIM/201105_155657/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_1500_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-1500_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155711/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_2000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-2000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155726/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_3000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-3000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155740/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_4000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-4000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155755/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_5000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-5000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155810/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_6000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-6000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155841/0000/*.root");
+  chains["RSGravitonToGammaGamma_kMpl02_M_7000_TuneCP2_13TeV_pythia8_2016"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RS_2016/crab_RSGravToGG_kMpl-02_M-7000_TuneCUEP8M1_13TeV-pythia8__Summer16MiniAODv3-v2__MINIAODSIM/201105_155859/0000/*.root");
+  
 
   chains["RSGravitonToGammaGamma_kMpl001_M_1000_TuneCP2_13TeV_pythia8_2017"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RSGravitonToGammaGamma_kMpl001_M_1000_TuneCP2_13TeV_pythia8/crab_RSGravitonToGammaGamma_kMpl001_M_1000_TuneCP2_13TeV_pythia8__Fall17_PU2017-v1__MINIAODSIM/191206_010412/0000/*.root");
   chains["RSGravitonToGammaGamma_kMpl001_M_1250_TuneCP2_13TeV_pythia8_2017"]->Add("/eos/cms/store/user/apsallid/exodiphoton/RSGravitonToGammaGamma_kMpl001_M_1250_TuneCP2_13TeV_pythia8/crab_RSGravitonToGammaGamma_kMpl001_M_1250_TuneCP2_13TeV_pythia8__Fall17_PU2017-v1__MINIAODSIM/191206_010427/0000/*.root");
@@ -1349,28 +1483,28 @@ void initHeavyHiggs(const TString & baseDirectory)
   std::vector<std::string> W_values = {"0p014", "1p4", "5p6"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["0p014"] = {750, 1000, 1250, 1500, 1750,
-                     2000, 2250, 2500, 2750, 3000,
-                     3250, 3500, 4000, 4500, 5000};
+		     2000, 2250, 2500, 2750, 3000,
+		     3250, 3500, 4000, 4500, 5000};
   M_bins["1p4"] = {750, 1000, 1250, 1500, 1750,
-                   2000, 2250, 2500, 3000, 3500,
-                   4000, 4250, 4500, 4750, 5000};
+		   2000, 2250, 2500, 3000, 3500,
+		   4000, 4250, 4500, 4750, 5000};
   M_bins["5p6"] = {750, 1000, 1250, 1500, 1750,
-                   2000, 2250, 2500, 3000, 3500,
-                   4000, 4500, 4750, 5000};
+		   2000, 2250, 2500, 3000, 3500,
+		   4000, 4500, 4750, 5000};
 
   for(const auto& year : years) {
     for(const auto& W_value : W_values) {
       for(const auto& M_bin : M_bins[W_value]) {
-        std::string pointName = "GluGluSpin0ToGammaGamma_W_";
-        pointName += W_value;
-        pointName += "_M_";
-        pointName += std::to_string(M_bin);
-        pointName += "_TuneCP2_13TeV_pythia8_";
-        pointName += year;
-        chains[pointName] = new TChain("diphoton/fTree");
-        lineColors[pointName] = kBlack;
-        fillStyles[pointName] = 1001;
-        lineStyles[pointName] = kSolid;
+	std::string pointName = "GluGluSpin0ToGammaGamma_W_";
+	pointName += W_value;
+	pointName += "_M_";
+	pointName += std::to_string(M_bin);
+	pointName += "_TuneCP2_13TeV_pythia8_";
+	pointName += year;
+	chains[pointName] = new TChain("diphoton/fTree");
+	lineColors[pointName] = kBlack;
+	fillStyles[pointName] = 1001;
+	lineStyles[pointName] = kSolid;
       }
     }
   }
@@ -1479,35 +1613,35 @@ void initForFitRSG(const std::string & inputdir)
   std::vector<std::string> kMpl_values = {"001", "01", "02"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["001"] = {750, 1000, 1250, 1500, 1750,
-                   2000, 2250, 2500, 2750, 3000,
-                   3250, 3500, 4000, 5000};
+		   2000, 2250, 2500, 2750, 3000,
+		   3250, 3500, 4000, 5000};
   M_bins["01"] = {750, 1000, 1250, 1500, 1750,
-                  2000, 2250, 2500, 3000, 3500,
-                  4000, 4250, 4500, 4750, 5000, 5250,
-                  5500, 5750, 6000, 6500, 7000,
-                  8000};
+		  2000, 2250, 2500, 3000, 3500,
+		  4000, 4250, 4500, 4750, 5000, 5250,
+		  5500, 5750, 6000, 6500, 7000,
+		  8000};
   M_bins["02"] = {750, 1000, 1250, 1500, 1750,
-                  2000, 2250, 2500, 3000, 3500,
-                  4000, 4500, 4750, 5000, 5250,
-                  5500, 5750, 6000, 6500, 7000,
-                  8000};
+		  2000, 2250, 2500, 3000, 3500,
+		  4000, 4500, 4750, 5000, 5250,
+		  5500, 5750, 6000, 6500, 7000,
+		  8000};
 
   for(const auto year : years) {
     for(const auto kMpl_value : kMpl_values) {
       for(const auto M_bin : M_bins[kMpl_value]) {
-        std::string pointName = "RSGravitonToGammaGamma_kMpl";
-        pointName += kMpl_value;
-        pointName += "_M_";
-        pointName += std::to_string(M_bin);
-        pointName += "_TuneCP2_13TeV_pythia8_";
-        pointName += year;
-        std::cout << pointName << std::endl;
-        treesforfit[pointName] = new TChain(treeType);
-        // treesforfit[pointName]->Add(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/input/trees/%s.root","".c_str(),pointName.c_str() ));
-        treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
-        lineColors[pointName] = kBlack;
-        fillStyles[pointName] = 1001;
-        lineStyles[pointName] = kSolid;
+	std::string pointName = "RSGravitonToGammaGamma_kMpl";
+	pointName += kMpl_value;
+	pointName += "_M_";
+	pointName += std::to_string(M_bin);
+	pointName += "_TuneCP2_13TeV_pythia8_";
+	pointName += year;
+	std::cout << pointName << std::endl;
+	treesforfit[pointName] = new TChain(treeType);
+	// treesforfit[pointName]->Add(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/input/trees/%s.root","".c_str(),pointName.c_str() ));
+	treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
+	lineColors[pointName] = kBlack;
+	fillStyles[pointName] = 1001;
+	lineStyles[pointName] = kSolid;
       }
     }
   }
@@ -1523,32 +1657,32 @@ void initForFitHeavyHiggs(const std::string & inputdir)
   std::vector<std::string> W_values = {"0p014", "1p4", "5p6"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["0p014"] = {750, 1000, 1250, 1500, 1750,
-                     2000, 2250, 2500, 2750, 3000,
-                     3250, 3500, 4000, 4500, 5000};
-  M_bins["1p4"] = {750, 1000, 1250, 1500,
-                   2000, 2250, 2500, 3000, 3500,
-                   4000, 4250, 4500, 4750};
+		     2000, 2250, 2500, 2750, 3000,
+		     3250, 3500, 4000, 4500, 5000};
+  M_bins["1p4"] = {750, 1000, 1250, 1500, 1750,
+		   2000, 2250, 2500, 3000, 3500,
+		   4000, 4250, 4500, 4750, 5000};
   M_bins["5p6"] = {750, 1000, 1250, 1500, 1750,
-                   2000, 2250, 2500, 3000, 3500,
-                   4000, 4500, 4750, 5000};
+  		   2000, 2250, 2500, 3000, 3500,
+  		   4000, 4500, 4750, 5000};
   
   for(const auto& year : years) {
     for(const auto& W_value : W_values) {
       for(const auto& M_bin : M_bins[W_value]) {
-        std::string pointName = "GluGluSpin0ToGammaGamma_W_";
-        pointName += W_value;
-        pointName += "_M_";
-        pointName += std::to_string(M_bin);
-        pointName += "_TuneCP2_13TeV_pythia8_";
-        pointName += year;
+	std::string pointName = "GluGluSpin0ToGammaGamma_W_";
+	pointName += W_value;
+	pointName += "_M_";
+	pointName += std::to_string(M_bin);
+	pointName += "_TuneCP2_13TeV_pythia8_";
+	pointName += year;
 	
-        std::cout << pointName << std::endl;
-        treesforfit[pointName] = new TChain(treeType);
-        treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
+	std::cout << pointName << std::endl;
+	treesforfit[pointName] = new TChain(treeType);
+	treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
 
-        lineColors[pointName] = kBlack;
-        fillStyles[pointName] = 1001;
-        lineStyles[pointName] = kSolid;
+	lineColors[pointName] = kBlack;
+	fillStyles[pointName] = 1001;
+	lineStyles[pointName] = kSolid;
       }
     }
   }
