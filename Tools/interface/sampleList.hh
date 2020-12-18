@@ -620,6 +620,12 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   // // 2018 sample not on disk; currently using 2017 sample
   // chGG70_2018->Add(baseDirectory + "/store/user/cawest/diphoton/dbd7b7b/GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8/crab_GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8__Fall17_PU2017-v1__MINIAODSIM/191020_025751/0000/*.root");
 
+  // chGG70_2018->Add(baseDirectory + "/store/user/cawest/diphoton/dbd7b7b/GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8/crab_GG_M-4000To13000_Pt70_TuneCP2_13TeV-pythia8__Fall17_PU2017-v1__MINIAODSIM/191020_025751/0000/*.root"
+  TChain *chData2017 = new TChain(treeType);
+  TChain *chData2018 = new TChain(treeType);
+  chData2017->Add("/eos/cms/store/user/apsallid/exodiphoton/Data2017/*.root");
+  chData2018->Add("/eos/cms/store/user/apsallid/exodiphoton/Data2018/*.root");
+
   std::vector<std::string> sampleNames = {"data", "data_2015", "data_2016", "data_2017", "data_2018", "data_2018_newjson", "data_2017_2018", "gg", "gj", "jj", "vg", "w", "dy", "ttg", "gg70", "gg_2016", "gj_2016"};
   // std::vector<std::string> sampleNames = {"data_2018_newjson", "data_2017_2018",  "gg70"};
   // std::vector<std::string> sampleTypes = {"data", "gg", "gj", "jj", "vg", "w", "dy", "ttg"};
@@ -757,8 +763,8 @@ void initADD2016(const TString & baseDirectory)
 {
   // ADD samples
   std::vector<std::string> MS = {"3000", "3500", "4000", "4500",
-				 "5000", "5500", "6000", "7000",
-				 "8000", "9000", "10000", "11000"};
+                                 "5000", "5500", "6000", "7000",
+                                 "8000", "9000", "10000", "11000"};
   std::vector<std::string> NED = {"2", "4"};
   std::vector<std::string> KK = {"1", "4"};
   std::map<std::string, std::vector<std::string>> MggBins;
@@ -780,32 +786,32 @@ void initADD2016(const TString & baseDirectory)
   for(const auto& iMS : MS) {
     for(const auto& iNED : NED) {
       for(const auto& iKK : KK) {
-	// no samples were generated with KK convention 4
-	// and four extra dimensions
-	if(strcmp(iKK.c_str(), "4")==0 && strcmp(iNED.c_str(), "4")==0) continue;
-	// no samples were generated with negative interference above MS = 6 TeV
-	if(iNED.compare("2")==0 && iKK.compare("4")==0 && std::stoi(iMS)>6000) continue;
-	std::string pointName = "ADDGravToGG_MS-";
-	pointName += iMS;
-	pointName += "_NED-";
-	pointName += iNED;
-	pointName += "_KK-";
-	pointName += iKK;
-	chains[pointName] = new TChain("diphoton/fTree");
-	for(std::string iMgg : MggBins[iMS] ) {
-	  // the 200To500 bins are only present for the NED=4 samples
-	  if(iNED.compare("2")==0 && iMgg.compare("250To500")==0) continue;
-	  // Hewett- convention samples do not extend past Mgg > 6 TeV
-	  std::string sampleName(pointName);
-	  sampleName += "_M-";
-	  sampleName += iMgg;
-	  sampleName += "_13TeV-sherpa";
-	  // the following line only works for 80X samples
-	  //	  chains[pointName]->Add(filestring(sampleName));
-	  lineColors[pointName] = kBlack;
-	  fillStyles[pointName] = 1001;
-	  lineStyles[pointName] = kSolid;
-	}
+        // no samples were generated with KK convention 4
+        // and four extra dimensions
+        if(strcmp(iKK.c_str(), "4")==0 && strcmp(iNED.c_str(), "4")==0) continue;
+        // no samples were generated with negative interference above MS = 6 TeV
+        if(iNED.compare("2")==0 && iKK.compare("4")==0 && std::stoi(iMS)>6000) continue;
+        std::string pointName = "ADDGravToGG_MS-";
+        pointName += iMS;
+        pointName += "_NED-";
+        pointName += iNED;
+        pointName += "_KK-";
+        pointName += iKK;
+        chains[pointName] = new TChain("diphoton/fTree");
+        for(std::string iMgg : MggBins[iMS] ) {
+          // the 200To500 bins are only present for the NED=4 samples
+          if(iNED.compare("2")==0 && iMgg.compare("250To500")==0) continue;
+          // Hewett- convention samples do not extend past Mgg > 6 TeV
+          std::string sampleName(pointName);
+          sampleName += "_M-";
+          sampleName += iMgg;
+          sampleName += "_13TeV-sherpa";
+          // the following line only works for 80X samples
+          //	  chains[pointName]->Add(filestring(sampleName));
+          lineColors[pointName] = kBlack;
+          fillStyles[pointName] = 1001;
+          lineStyles[pointName] = kSolid;
+        }
       }
     }
   }
@@ -944,24 +950,24 @@ void initADD(const TString & baseDirectory)
   std::vector<int> years = {2017, 2018};
   std::vector<std::string> negint_values = {"0", "1"};
   std::vector<int> lambdaTs = {4000, 4500, 5000, 5500, 6000,
-			       6500, 7000, 7500, 8000, 8500,
-			       9000, 10000, 11000, 13000};
+                               6500, 7000, 7500, 8000, 8500,
+                               9000, 10000, 11000, 13000};
 
   for(const auto& year : years) {
     for(const auto& negint_value : negint_values) {
       for(const auto& lambdaT : lambdaTs) {
-	// there is no point with neg_int = "0" and lambdaT == 8500
-	if(negint_value.compare("0") == 0 && lambdaT == 8500 ) continue;
-	std::string pointName = "ADDGravToGG_NegInt-";
-	pointName += negint_value;
-	pointName += "_LambdaT-";
-	pointName += std::to_string(lambdaT);
-	pointName += "_TuneCP2_13TeV-pythia8_";
-	pointName += std::to_string(year);
-	chains[pointName] = new TChain("diphoton/fTree");
-	lineColors[pointName] = kBlack;
-	fillStyles[pointName] = 1001;
-	lineStyles[pointName] = kSolid;
+        // there is no point with neg_int = "0" and lambdaT == 8500
+        if(negint_value.compare("0") == 0 && lambdaT == 8500 ) continue;
+        std::string pointName = "ADDGravToGG_NegInt-";
+        pointName += negint_value;
+        pointName += "_LambdaT-";
+        pointName += std::to_string(lambdaT);
+        pointName += "_TuneCP2_13TeV-pythia8_";
+        pointName += std::to_string(year);
+        chains[pointName] = new TChain("diphoton/fTree");
+        lineColors[pointName] = kBlack;
+        fillStyles[pointName] = 1001;
+        lineStyles[pointName] = kSolid;
       }
     }
   }
@@ -1233,54 +1239,54 @@ void initRSG(const TString & baseDirectory)
   tune["2016"] = tune["2017"] = tune["2018"] = "TuneCP2";
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["001"] = {750, 1000, 1250, 1500, 1750,
-		   2000, 2250, 2500, 2750, 3000,
-		   3250, 3500, 4000, 5000};
+                   2000, 2250, 2500, 2750, 3000,
+                   3250, 3500, 4000, 5000};
   M_bins["01"] = {750, 1000, 1250, 1500, 1750,
-		  2000, 2250, 2500, 3000, 3500,
-		  4000, 4250, 4500, 4750, 5000,
-		  5250, 5500, 5750, 6000, 6500,
-		  7000, 8000};
+                  2000, 2250, 2500, 3000, 3500,
+                  4000, 4250, 4500, 4750, 5000,
+                  5250, 5500, 5750, 6000, 6500,
+                  7000, 8000};
   M_bins["02"] = {750, 1000, 1250, 1500, 1750,
-		  2000, 2250, 2500, 3000, 3500,
-		  4000, 4500, 4750, 5000, 5250,
-		  5500, 5750, 6000, 6500, 7000,
-		  8000};
+                  2000, 2250, 2500, 3000, 3500,
+                  4000, 4500, 4750, 5000, 5250,
+                  5500, 5750, 6000, 6500, 7000,
+                  8000};
 
   for(const auto& year : years) {
     for(const auto& kMpl_value : kMpl_values) {
       for(const auto& M_bin : M_bins[kMpl_value]) {
-	if( (year == "2016" && M_bin > 7000) ||
-	    (year == "2016" && M_bin == 4250 && kMpl_value == "01") ||
-	    (year == "2016" && M_bin == 4750 && kMpl_value == "01") ||
-	    (year == "2016" && M_bin == 5250 && kMpl_value == "01") ||
-	    (year == "2016" && M_bin == 5750 && kMpl_value == "01") ||
-	    (year == "2016" && (M_bin == 1250 || M_bin == 1750 || M_bin == 2250 || M_bin == 2500 || M_bin == 3500 || M_bin == 4500 || M_bin == 4750 || M_bin == 5250 || M_bin == 5500 || M_bin == 5750 || M_bin == 6500) && kMpl_value == "02")  ) {
-	  continue;
-	}
-	std::string pointName = pointNameBase[year];
-	pointName += kMpl_value;
-	// if(year == "2016") {
-	//   pointName += "_M-";
-	// }
-	// else {
-	//   pointName += "_M_";
-	// }
-	pointName += "_M_";
-	pointName += std::to_string(M_bin);
-	pointName += "_" + tune[year] + "_13TeV";
-	// if(year == "2016") {
-	//   pointName += "-pythia8_";
-	// }
-	// else {
-	//   pointName += "_pythia8_";
-	// }
-	pointName += "_pythia8_";
-	pointName += year;
-	chains[pointName] = new TChain("diphoton/fTree");
-	lineColors[pointName] = kBlack;
-	fillStyles[pointName] = 1001;
-	lineStyles[pointName] = kSolid;
-	std::cout << pointName << std::endl;
+        if( (year == "2016" && M_bin > 7000) ||
+            (year == "2016" && M_bin == 4250 && kMpl_value == "01") ||
+            (year == "2016" && M_bin == 4750 && kMpl_value == "01") ||
+            (year == "2016" && M_bin == 5250 && kMpl_value == "01") ||
+            (year == "2016" && M_bin == 5750 && kMpl_value == "01") ||
+            (year == "2016" && (M_bin == 1250 || M_bin == 1750 || M_bin == 2250 || M_bin == 2500 || M_bin == 3500 || M_bin == 4500 || M_bin == 4750 || M_bin == 5250 || M_bin == 5500 || M_bin == 5750 || M_bin == 6500) && kMpl_value == "02")  ) {
+          continue;
+        }
+        std::string pointName = pointNameBase[year];
+        pointName += kMpl_value;
+        // if(year == "2016") {
+        //   pointName += "_M-";
+        // }
+        // else {
+        //   pointName += "_M_";
+        // }
+        pointName += "_M_";
+        pointName += std::to_string(M_bin);
+        pointName += "_" + tune[year] + "_13TeV";
+        // if(year == "2016") {
+        //   pointName += "-pythia8_";
+        // }
+        // else {
+        //   pointName += "_pythia8_";
+        // }
+        pointName += "_pythia8_";
+        pointName += year;
+        chains[pointName] = new TChain("diphoton/fTree");
+        lineColors[pointName] = kBlack;
+        fillStyles[pointName] = 1001;
+        lineStyles[pointName] = kSolid;
+        std::cout << pointName << std::endl;
       }
     }
   }
@@ -1483,28 +1489,28 @@ void initHeavyHiggs(const TString & baseDirectory)
   std::vector<std::string> W_values = {"0p014", "1p4", "5p6"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["0p014"] = {750, 1000, 1250, 1500, 1750,
-		     2000, 2250, 2500, 2750, 3000,
-		     3250, 3500, 4000, 4500, 5000};
+                     2000, 2250, 2500, 2750, 3000,
+                     3250, 3500, 4000, 4500, 5000};
   M_bins["1p4"] = {750, 1000, 1250, 1500, 1750,
-		   2000, 2250, 2500, 3000, 3500,
-		   4000, 4250, 4500, 4750, 5000};
+                   2000, 2250, 2500, 3000, 3500,
+                   4000, 4250, 4500, 4750, 5000};
   M_bins["5p6"] = {750, 1000, 1250, 1500, 1750,
-		   2000, 2250, 2500, 3000, 3500,
-		   4000, 4500, 4750, 5000};
+                   2000, 2250, 2500, 3000, 3500,
+                   4000, 4500, 4750, 5000};
 
   for(const auto& year : years) {
     for(const auto& W_value : W_values) {
       for(const auto& M_bin : M_bins[W_value]) {
-	std::string pointName = "GluGluSpin0ToGammaGamma_W_";
-	pointName += W_value;
-	pointName += "_M_";
-	pointName += std::to_string(M_bin);
-	pointName += "_TuneCP2_13TeV_pythia8_";
-	pointName += year;
-	chains[pointName] = new TChain("diphoton/fTree");
-	lineColors[pointName] = kBlack;
-	fillStyles[pointName] = 1001;
-	lineStyles[pointName] = kSolid;
+        std::string pointName = "GluGluSpin0ToGammaGamma_W_";
+        pointName += W_value;
+        pointName += "_M_";
+        pointName += std::to_string(M_bin);
+        pointName += "_TuneCP2_13TeV_pythia8_";
+        pointName += year;
+        chains[pointName] = new TChain("diphoton/fTree");
+        lineColors[pointName] = kBlack;
+        fillStyles[pointName] = 1001;
+        lineStyles[pointName] = kSolid;
       }
     }
   }
@@ -1613,35 +1619,35 @@ void initForFitRSG(const std::string & inputdir)
   std::vector<std::string> kMpl_values = {"001", "01", "02"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["001"] = {750, 1000, 1250, 1500, 1750,
-		   2000, 2250, 2500, 2750, 3000,
-		   3250, 3500, 4000, 5000};
+                   2000, 2250, 2500, 2750, 3000,
+                   3250, 3500, 4000, 5000};
   M_bins["01"] = {750, 1000, 1250, 1500, 1750,
-		  2000, 2250, 2500, 3000, 3500,
-		  4000, 4250, 4500, 4750, 5000, 5250,
-		  5500, 5750, 6000, 6500, 7000,
-		  8000};
+                  2000, 2250, 2500, 3000, 3500,
+                  4000, 4250, 4500, 4750, 5000, 5250,
+                  5500, 5750, 6000, 6500, 7000,
+                  8000};
   M_bins["02"] = {750, 1000, 1250, 1500, 1750,
-		  2000, 2250, 2500, 3000, 3500,
-		  4000, 4500, 4750, 5000, 5250,
-		  5500, 5750, 6000, 6500, 7000,
-		  8000};
+                  2000, 2250, 2500, 3000, 3500,
+                  4000, 4500, 4750, 5000, 5250,
+                  5500, 5750, 6000, 6500, 7000,
+                  8000};
 
   for(const auto year : years) {
     for(const auto kMpl_value : kMpl_values) {
       for(const auto M_bin : M_bins[kMpl_value]) {
-	std::string pointName = "RSGravitonToGammaGamma_kMpl";
-	pointName += kMpl_value;
-	pointName += "_M_";
-	pointName += std::to_string(M_bin);
-	pointName += "_TuneCP2_13TeV_pythia8_";
-	pointName += year;
-	std::cout << pointName << std::endl;
-	treesforfit[pointName] = new TChain(treeType);
-	// treesforfit[pointName]->Add(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/input/trees/%s.root","".c_str(),pointName.c_str() ));
-	treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
-	lineColors[pointName] = kBlack;
-	fillStyles[pointName] = 1001;
-	lineStyles[pointName] = kSolid;
+        std::string pointName = "RSGravitonToGammaGamma_kMpl";
+        pointName += kMpl_value;
+        pointName += "_M_";
+        pointName += std::to_string(M_bin);
+        pointName += "_TuneCP2_13TeV_pythia8_";
+        pointName += year;
+        std::cout << pointName << std::endl;
+        treesforfit[pointName] = new TChain(treeType);
+        // treesforfit[pointName]->Add(Form("/afs/cern.ch/work/a/apsallid/CMS/Hgg/exodiphotons/CMSSW_9_4_13/src/diphoton-analysis/input/trees/%s.root","".c_str(),pointName.c_str() ));
+        treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
+        lineColors[pointName] = kBlack;
+        fillStyles[pointName] = 1001;
+        lineStyles[pointName] = kSolid;
       }
     }
   }
@@ -1657,32 +1663,32 @@ void initForFitHeavyHiggs(const std::string & inputdir)
   std::vector<std::string> W_values = {"0p014", "1p4", "5p6"};
   std::map<std::string, std::vector<int> > M_bins;
   M_bins["0p014"] = {750, 1000, 1250, 1500, 1750,
-		     2000, 2250, 2500, 2750, 3000,
-		     3250, 3500, 4000, 4500, 5000};
+                     2000, 2250, 2500, 2750, 3000,
+                     3250, 3500, 4000, 4500, 5000};
   M_bins["1p4"] = {750, 1000, 1250, 1500, 1750,
-		   2000, 2250, 2500, 3000, 3500,
-		   4000, 4250, 4500, 4750, 5000};
+                   2000, 2250, 2500, 3000, 3500,
+                   4000, 4250, 4500, 4750, 5000};
   M_bins["5p6"] = {750, 1000, 1250, 1500, 1750,
-  		   2000, 2250, 2500, 3000, 3500,
-  		   4000, 4500, 4750, 5000};
+                   2000, 2250, 2500, 3000, 3500,
+                   4000, 4500, 4750, 5000};
   
   for(const auto& year : years) {
     for(const auto& W_value : W_values) {
       for(const auto& M_bin : M_bins[W_value]) {
-	std::string pointName = "GluGluSpin0ToGammaGamma_W_";
-	pointName += W_value;
-	pointName += "_M_";
-	pointName += std::to_string(M_bin);
-	pointName += "_TuneCP2_13TeV_pythia8_";
-	pointName += year;
+        std::string pointName = "GluGluSpin0ToGammaGamma_W_";
+        pointName += W_value;
+        pointName += "_M_";
+        pointName += std::to_string(M_bin);
+        pointName += "_TuneCP2_13TeV_pythia8_";
+        pointName += year;
 	
-	std::cout << pointName << std::endl;
-	treesforfit[pointName] = new TChain(treeType);
-	treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
+        std::cout << pointName << std::endl;
+        treesforfit[pointName] = new TChain(treeType);
+        treesforfit[pointName]->Add(Form("%s/%s.root",inputdir.c_str(), pointName.c_str() ));
 
-	lineColors[pointName] = kBlack;
-	fillStyles[pointName] = 1001;
-	lineStyles[pointName] = kSolid;
+        lineColors[pointName] = kBlack;
+        fillStyles[pointName] = 1001;
+        lineStyles[pointName] = kSolid;
       }
     }
   }
