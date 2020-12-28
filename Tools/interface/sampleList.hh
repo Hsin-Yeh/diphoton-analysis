@@ -135,18 +135,18 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
 
   // TChain *chData2018ABC_rereco_unskimmed = new TChain(treeType);
   // if(includeUnskimmed) {
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018A-17Sep2018-v2__MINIAOD/191115_212609/0000/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018A-17Sep2018-v2__MINIAOD/191115_212609/0001/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018A-17Sep2018-v2__MINIAOD/191115_212609/0002/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018A-17Sep2018-v2__MINIAOD/191115_212609/0003/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018A-17Sep2018-v2__MINIAOD/191115_212609/0004/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018A-17Sep2018-v2__MINIAOD/191115_212609/0005/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018B-17Sep2018-v1__MINIAOD/191115_212444/0000/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018B-17Sep2018-v1__MINIAOD/191115_212444/0001/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018B-17Sep2018-v1__MINIAOD/191115_212444/0002/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018C-17Sep2018-v1__MINIAOD/191115_212505/0000/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018C-17Sep2018-v1__MINIAOD/191115_212505/0001/*.root");
-  //   chData2018ABC_rereco_unskimmed->Add(baseDirectory + "/store/user/cawest/diphoton/969aff9/EGamma/crab_EGamma__Run2018C-17Sep2018-v1__MINIAOD/191115_212505/0002/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018a-17sep2018-v2__miniaod/191115_212609/0000/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018a-17sep2018-v2__miniaod/191115_212609/0001/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018a-17sep2018-v2__miniaod/191115_212609/0002/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018a-17sep2018-v2__miniaod/191115_212609/0003/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018a-17sep2018-v2__miniaod/191115_212609/0004/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018a-17sep2018-v2__miniaod/191115_212609/0005/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018b-17sep2018-v1__miniaod/191115_212444/0000/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018b-17sep2018-v1__miniaod/191115_212444/0001/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018b-17sep2018-v1__miniaod/191115_212444/0002/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018c-17sep2018-v1__miniaod/191115_212505/0000/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018c-17sep2018-v1__miniaod/191115_212505/0001/*.root");
+  //   chdata2018abc_rereco_unskimmed->add(basedirectory + "/store/user/cawest/diphoton/969aff9/egamma/crab_egamma__run2018c-17sep2018-v1__miniaod/191115_212505/0002/*.root");
   // }
   // TChain *chData2018ABC_prompt_unskimmed = new TChain(treeType);
   // if(includeUnskimmed) {
