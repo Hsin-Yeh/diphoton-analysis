@@ -79,7 +79,7 @@ void prepare(const std::string &region, const std::string &year, const std::stri
     if ( isample.find(year) == std::string::npos ) continue;
     //Run only on RS,HeavyHiggs samples and data
     if( isample.find("RSGravitonToGammaGamma") == std::string::npos &&
-    // 	isample.find("RSGravToGG") == std::string::npos ) continue;
+    	isample.find("RSGravToGG") == std::string::npos ) continue;
     // if( isample.find("GluGluSpin0ToGammaGamma") == std::string::npos ) continue;
     // if( isample.find("data_"+year) == std::string::npos ) continue;
     std::cout << "Processing " << isample << std::endl;
