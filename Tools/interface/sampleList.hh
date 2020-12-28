@@ -708,7 +708,7 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   if(includeSignal) {
     // initADD(baseDirectory);
     initRSG(baseDirectory);
-    initHeavyHiggs(baseDirectory);
+    // initHeavyHiggs(baseDirectory);
   }
 
   // set default styles
