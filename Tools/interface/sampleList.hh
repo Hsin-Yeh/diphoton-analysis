@@ -640,10 +640,10 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   // chains["data_2015"] = chData;
   // chains["data_2016"] = chData2016;
   // chains["data_2016_unskimmed"] = chData2016_unskimmed;
-  // chains["data_2017"] = chData2017;
+  chains["data_2017"] = chData2017;
   // chains["data_2017_unskimmed"] = chData2017_unskimmed;
   // chains["data_2018_prompt"] = chData2018_prompt;
-  // chains["data_2018"] = chData2018;
+  chains["data_2018"] = chData2018;
   // chains["data_2018ABC_prompt"] = chData2018ABC_prompt;
   // chains["data_2018AB"] = chData2018AB_rereco;
   // chains["data_2018ABC"] = chData2018ABC_rereco;
@@ -708,7 +708,7 @@ void init(bool includeUnskimmed = false, bool includeSignal = false)
   if(includeSignal) {
     // initADD(baseDirectory);
     initRSG(baseDirectory);
-    // initHeavyHiggs(baseDirectory);
+    initHeavyHiggs(baseDirectory);
   }
 
   // set default styles
