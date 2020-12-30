@@ -1098,7 +1098,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
     std::cout << "-----------------------------------------------------------------" << std::endl;
     histo_name = baseName;
     std::cout << getBase(isample) << std::endl;
-    chains[getBase(isample)]->Print();
+    // chains[getBase(isample)]->Print();
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, "no_selection");
     // Ngen = histograms[histo_name]->Integral();
     // std::cout << "Ngen " << Ngen << std::endl;
