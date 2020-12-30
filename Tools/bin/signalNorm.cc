@@ -1102,7 +1102,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
     TCanvas *c1 = new TCanvas();
     histograms[histo_name]->Draw("HIST");
     c1->Update();
-    c1->SaveAs(Form("test/test_%s.png",histo_name));
+    c1->SaveAs(Form("test/test_%s.png",histo_name.c_str()));
     // Ngen = histograms[histo_name]->Integral();
     // std::cout << "Ngen " << Ngen << std::endl;
     // std::cout << "Name " << getBase(isample) << " chains[getBase(isample)]->GetName() " << chains[getBase(isample)]->GetName() << " chains[getBase(isample)]->GetEntries() " << chains[getBase(isample)]->GetEntries() << std::endl;
