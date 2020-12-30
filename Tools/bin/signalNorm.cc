@@ -2023,7 +2023,7 @@ TH1F * createHisto(TChain * newtree1, const std::string &histo_name, int nBins, 
   if (cut == "no_selection"){
     newtree1->Project(histo_name.c_str(), "FTDiphoton.eta");
   } else {
-    newtree1->Project(histo_name.c_str(), "FTDiphoton.Minv", cut.c_str());
+    newtree1->Project(histo_name.c_str(), "FTDiphoton.eta", cut.c_str());
   }
     // move overflow to last bin
   int nbins = hist->GetNbinsX();
