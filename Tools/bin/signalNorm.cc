@@ -1097,7 +1097,7 @@ std::map<std::string, std::vector<eff_reco> > computefficiency(const std::string
 
     std::cout << "-----------------------------------------------------------------" << std::endl;
     histo_name = baseName;
-    chains[getBase(isample)]->Print();
+    // chains[getBase(isample)]->Print();
     histograms[histo_name] = createHisto(chains[getBase(isample)], histo_name, nBins, xMin, xMax, "no_selection");
     TCanvas *c1 = new TCanvas();
     histograms[histo_name]->Draw("HIST");
