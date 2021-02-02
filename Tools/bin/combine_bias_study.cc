@@ -145,7 +145,6 @@ int main(int argc, char *argv[])
   masses.push_back("6000");
 
   std::vector<std::string> cats;
-  cats->clear();
   cats.push_back("EBEE");
   cats.push_back("EBEB");
 
