@@ -296,6 +296,9 @@ int main(int argc, char *argv[])
   colors["invpowlin"] = 34;
   colors["moddijet"] = 46;
   colors["dijet"] = 1;
+  colors["expow1"] = 9;
+  colors["invpow1"] = 28;
+  colors["invpowlin1"] = 34;
 
   // colors["Laurent"] = 616; //kMagenta
   // colors["PowerLaw"] = kGray; //kGray
