@@ -100,11 +100,12 @@ int main(int argc, char *argv[])
   if ( year == "2017"){
 
     // models.push_back("pow"); 
-    models.push_back("Laurent"); 
+    // models.push_back("Laurent");
     // models.push_back("Exponential"); 
     // models.push_back("VVdijet"); 
-    // models.push_back("expow"); 
-    // models.push_back("invpow"); 
+    models.push_back("expow1");
+    models.push_back("invpow1");
+    models.push_back("invpowlin1");
     // models.push_back("moddijet");
 
     //Add the dijet only in case of samefunfit
@@ -153,122 +154,122 @@ int main(int argc, char *argv[])
   for (auto model : models){
     for (auto cp : coups){
       for (auto muin : muinjected){
-	for (auto mass : masses){
+        for (auto mass : masses){
 
-	  std::cout << "MODEL " << model << " COUP " << cp << " MU " << muin << " MASS " << mass << std::endl;
-	  scenario = "tree_" + combmode + "_" + insigname + "_mu" + muin + "_" + cp + "_" + model + "_mass" + mass;
-	  scenarioforplot =  cp + " " +  model + " " + mass + " GeV"; 
+          std::cout << "MODEL " << model << " COUP " << cp << " MU " << muin << " MASS " << mass << std::endl;
+          scenario = "tree_" + combmode + "_" + insigname + "_mu" + muin + "_" + cp + "_" + model + "_mass" + mass;
+          scenarioforplot =  cp + " " +  model + " " + mass + " GeV";
 
-	  //-----------------------------------------------------------------------------------
-	  //Read the file and the tree
-	  TString filename =  inputdir + "/" + scenario  + ".root";
-	  std::string filename_s = inputdir + "/" + scenario  + ".root";
-	  TString trname = "tree_fit_sb";
-	  //TString trname = "tree_fit_b";
-	  
-	  //Variables in the trees we want to plot
-	  Int_t fit_status;
-	  double  mu;
-	  double  muErr;
-	  double  muLoErr;
-	  double  muHiErr;
+          //-----------------------------------------------------------------------------------
+          //Read the file and the tree
+          TString filename =  inputdir + "/" + scenario  + ".root";
+          std::string filename_s = inputdir + "/" + scenario  + ".root";
+          TString trname = "tree_fit_sb";
+          //TString trname = "tree_fit_b";
 
-	  //Getting trees from files
-	  std::cout << "Getting tree from file " << filename << std::endl;
-	  if ( !exists(filename_s) ){continue;}
+          //Variables in the trees we want to plot
+          Int_t fit_status;
+          double  mu;
+          double  muErr;
+          double  muLoErr;
+          double  muHiErr;
 
-	  TFile* infile = TFile::Open(filename);
-	  //The tree in the file that we want to get
-	  TTree *tr = (TTree*) infile->Get(trname); 
+          //Getting trees from files
+          std::cout << "Getting tree from file " << filename << std::endl;
+          if ( !exists(filename_s) ){continue;}
 
-	  tr->SetBranchAddress("fit_status", &fit_status);
-	  tr->SetBranchAddress("r", &mu);
-	  tr->SetBranchAddress("rErr", &muErr);
-	  tr->SetBranchAddress("rLoErr", &muLoErr);
-	  tr->SetBranchAddress("rHiErr", &muHiErr);
+          TFile* infile = TFile::Open(filename);
+          //The tree in the file that we want to get
+          TTree *tr = (TTree*) infile->Get(trname);
 
-	  //-----------------------------------------------------------------------------------
-	  //Make the histos from the tree
+          tr->SetBranchAddress("fit_status", &fit_status);
+          tr->SetBranchAddress("r", &mu);
+          tr->SetBranchAddress("rErr", &muErr);
+          tr->SetBranchAddress("rLoErr", &muLoErr);
+          tr->SetBranchAddress("rHiErr", &muHiErr);
 
-	  double pullxlow = combmode == "samefunfit" ? -3.5 : -10.;
-	  double pullylow = combmode == "samefunfit" ? 3.5: 10.;
-	  //Histos   
-	  TH1F * h_mu = new TH1F( "h_mu", "Signal strength from fit", 100, 0., 3.);
-	  TH1F * h_muErr = new TH1F( "h_muErr", "Signal strength error from fit", 100, 0., 16.);
-	  TH1F * h_muLoErr = new TH1F( "h_muLoErr", "Signal strength low error from fit", 100, 0., 3.);
-	  TH1F * h_muHiErr = new TH1F( "h_muHiErr", "Signal strength high error from fit", 100, 0., 16.);
-	  TH1F * h_pulls_mu = new TH1F("h_pulls_mu", "mu_{true} - mu_{fit} / err", 50, pullxlow, pullylow);
+          //-----------------------------------------------------------------------------------
+          //Make the histos from the tree
 
-	  std::cout << "Running bias study " << std::endl;
+          double pullxlow = combmode == "samefunfit" ? -3.5 : -10.;
+          double pullylow = combmode == "samefunfit" ? 3.5: 10.;
+          //Histos
+          TH1F * h_mu = new TH1F( "h_mu", "Signal strength from fit", 100, 0., 3.);
+          TH1F * h_muErr = new TH1F( "h_muErr", "Signal strength error from fit", 100, 0., 16.);
+          TH1F * h_muLoErr = new TH1F( "h_muLoErr", "Signal strength low error from fit", 100, 0., 3.);
+          TH1F * h_muHiErr = new TH1F( "h_muHiErr", "Signal strength high error from fit", 100, 0., 16.);
+          TH1F * h_pulls_mu = new TH1F("h_pulls_mu", "mu_{true} - mu_{fit} / err", 50, pullxlow, pullylow);
+
+          std::cout << "Running bias study " << std::endl;
  
-	  //For the pull value
-	  double pull_mu = 0.;
-	  double err_mu = 0.;
-	  float muinj = std::stof(muin);
+          //For the pull value
+          double pull_mu = 0.;
+          double err_mu = 0.;
+          float muinj = std::stof(muin);
 
-	  std::cout << " Starting to loop over total entries of tree " << tr->GetEntries() << std::endl;
-	  for (Int_t i=0; i<tr->GetEntries(); i++) {
-	    tr->GetEntry(i);
+          std::cout << " Starting to loop over total entries of tree " << tr->GetEntries() << std::endl;
+          for (Int_t i=0; i<tr->GetEntries(); i++) {
+            tr->GetEntry(i);
 
-	    // if (fit_status==0){
-	    if (fit_status==0 && ((muHiErr+mu) < 19) && ((mu-muLoErr)>-19) ){
-	    // if ((muHiErr+mu) < 19 && (mu-muLoErr)>-19 ){
-	    // if (true){
-	      // std::cout << "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT " << fit_status << std::endl;
-	      if (mu > muinj){
-		// err_mu = muLoErr;
-		err_mu = muHiErr;
-		// err_mu = muErr;
-	      } else{
-		err_mu = muHiErr;
-	      }
+            // if (fit_status==0){
+            if (fit_status==0 && ((muHiErr+mu) < 19) && ((mu-muLoErr)>-19) ){
+              // if ((muHiErr+mu) < 19 && (mu-muLoErr)>-19 ){
+              // if (true){
+              // std::cout << "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT " << fit_status << std::endl;
+              if (mu > muinj){
+                // err_mu = muLoErr;
+                err_mu = muHiErr;
+                // err_mu = muErr;
+              } else{
+                err_mu = muHiErr;
+              }
 
-	      //HACK HERE
-	      err_mu = 0.5 * (muLoErr+muHiErr);
-	      // if (err_mu ==0){ 
-	      // 	pull_mu = 0.; 
-	      // } else{  
-	      // 	pull_mu = (muinj - mu )/err_mu;
-	      // }
-	      pull_mu = (muinj - mu )/err_mu;
-	      // if(fabs(pull_mu) > 10. ){
-	      // 	std::cout <<  "muinj= " << muinj << std::endl;
-	      // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj)<< std::endl;
-	      // 	std::cout <<  "err_mu = " << err_mu << std::endl;
-	      // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
-	      // }
-	
-	      // if(fabs(pull_mu) < 0.01){
-	      // 	std::cout <<  "muinj= " << muinj << std::endl;
-	      // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj) << std::endl;
-	      // 	std::cout <<  "err_mu = " << err_mu << std::endl;
-	      // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
+              //HACK HERE
+              err_mu = 0.5 * (muLoErr+muHiErr);
+              // if (err_mu ==0){
+              // 	pull_mu = 0.;
+              // } else{
+              // 	pull_mu = (muinj - mu )/err_mu;
+              // }
+              pull_mu = (muinj - mu )/err_mu;
+              // if(fabs(pull_mu) > 10. ){
+              // 	std::cout <<  "muinj= " << muinj << std::endl;
+              // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj)<< std::endl;
+              // 	std::cout <<  "err_mu = " << err_mu << std::endl;
+              // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
+              // }
 
-	      // }
-	
-	      h_mu->Fill(mu);
-	      h_muErr->Fill(muErr);
-	      h_muLoErr->Fill(muLoErr);
-	      h_muHiErr->Fill(muHiErr);
+              // if(fabs(pull_mu) < 0.01){
+              // 	std::cout <<  "muinj= " << muinj << std::endl;
+              // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj) << std::endl;
+              // 	std::cout <<  "err_mu = " << err_mu << std::endl;
+              // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
 
-	      h_pulls_mu->Fill( pull_mu );
-	
-	    }
+              // }
 
-	  } // End of loop over entries
+              h_mu->Fill(mu);
+              h_muErr->Fill(muErr);
+              h_muLoErr->Fill(muLoErr);
+              h_muHiErr->Fill(muHiErr);
 
-	  //-----------------------------------------------------------------------------------
-	  //Plot and save the final pull
-	  theFitResult tmpfitpull = fitpulls(h_pulls_mu, outputdir + "/" + combmode, scenario, scenarioforplot);
+              h_pulls_mu->Fill( pull_mu );
 
-	  bpullvals[model][cp][muin].push_back(tmpfitpull.meanFitE);
-	  bpullvalsErr[model][cp][muin].push_back(tmpfitpull.meanFitEerr);
-	  massvals[model][cp][muin].push_back( std::stod(mass) );
-	  massvalsErr[model][cp][muin].push_back( 0. );
+            }
 
-	  infile->Close();
-	  
-	}//end of loop over masses
+          } // End of loop over entries
+
+          //-----------------------------------------------------------------------------------
+          //Plot and save the final pull
+          theFitResult tmpfitpull = fitpulls(h_pulls_mu, outputdir + "/" + combmode, scenario, scenarioforplot);
+
+          bpullvals[model][cp][muin].push_back(tmpfitpull.meanFitE);
+          bpullvalsErr[model][cp][muin].push_back(tmpfitpull.meanFitEerr);
+          massvals[model][cp][muin].push_back( std::stod(mass) );
+          massvalsErr[model][cp][muin].push_back( 0. );
+
+          infile->Close();
+
+        }//end of loop over masses
       }//end of loop over muin
     }//end of loop over couplings
   }//end of loop over models
@@ -300,7 +301,7 @@ int main(int argc, char *argv[])
   // colors["Exponential"] = 4; //kBlue
   // colors["invpow"] = kYellow; //kYellow
   // colors["dijet"] = kBlack; //kYellow
- // colors["moddijet"] = ; //kGray
+  // colors["moddijet"] = ; //kGray
   // colors["pow"] = ; //kOrange
   
   //For bias
@@ -347,20 +348,20 @@ int main(int argc, char *argv[])
       //------------------------------------------------------------------------------------------------------
       //First with the pull bias plot
       for (auto model : models){
-	// A std::vector is at its heart an array. To get the array just get the address of the first element.
-	bprofiles[model][cp][muin] = new TGraphErrors( bpullvals[model][cp][muin].size(), &massvals[model][cp][muin][0], &bpullvals[model][cp][muin][0], &massvalsErr[model][cp][muin][0], &bpullvalsErr[model][cp][muin][0] ) ; 
+        // A std::vector is at its heart an array. To get the array just get the address of the first element.
+        bprofiles[model][cp][muin] = new TGraphErrors( bpullvals[model][cp][muin].size(), &massvals[model][cp][muin][0], &bpullvals[model][cp][muin][0], &massvalsErr[model][cp][muin][0], &bpullvalsErr[model][cp][muin][0] ) ;
 
-	bprofiles[model][cp][muin]->GetXaxis()->SetRangeUser(xfirst,xlast);
-	bprofiles[model][cp][muin]->GetXaxis()->SetTitleOffset( 0.9 );
-	bprofiles[model][cp][muin]->SetMarkerColor(colors[model]);
-	bprofiles[model][cp][muin]->SetMarkerStyle(kFullCircle);
-	bleg[cp][muin]->AddEntry( bprofiles[model][cp][muin] , Form("%s",model.c_str()) ,"pe" );
-	// bleg[cp][muin]->SetHeader(Form("dijet %s",cat.c_str()));
-	bprofiles[model][cp][muin]->Draw("PSE");
-	bleg[cp][muin]->Draw("same");
-	bcanv[cp][muin]->RedrawAxis();
-	bcanv[cp][muin]->Modified();
-	bcanv[cp][muin]->Update();
+        bprofiles[model][cp][muin]->GetXaxis()->SetRangeUser(xfirst,xlast);
+        bprofiles[model][cp][muin]->GetXaxis()->SetTitleOffset( 0.9 );
+        bprofiles[model][cp][muin]->SetMarkerColor(colors[model]);
+        bprofiles[model][cp][muin]->SetMarkerStyle(kFullCircle);
+        bleg[cp][muin]->AddEntry( bprofiles[model][cp][muin] , Form("%s",model.c_str()) ,"pe" );
+        // bleg[cp][muin]->SetHeader(Form("dijet %s",cat.c_str()));
+        bprofiles[model][cp][muin]->Draw("PSE");
+        bleg[cp][muin]->Draw("same");
+        bcanv[cp][muin]->RedrawAxis();
+        bcanv[cp][muin]->Modified();
+        bcanv[cp][muin]->Update();
 
       }//end of loop through models
 
@@ -408,25 +409,25 @@ theFitResult fitpulls(TH1 * histo, std::string outputdir, std::string scenario, 
   double fwhm = histo->GetBinCenter(bin2) - histo->GetBinCenter(bin1);
   
   std::cout << " --- " << histo->GetName() << " = entries " << histo->GetEntries()
-	    << " nbins " << histo->GetNbinsX()
-	    << " " << histo->GetBinLowEdge(1)
-	    << " " << histo->GetBinLowEdge(histo->GetNbinsX())
-	    << " mean " << meanE
-	    << " rms " << rmsE
-	    << " MeanError " << meanEerr<< " RMSError " <<  rmsEerr
-	    << " underflows " << histo->GetBinContent(0)
-	    << " overflows " << histo->GetBinContent(histo->GetNbinsX()+1)
-	    << " FWHM " << fwhm
-	    << std::endl;
+            << " nbins " << histo->GetNbinsX()
+            << " " << histo->GetBinLowEdge(1)
+            << " " << histo->GetBinLowEdge(histo->GetNbinsX())
+            << " mean " << meanE
+            << " rms " << rmsE
+            << " MeanError " << meanEerr<< " RMSError " <<  rmsEerr
+            << " underflows " << histo->GetBinContent(0)
+            << " overflows " << histo->GetBinContent(histo->GetNbinsX()+1)
+            << " FWHM " << fwhm
+            << std::endl;
 
   //fit
   // double fitregionlow = ;
   histo->Fit("gaus","LR0","", //gauss
-	     meanE-2*rmsE, //meanE-2*rmsE,2*fwhm
-	     meanE+2*rmsE); //meanE+2*rmsE2*fwhm
-	     // -2., //meanE-2*rmsE,2*fwhm
-	     // 2.); //meanE+2*rmsE2*fwhm
-	     
+             meanE-2*rmsE, //meanE-2*rmsE,2*fwhm
+             meanE+2*rmsE); //meanE+2*rmsE2*fwhm
+  // -2., //meanE-2*rmsE,2*fwhm
+  // 2.); //meanE+2*rmsE2*fwhm
+
   TF1 *fitResult = histo->GetFunction("gaus");//gaus
 
   fitResult->SetLineColor(2);
@@ -444,8 +445,8 @@ theFitResult fitpulls(TH1 * histo, std::string outputdir, std::string scenario, 
   fitResult->Draw("same");
     
   std::cout << " Gauss fit: mean " << meanFitE << " RMS " << rmsFitE
-	    << " Gauss fit: mean error " <<  meanFitEerr << " RMS error" << rmsFitEerr 
-	    << std::endl;
+            << " Gauss fit: mean error " <<  meanFitEerr << " RMS error" << rmsFitEerr
+            << std::endl;
 
   double xmi = 0.; double xma = 0.; 
   xmi = histo->GetXaxis()->GetXmin();
