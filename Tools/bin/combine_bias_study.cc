@@ -144,6 +144,11 @@ int main(int argc, char *argv[])
   masses.push_back("5500");
   masses.push_back("6000");
 
+  std::vector<std::string> cats;
+  cats->clear();
+  cats.push_back("EBEE");
+  cats.push_back("EBEB");
+
   //We will make a string to hold the file under investigation
   std::string scenario = "";
   std::string scenarioforplot = "";
@@ -155,120 +160,121 @@ int main(int argc, char *argv[])
     for (auto cp : coups){
       for (auto muin : muinjected){
         for (auto mass : masses){
+          for (auto cat : cats){
 
-          std::cout << "MODEL " << model << " COUP " << cp << " MU " << muin << " MASS " << mass << std::endl;
-          scenario = "tree_" + combmode + "_" + insigname + "_mu" + muin + "_" + cp + "_" + model + "_mass" + mass;
-          scenarioforplot =  cp + " " +  model + " " + mass + " GeV";
+            std::cout << "MODEL " << model << " COUP " << cp << " MU " << muin << " MASS " << mass << std::endl;
+            scenario = "tree_" + combmode + "_" + insigname + "_mu" + muin + "_" + cp + "_" + cat + "-" model + "_mass" + mass;
+            scenarioforplot =  cp + " " + cat + " " + model + " " + mass + " GeV";
 
-          //-----------------------------------------------------------------------------------
-          //Read the file and the tree
-          TString filename =  inputdir + "/" + scenario  + ".root";
-          std::string filename_s = inputdir + "/" + scenario  + ".root";
-          TString trname = "tree_fit_sb";
-          //TString trname = "tree_fit_b";
+            //-----------------------------------------------------------------------------------
+            //Read the file and the tree
+            TString filename =  inputdir + "/" + scenario  + ".root";
+            std::string filename_s = inputdir + "/" + scenario  + ".root";
+            TString trname = "tree_fit_sb";
+            //TString trname = "tree_fit_b";
 
-          //Variables in the trees we want to plot
-          Int_t fit_status;
-          double  mu;
-          double  muErr;
-          double  muLoErr;
-          double  muHiErr;
+            //Variables in the trees we want to plot
+            Int_t fit_status;
+            double  mu;
+            double  muErr;
+            double  muLoErr;
+            double  muHiErr;
 
-          //Getting trees from files
-          std::cout << "Getting tree from file " << filename << std::endl;
-          if ( !exists(filename_s) ){continue;}
+            //Getting trees from files
+            std::cout << "Getting tree from file " << filename << std::endl;
+            if ( !exists(filename_s) ){continue;}
 
-          TFile* infile = TFile::Open(filename);
-          //The tree in the file that we want to get
-          TTree *tr = (TTree*) infile->Get(trname);
+            TFile* infile = TFile::Open(filename);
+            //The tree in the file that we want to get
+            TTree *tr = (TTree*) infile->Get(trname);
 
-          tr->SetBranchAddress("fit_status", &fit_status);
-          tr->SetBranchAddress("r", &mu);
-          tr->SetBranchAddress("rErr", &muErr);
-          tr->SetBranchAddress("rLoErr", &muLoErr);
-          tr->SetBranchAddress("rHiErr", &muHiErr);
+            tr->SetBranchAddress("fit_status", &fit_status);
+            tr->SetBranchAddress("r", &mu);
+            tr->SetBranchAddress("rErr", &muErr);
+            tr->SetBranchAddress("rLoErr", &muLoErr);
+            tr->SetBranchAddress("rHiErr", &muHiErr);
 
-          //-----------------------------------------------------------------------------------
-          //Make the histos from the tree
+            //-----------------------------------------------------------------------------------
+            //Make the histos from the tree
 
-          double pullxlow = combmode == "samefunfit" ? -3.5 : -10.;
-          double pullylow = combmode == "samefunfit" ? 3.5: 10.;
-          //Histos
-          TH1F * h_mu = new TH1F( "h_mu", "Signal strength from fit", 100, 0., 3.);
-          TH1F * h_muErr = new TH1F( "h_muErr", "Signal strength error from fit", 100, 0., 16.);
-          TH1F * h_muLoErr = new TH1F( "h_muLoErr", "Signal strength low error from fit", 100, 0., 3.);
-          TH1F * h_muHiErr = new TH1F( "h_muHiErr", "Signal strength high error from fit", 100, 0., 16.);
-          TH1F * h_pulls_mu = new TH1F("h_pulls_mu", "mu_{true} - mu_{fit} / err", 50, pullxlow, pullylow);
+            double pullxlow = combmode == "samefunfit" ? -3.5 : -10.;
+            double pullylow = combmode == "samefunfit" ? 3.5: 10.;
+            //Histos
+            TH1F * h_mu = new TH1F( "h_mu", "Signal strength from fit", 100, 0., 3.);
+            TH1F * h_muErr = new TH1F( "h_muErr", "Signal strength error from fit", 100, 0., 16.);
+            TH1F * h_muLoErr = new TH1F( "h_muLoErr", "Signal strength low error from fit", 100, 0., 3.);
+            TH1F * h_muHiErr = new TH1F( "h_muHiErr", "Signal strength high error from fit", 100, 0., 16.);
+            TH1F * h_pulls_mu = new TH1F("h_pulls_mu", "mu_{true} - mu_{fit} / err", 50, pullxlow, pullylow);
 
-          std::cout << "Running bias study " << std::endl;
+            std::cout << "Running bias study " << std::endl;
  
-          //For the pull value
-          double pull_mu = 0.;
-          double err_mu = 0.;
-          float muinj = std::stof(muin);
+            //For the pull value
+            double pull_mu = 0.;
+            double err_mu = 0.;
+            float muinj = std::stof(muin);
 
-          std::cout << " Starting to loop over total entries of tree " << tr->GetEntries() << std::endl;
-          for (Int_t i=0; i<tr->GetEntries(); i++) {
-            tr->GetEntry(i);
+            std::cout << " Starting to loop over total entries of tree " << tr->GetEntries() << std::endl;
+            for (Int_t i=0; i<tr->GetEntries(); i++) {
+              tr->GetEntry(i);
 
-            // if (fit_status==0){
-            if (fit_status==0 && ((muHiErr+mu) < 19) && ((mu-muLoErr)>-19) ){
-              // if ((muHiErr+mu) < 19 && (mu-muLoErr)>-19 ){
-              // if (true){
-              // std::cout << "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT " << fit_status << std::endl;
-              if (mu > muinj){
-                // err_mu = muLoErr;
-                err_mu = muHiErr;
-                // err_mu = muErr;
-              } else{
-                err_mu = muHiErr;
+              // if (fit_status==0){
+              if (fit_status==0 && ((muHiErr+mu) < 19) && ((mu-muLoErr)>-19) ){
+                // if ((muHiErr+mu) < 19 && (mu-muLoErr)>-19 ){
+                // if (true){
+                // std::cout << "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT " << fit_status << std::endl;
+                if (mu > muinj){
+                  // err_mu = muLoErr;
+                  err_mu = muHiErr;
+                  // err_mu = muErr;
+                } else{
+                  err_mu = muHiErr;
+                }
+
+                //HACK HERE
+                err_mu = 0.5 * (muLoErr+muHiErr);
+                // if (err_mu ==0){
+                // 	pull_mu = 0.;
+                // } else{
+                // 	pull_mu = (muinj - mu )/err_mu;
+                // }
+                pull_mu = (muinj - mu )/err_mu;
+                // if(fabs(pull_mu) > 10. ){
+                // 	std::cout <<  "muinj= " << muinj << std::endl;
+                // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj)<< std::endl;
+                // 	std::cout <<  "err_mu = " << err_mu << std::endl;
+                // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
+                // }
+
+                // if(fabs(pull_mu) < 0.01){
+                // 	std::cout <<  "muinj= " << muinj << std::endl;
+                // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj) << std::endl;
+                // 	std::cout <<  "err_mu = " << err_mu << std::endl;
+                // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
+
+                // }
+
+                h_mu->Fill(mu);
+                h_muErr->Fill(muErr);
+                h_muLoErr->Fill(muLoErr);
+                h_muHiErr->Fill(muHiErr);
+
+                h_pulls_mu->Fill( pull_mu );
+
               }
 
-              //HACK HERE
-              err_mu = 0.5 * (muLoErr+muHiErr);
-              // if (err_mu ==0){
-              // 	pull_mu = 0.;
-              // } else{
-              // 	pull_mu = (muinj - mu )/err_mu;
-              // }
-              pull_mu = (muinj - mu )/err_mu;
-              // if(fabs(pull_mu) > 10. ){
-              // 	std::cout <<  "muinj= " << muinj << std::endl;
-              // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj)<< std::endl;
-              // 	std::cout <<  "err_mu = " << err_mu << std::endl;
-              // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
-              // }
+            } // End of loop over entries
 
-              // if(fabs(pull_mu) < 0.01){
-              // 	std::cout <<  "muinj= " << muinj << std::endl;
-              // 	std::cout <<  "mu_fit - mu_inj  = " << (mu - muinj) << std::endl;
-              // 	std::cout <<  "err_mu = " << err_mu << std::endl;
-              // 	std::cout <<  "pull_mu = " << pull_mu << std::endl;
+            //-----------------------------------------------------------------------------------
+            //Plot and save the final pull
+            theFitResult tmpfitpull = fitpulls(h_pulls_mu, outputdir + "/" + combmode, scenario, scenarioforplot);
 
-              // }
+            bpullvals[model][cp][muin].push_back(tmpfitpull.meanFitE);
+            bpullvalsErr[model][cp][muin].push_back(tmpfitpull.meanFitEerr);
+            massvals[model][cp][muin].push_back( std::stod(mass) );
+            massvalsErr[model][cp][muin].push_back( 0. );
 
-              h_mu->Fill(mu);
-              h_muErr->Fill(muErr);
-              h_muLoErr->Fill(muLoErr);
-              h_muHiErr->Fill(muHiErr);
-
-              h_pulls_mu->Fill( pull_mu );
-
-            }
-
-          } // End of loop over entries
-
-          //-----------------------------------------------------------------------------------
-          //Plot and save the final pull
-          theFitResult tmpfitpull = fitpulls(h_pulls_mu, outputdir + "/" + combmode, scenario, scenarioforplot);
-
-          bpullvals[model][cp][muin].push_back(tmpfitpull.meanFitE);
-          bpullvalsErr[model][cp][muin].push_back(tmpfitpull.meanFitEerr);
-          massvals[model][cp][muin].push_back( std::stod(mass) );
-          massvalsErr[model][cp][muin].push_back( 0. );
-
-          infile->Close();
-
+            infile->Close();
+          }
         }//end of loop over masses
       }//end of loop over muin
     }//end of loop over couplings
