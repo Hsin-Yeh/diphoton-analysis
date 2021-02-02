@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
           for (auto cat : cats){
 
             std::cout << "MODEL " << model << " COUP " << cp << " MU " << muin << " MASS " << mass << std::endl;
-            scenario = "tree_" + combmode + "_" + insigname + "_mu" + muin + "_" + cp + "_" + cat + "-" model + "_mass" + mass;
+            scenario = "tree_" + combmode + "_" + insigname + "_mu" + muin + "_" + cp + "_" + cat + "_" + model + "_mass" + mass;
             scenarioforplot =  cp + " " + cat + " " + model + " " + mass + " GeV";
 
             //-----------------------------------------------------------------------------------
