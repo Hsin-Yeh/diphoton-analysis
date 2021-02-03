@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 
         std::string blabel = cp + "_" + muin;
 
-        bcanv[cat][cp][muin] = new TCanvas(Form("profile_pull_%s_%s",cp.c_str(), muin.c_str()), Form("profile_pull_%s_%s",cp.c_str(), muin.c_str()) );
+        bcanv[cat][cp][muin] = new TCanvas(Form("profile_pull_%s_%s_%s",cat.c_str(), cp.c_str(), muin.c_str()), Form("profile_pull_%s_%s_%s",cat.c_str(), cp.c_str(), muin.c_str()) );
         bcanv[cat][cp][muin]->SetLogx();
         bcanv[cat][cp][muin]->SetGridy();
         bcanv[cat][cp][muin]->SetGridx();
@@ -341,7 +341,7 @@ int main(int argc, char *argv[])
         bleg[cat][cp][muin]->SetFillStyle(0);
         bleg[cat][cp][muin]->SetBorderSize(0);
 
-        frame[cat][cp][muin] = new TH2F( Form("frame_%s_%s", cp.c_str(), muin.c_str() ), Form("frame_%s_%s", cp.c_str(), muin.c_str() ),100,xfirst,xlast,100,yfirst,ylast);
+        frame[cat][cp][muin] = new TH2F( Form("frame_%s_%s_%s",cat.c_str(), cp.c_str(), muin.c_str() ), Form("frame_%s_%s_%s",cat.c_str(), cp.c_str(), muin.c_str() ),100,xfirst,xlast,100,yfirst,ylast);
         frame[cat][cp][muin]->SetStats(false);
         bcanv[cat][cp][muin]->cd();
         frame[cat][cp][muin]->Draw();
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
           bprofiles[model][cat][cp][muin]->SetMarkerColor(colors[model]);
           bprofiles[model][cat][cp][muin]->SetMarkerStyle(kFullCircle);
           bleg[cat][cp][muin]->AddEntry( bprofiles[model][cat][cp][muin] , Form("%s",model.c_str()) ,"pe" );
-          // bleg[cat][cp][muin]->SetHeader(Form("dijet %s",cat.c_str()));
+          bleg[cat][cp][muin]->SetHeader(Form("dijet %s",cat.c_str()));
           bprofiles[model][cat][cp][muin]->Draw("PSE");
           bleg[cat][cp][muin]->Draw("same");
           bcanv[cat][cp][muin]->RedrawAxis();
@@ -386,7 +386,7 @@ int main(int argc, char *argv[])
         // lat.DrawLatex(latx,laty*0.6,buf);
 
       
-        bcanv[cat][cp][muin]->SaveAs((Form("%s/%s/profile_pull_%s_%s.png", outputdir.c_str(), combmode.c_str(), cp.c_str(), muin.c_str() )) );
+        bcanv[cat][cp][muin]->SaveAs((Form("%s/%s/profile_pull_%s_%s_%s.png", outputdir.c_str(), combmode.c_str(),cat.c_str(), cp.c_str(), muin.c_str() )) );
       }//end of loop over muin
     }//end of loop over couplings
   }//end of loop over cats
