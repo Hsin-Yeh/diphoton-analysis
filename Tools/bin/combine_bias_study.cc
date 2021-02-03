@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
   std::vector<std::string> cats;
   cats.push_back("EBEE");
-  cats.push_back("EBEB");
+  // cats.push_back("EBEB");
 
   //We will make a string to hold the file under investigation
   std::string scenario = "";
@@ -296,9 +296,9 @@ int main(int argc, char *argv[])
   colors["invpowlin"] = 34;
   colors["moddijet"] = 46;
   colors["dijet"] = 1;
-  colors["expow1"] = 9;
-  colors["invpow1"] = 28;
-  colors["invpowlin1"] = 34;
+  colors["expow1"] = 2;
+  colors["invpow1"] = 3;
+  colors["invpowlin1"] = 4;
 
   // colors["Laurent"] = 616; //kMagenta
   // colors["PowerLaw"] = kGray; //kGray
