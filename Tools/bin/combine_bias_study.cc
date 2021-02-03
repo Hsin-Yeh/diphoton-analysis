@@ -267,10 +267,10 @@ int main(int argc, char *argv[])
             //Plot and save the final pull
             theFitResult tmpfitpull = fitpulls(h_pulls_mu, outputdir + "/" + combmode, scenario, scenarioforplot);
 
-            bpullvals[model][cp][muin].push_back(tmpfitpull.meanFitE);
-            bpullvalsErr[model][cp][muin].push_back(tmpfitpull.meanFitEerr);
-            massvals[model][cp][muin].push_back( std::stod(mass) );
-            massvalsErr[model][cp][muin].push_back( 0. );
+            bpullvals[model][cat][cp][muin].push_back(tmpfitpull.meanFitE);
+            bpullvalsErr[model][cat][cp][muin].push_back(tmpfitpull.meanFitEerr);
+            massvals[model][cat][cp][muin].push_back( std::stod(mass) );
+            massvalsErr[model][cat][cp][muin].push_back( 0. );
 
             infile->Close();
           }
