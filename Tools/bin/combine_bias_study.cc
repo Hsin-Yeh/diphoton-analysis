@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
   //Injected signal strength
   std::vector<std::string> muinjected;
   muinjected.push_back("1");
-  muinjected.push_back("2");
-  muinjected.push_back("3");
+  // muinjected.push_back("2");
+  // muinjected.push_back("3");
   //muinjected.push_back("4");
   //muinjected.push_back("5");
   
@@ -152,8 +152,8 @@ int main(int argc, char *argv[])
   std::string scenario = "";
   std::string scenarioforplot = "";
 
-  std::map<std::string , std::map<std::string , std::map<TString , TGraphErrors *> > > bprofiles; //[model][coup][muin] 
-  std::map<std::string , std::map<std::string, std::map<std::string , std::vector<double> > > > bpullvals, bpullvalsErr, massvals, massvalsErr;
+  std::map<std::string , std::map<std::string , std::map<std::string , std::map<TString , TGraphErrors *> > > > bprofiles; //[model][coup][muin]
+  std::map<std::string , std::map<std::string , std::map<std::string, std::map<std::string , std::vector<double> > > > > bpullvals, bpullvalsErr, massvals, massvalsErr;
   
   for (auto model : models){
     for (auto cp : coups){
@@ -313,82 +313,83 @@ int main(int argc, char *argv[])
   // colors["pow"] = ; //kOrange
   
   //For bias
-  std::map<std::string , std::map<std::string , TCanvas *> > bcanv; //[cat]
-  std::map<std::string , std::map<std::string ,TLegend *> > bleg; //[cat]
+  std::map<std::string , std::map<std::string , std::map<std::string , TCanvas *> > > bcanv; //[cat]
+  std::map<std::string , std::map<std::string , std::map<std::string , TLegend *> > > bleg; //[cat]
 
-  std::map<std::string , std::map<std::string , TH2F *> > frame;
-  std::map<std::string , std::map<std::string , TBox *> > box;
+  std::map<std::string , std::map<std::string , std::map<std::string , TH2F *> > > frame;
+  std::map<std::string , std::map<std::string , std::map<std::string , TBox *> > > box;
 
   float xfirst = 500.;
   float xlast  = 6500.;
   float yfirst = -3.;
   float ylast = 2.;
-  
-  for (auto cp : coups){
-    std::string couplabel = widthtonum(cp);      
-    for (auto muin : muinjected){
-      std::string muinlabel = "#mu_{true} = " + muin ;
 
-      std::string blabel = cp + "_" + muin;
+  for (auto cat : cats){
+    for (auto cp : coups){
+      std::string couplabel = widthtonum(cp);
+      for (auto muin : muinjected){
+        std::string muinlabel = "#mu_{true} = " + muin ;
 
-      bcanv[cp][muin] = new TCanvas(Form("profile_pull_%s_%s",cp.c_str(), muin.c_str()), Form("profile_pull_%s_%s",cp.c_str(), muin.c_str()) );
-      bcanv[cp][muin]->SetLogx();
-      bcanv[cp][muin]->SetGridy();
-      bcanv[cp][muin]->SetGridx();
+        std::string blabel = cp + "_" + muin;
 
-      bleg[cp][muin]= new TLegend(0.6,0.12,0.95,0.47);
-      bleg[cp][muin]->SetFillStyle(0);
-      bleg[cp][muin]->SetBorderSize(0);
+        bcanv[cat][cp][muin] = new TCanvas(Form("profile_pull_%s_%s",cp.c_str(), muin.c_str()), Form("profile_pull_%s_%s",cp.c_str(), muin.c_str()) );
+        bcanv[cat][cp][muin]->SetLogx();
+        bcanv[cat][cp][muin]->SetGridy();
+        bcanv[cat][cp][muin]->SetGridx();
 
-      frame[cp][muin] = new TH2F( Form("frame_%s_%s", cp.c_str(), muin.c_str() ), Form("frame_%s_%s", cp.c_str(), muin.c_str() ),100,xfirst,xlast,100,yfirst,ylast);
-      frame[cp][muin]->SetStats(false);
-      bcanv[cp][muin]->cd();
-      frame[cp][muin]->Draw();
-      frame[cp][muin]->SetTitle("");
-      frame[cp][muin]->GetXaxis()->SetTitle("mass [GeV]");
-      frame[cp][muin]->GetXaxis()->SetMoreLogLabels();
-      frame[cp][muin]->GetYaxis()->SetTitle("( #mu_{fit} - #mu_{true} )/ #sigma_{fit}");
+        bleg[cat][cp][muin]= new TLegend(0.6,0.12,0.95,0.47);
+        bleg[cat][cp][muin]->SetFillStyle(0);
+        bleg[cat][cp][muin]->SetBorderSize(0);
 
-      box[cp][muin]= new TBox(xfirst,-0.5,xlast,0.5);
-      box[cp][muin]->SetFillColor(kGray);
-      box[cp][muin]->Draw("same");       
+        frame[cat][cp][muin] = new TH2F( Form("frame_%s_%s", cp.c_str(), muin.c_str() ), Form("frame_%s_%s", cp.c_str(), muin.c_str() ),100,xfirst,xlast,100,yfirst,ylast);
+        frame[cat][cp][muin]->SetStats(false);
+        bcanv[cat][cp][muin]->cd();
+        frame[cat][cp][muin]->Draw();
+        frame[cat][cp][muin]->SetTitle("");
+        frame[cat][cp][muin]->GetXaxis()->SetTitle("mass [GeV]");
+        frame[cat][cp][muin]->GetXaxis()->SetMoreLogLabels();
+        frame[cat][cp][muin]->GetYaxis()->SetTitle("( #mu_{fit} - #mu_{true} )/ #sigma_{fit}");
 
-      //------------------------------------------------------------------------------------------------------
-      //First with the pull bias plot
-      for (auto model : models){
-        // A std::vector is at its heart an array. To get the array just get the address of the first element.
-        bprofiles[model][cp][muin] = new TGraphErrors( bpullvals[model][cp][muin].size(), &massvals[model][cp][muin][0], &bpullvals[model][cp][muin][0], &massvalsErr[model][cp][muin][0], &bpullvalsErr[model][cp][muin][0] ) ;
+        box[cat][cp][muin]= new TBox(xfirst,-0.5,xlast,0.5);
+        box[cat][cp][muin]->SetFillColor(kGray);
+        box[cat][cp][muin]->Draw("same");
 
-        bprofiles[model][cp][muin]->GetXaxis()->SetRangeUser(xfirst,xlast);
-        bprofiles[model][cp][muin]->GetXaxis()->SetTitleOffset( 0.9 );
-        bprofiles[model][cp][muin]->SetMarkerColor(colors[model]);
-        bprofiles[model][cp][muin]->SetMarkerStyle(kFullCircle);
-        bleg[cp][muin]->AddEntry( bprofiles[model][cp][muin] , Form("%s",model.c_str()) ,"pe" );
-        // bleg[cp][muin]->SetHeader(Form("dijet %s",cat.c_str()));
-        bprofiles[model][cp][muin]->Draw("PSE");
-        bleg[cp][muin]->Draw("same");
-        bcanv[cp][muin]->RedrawAxis();
-        bcanv[cp][muin]->Modified();
-        bcanv[cp][muin]->Update();
+        //------------------------------------------------------------------------------------------------------
+        //First with the pull bias plot
+        for (auto model : models){
+          // A std::vector is at its heart an array. To get the array just get the address of the first element.
+          bprofiles[model][cat][cp][muin] = new TGraphErrors( bpullvals[model][cat][cp][muin].size(), &massvals[model][cat][cp][muin][0], &bpullvals[model][cat][cp][muin][0], &massvalsErr[model][cat][cp][muin][0], &bpullvalsErr[model][cat][cp][muin][0] ) ;
 
-      }//end of loop through models
+          bprofiles[model][cat][cp][muin]->GetXaxis()->SetRangeUser(xfirst,xlast);
+          bprofiles[model][cat][cp][muin]->GetXaxis()->SetTitleOffset( 0.9 );
+          bprofiles[model][cat][cp][muin]->SetMarkerColor(colors[model]);
+          bprofiles[model][cat][cp][muin]->SetMarkerStyle(kFullCircle);
+          bleg[cat][cp][muin]->AddEntry( bprofiles[model][cat][cp][muin] , Form("%s",model.c_str()) ,"pe" );
+          // bleg[cat][cp][muin]->SetHeader(Form("dijet %s",cat.c_str()));
+          bprofiles[model][cat][cp][muin]->Draw("PSE");
+          bleg[cat][cp][muin]->Draw("same");
+          bcanv[cat][cp][muin]->RedrawAxis();
+          bcanv[cat][cp][muin]->Modified();
+          bcanv[cat][cp][muin]->Update();
 
-      char buf[500];
-      TLatex lat;
-      double xmi = xfirst; double xma = xlast; 
-      double latx = xmi+(xma-xmi)/20.;
-      double laty = ylast;
+        }//end of loop through models
 
-      sprintf(buf,"%s        %s   ", couplabel.c_str(), muinlabel.c_str() );
-      lat.DrawLatex(latx,laty*0.85,buf);
-      // sprintf(buf,"%s", muinlabel.c_str() );
-      // lat.DrawLatex(latx,laty*0.6,buf);
+        char buf[500];
+        TLatex lat;
+        double xmi = xfirst; double xma = xlast;
+        double latx = xmi+(xma-xmi)/20.;
+        double laty = ylast;
+
+        sprintf(buf,"%s        %s   ", couplabel.c_str(), muinlabel.c_str() );
+        lat.DrawLatex(latx,laty*0.85,buf);
+        // sprintf(buf,"%s", muinlabel.c_str() );
+        // lat.DrawLatex(latx,laty*0.6,buf);
 
       
-      bcanv[cp][muin]->SaveAs((Form("%s/%s/profile_pull_%s_%s.png", outputdir.c_str(), combmode.c_str(), cp.c_str(), muin.c_str() )) );
-    }//end of loop over muin
-  }//end of loop over couplings
- 
+        bcanv[cat][cp][muin]->SaveAs((Form("%s/%s/profile_pull_%s_%s.png", outputdir.c_str(), combmode.c_str(), cp.c_str(), muin.c_str() )) );
+      }//end of loop over muin
+    }//end of loop over couplings
+  }//end of loop over cats
   
 }
 
