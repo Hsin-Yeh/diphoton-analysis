@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
   std::vector<std::string> cats;
   cats.push_back("EBEE");
-  // cats.push_back("EBEB");
+  cats.push_back("EBEB");
 
   //We will make a string to hold the file under investigation
   std::string scenario = "";
